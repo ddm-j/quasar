@@ -145,7 +145,7 @@ class DataHub:
 
         # Drop Providers that Aren't Needed Anymore
         for obsolete in current_providers - seen_providers:
-            logger.info(f"Removing obsolete provider from registry: {e}")
+            logger.info(f"Removing obsolete provider from registry: {obsolete}")
             await self._providers[obsolete].aclose()
             del self._providers[obsolete]
         
