@@ -1,0 +1,25 @@
+# byte‑code & build junk
+__pycache__/
+*.py[cod]
+*.so
+build/
+dist/
+*.egg-info/
+
+# editor / IDE folders
+.vscode/
+.idea/
+
+# local config & secrets
+.secrets/
+.env
+*.sqlite
+
+# tests, notebooks, docs not needed at runtime
+test_code/
+*.ipynb
+docs/
+
+# version control
+.git
+.gitignore

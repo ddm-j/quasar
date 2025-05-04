@@ -1,0 +1,34 @@
+services:
+  quasardb:
+    image: timescale/timescaledb:latest-pg17
+    container_name: quasardb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    volumes:
+      - tsdb-data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports:
+      - "5432:5432"
+
+  datahub:
+    build: ./            
+    container_name: datahub
+    depends_on:
+      - quasardb
+    environment:
+      LOGLEVEL: DEBUG
+      DSN: "postgresql://postgres:password@quasardb:5432/postgres"
+      QUASAR_SECRET_FILE: "/run/secrets/quasar"
+    secrets:
+      - quasar
+    command: ["python", "-m", "quasar.datahub_app"]
+    restart: unless-stopped
+
+volumes:
+  tsdb-data:
+
+secrets:
+  quasar:
+    file: ./.secrets/.quasar_secrets.json
