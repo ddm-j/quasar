@@ -20,8 +20,15 @@ services:
     environment:
       LOGLEVEL: DEBUG
       DSN: "postgresql://postgres:password@quasardb:5432/postgres"
+      QUASAR_SECRET_FILE: "/run/secrets/quasar"
+    secrets:
+      - quasar
     command: ["python", "-m", "quasar.datahub_app"]
     restart: unless-stopped
 
 volumes:
   tsdb-data:
+
+secrets:
+  quasar:
+    file: ./.secrets/.quasar_secrets.json
