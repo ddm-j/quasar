@@ -176,7 +176,7 @@ class DataHub:
 
         # Remove Jobs if no longer subscribed
         for gone in self.job_keys - new_keys:
-            logger.info(f"Removing scheduled job: {key}")
+            logger.info(f"Removing scheduled job: {gone}")
             self._sched.remove_job(gone)
 
         self.job_keys = new_keys
