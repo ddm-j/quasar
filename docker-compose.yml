@@ -8,22 +8,28 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - tsdb-data:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./db/schema:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   datahub:
     build: ./            
     container_name: datahub
     depends_on:
-      - quasardb
+      quasardb:
+        condition: service_healthy
     environment:
       LOGLEVEL: DEBUG
       DSN: "postgresql://postgres:password@quasardb:5432/postgres"
       QUASAR_SECRET_FILE: "/run/secrets/quasar"
     secrets:
       - quasar
-    command: ["python", "-m", "quasar.datahub_app"]
+    command: ["python", "-m", "quasar.datahub.app"]
     restart: unless-stopped
 
 volumes:

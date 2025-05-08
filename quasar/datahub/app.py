@@ -1,6 +1,6 @@
 import asyncio, os, logging
-from quasar.datahub_core import DataHub
-from quasar.secret_store import SecretStore
+from quasar.datahub import DataHub
+from quasar.common.secret_store import SecretStore
 
 level = os.getenv("LOGLEVEL", "INFO").upper()
 logging.basicConfig(

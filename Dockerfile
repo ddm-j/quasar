@@ -15,5 +15,5 @@ WORKDIR /app
 COPY --from=base /usr/local /usr/local
 COPY quasar/ quasar/
 ENV PYTHONUNBUFFERED=1
-CMD ["python", "-m", "quasar.datahub_app"]
+CMD ["python", "-m", "quasar.datahub.app"]
     

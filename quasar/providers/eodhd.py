@@ -1,5 +1,5 @@
-from ..provider_base import HistoricalDataProvider, Interval, Bar
-from . import register_provider
+from quasar.providers.core import HistoricalDataProvider, Interval, Bar
+from quasar.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
 import requests
@@ -22,6 +22,16 @@ class EODHDProvider(HistoricalDataProvider):
         """
         Symbol Pull Implementation for EODHD
         """
+        # Map Interval to EODHD API
+        eodhd_interval_map = {
+            '1d': '1d',
+            '1w': '1w',
+            '1M': '1M'
+        }
+        eodhd_interval = eodhd_interval_map.get(interval, '1d')
+        if eodhd_interval is None:
+            raise ValueError(f"Unsupported interval: {interval}")
+
         # Create Request
         url = (
             f"{BASE}/{sym}"

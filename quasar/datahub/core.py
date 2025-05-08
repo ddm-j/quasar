@@ -5,33 +5,52 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.base import STATE_RUNNING
 from typing import Optional
 from datetime import datetime, timezone, timedelta
+from functools import wraps
 
-from quasar.secret_store import SecretStore
-from quasar.provider_base import HistoricalDataProvider, Req, Bar
-from quasar.providers import load_provider
+from quasar.common.secret_store import SecretStore
+from quasar.common.offset_cron import OffsetCronTrigger
+from quasar.providers import HistoricalDataProvider, Req, Bar, ProviderType, load_provider
 
 import logging
 logger = logging.getLogger(__name__)
 
+DEFAULT_LIVE_OFFSET = 30 # Default number of seconds to offset the subscription cron job for live data providers
 DEFAULT_LOOKBACK = 8000 # Default Number of bars to pull if we don't already have data
-BATCH_SIZE = 500 # 
+BATCH_SIZE = 500 # Number of bars to batch insert into the database 
 QUERIES = {
     'get_subscriptions': """SELECT provider, interval, cron, array_agg(sym) AS syms
                             FROM provider_subscription
                             GROUP BY provider, interval, cron""",
      'get_last_updated': """SELECT sym, last_updated::date AS d
-                            FROM   symbol_state
+                            FROM   historical_symbol_state
                             WHERE  provider = $1
                             AND  sym = ANY($2::text[])"""
 }
 
+def safe_job(default_return=None):
+    """
+    Decorator to catch exceptions in provider jobs and prevent system hangs.
+    Logs the exception and optionally returns a default value.
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Job {func.__name__} failed with error: {e}", exc_info=True)
+                return default_return
+        return wrapper
+    return decorator
+
 
 class DataHub:
     """
-    Minimal skeleton – just opens and closes a connection pool.
+    DataHub Class
 
     Parameters
     ----------
+    secret_store : SecretStore instance
     dsn : str
         Postgres / TimescaleDB DSN, e.g. "postgresql://pg:pg@localhost:5432/pg".
     pool : asyncpg.Pool, optional
@@ -109,7 +128,7 @@ class DataHub:
             raise RuntimeError("DataHub not started yet")
         return self._pool
 
-    # placeholder for future logic
+    # Subscription Refresh
     async def refresh_subscriptions(self):
         """
         Refresh Data Provider Subscriptions
@@ -124,6 +143,7 @@ class DataHub:
         seen_providers = set(r["provider"] for r in rows)
         invalid_providers = set()
         for name in seen_providers - current_providers:
+            # Load Provider Configuration Secrets
             try:
                 cfg = await self.secret_store.get(name)
                 logger.info(f"Provider {name} configuration secrets loaded successfully.")
@@ -146,7 +166,8 @@ class DataHub:
         # Drop Providers that Aren't Needed Anymore
         for obsolete in current_providers - seen_providers:
             logger.info(f"Removing obsolete provider from registry: {obsolete}")
-            await self._providers[obsolete].aclose()
+            if hasattr(self._providers[obsolete], 'aclose'):
+                await self._providers[obsolete].aclose()
             del self._providers[obsolete]
         
         # Update Scheduled Jobs
@@ -160,10 +181,12 @@ class DataHub:
             new_keys.add(key)
             if key not in self.job_keys:
                 # Subscription Schedule Detected
-                logger.debug(f"Scheduling new job: {key}")
+                prov_type = self._providers[r["provider"]].provider_type
+                offset_seconds = 0 if prov_type == ProviderType.HISTORICAL else -1*DEFAULT_LIVE_OFFSET
+                logger.debug(f"Scheduling new job: {key}, with offset: {offset_seconds}, from specified cron: {r['cron']}")
                 self._sched.add_job(
-                    func=self._provider_job,
-                    trigger=CronTrigger.from_crontab(r["cron"]),
+                    func=self.get_data,
+                    trigger=OffsetCronTrigger.from_crontab(r["cron"], offset_seconds=offset_seconds),
                     args=[r["provider"], r["interval"], r["syms"]],
                     id=key,
                 )
@@ -181,11 +204,7 @@ class DataHub:
 
         self.job_keys = new_keys
 
-        # if self._sched.state == STATE_RUNNING:
-        #     for j in self._sched.get_jobs():
-        #         print(j.id, j.next_run_time)
-
-    async def _build_reqs(
+    async def _build_reqs_historical(
             self,
             provider: str,
             interval: str,
@@ -220,45 +239,60 @@ class DataHub:
 
     async def _insert_bars(
             self,
+            provider_type: ProviderType,
             provider: str,
             interval: str,
             bars: list[Bar]
     ):
         """Batch Insertion of records into QuasarDB"""
-        logger.info(f'Inserting provider data into database: {provider}, {interval}')
+        dbs = ['historical_data', 'live_data']
+        db = dbs[provider_type.value]
+        logger.info(f'Inserting provider data into database {db}: {provider}, {interval}')
         records = [
             (b['ts'], b['sym'], provider, interval, b['o'], b['h'], b['l'], b['c'], b['v']) for b in bars
         ]
         async with self.pool.acquire() as conn:
-            await conn.copy_records_to_table('historical_data', records=records)
+            await conn.copy_records_to_table(db, records=records)
 
-    async def _provider_job(
-            self,
-            provider: str,
-            interval: str,
-            symbols: list[str]):
-        logger.info(f"Running scheduled job: {provider}, {interval}")
+    @safe_job(default_return=None)
+    async def get_data(self, provider: str, interval: str, symbols: list[str]):
+        """
+        Get Data from the DataHub
+        """
+        # Load Provider Class
+        if provider not in self._providers:
+            logger.error(f"Provider {provider} not found.")
+            raise ValueError(f"Provider {provider} not found.")
+        prov = self._providers[provider]
 
-        # Build Requests
-        reqs = await self._build_reqs(
-            provider,
-            interval,
-            symbols
-        )
-        if not reqs:
-            logger.warning("Provider job has no valid requests to make.")
-            Warning(f"No requests made for job: {provider}")
-            return
+        if prov.provider_type == ProviderType.HISTORICAL:
+            # Build Requests For Historical Data Provider
+            reqs = await self._build_reqs_historical(provider, interval, symbols)
+            if not reqs:
+                logger.warning("{provider} has no valid requests to make.")
+                Warning("{provider} has no valid requests to make.")
+                return
+            args = [reqs]
+            kwargs = {}
+        elif prov.provider_type == ProviderType.REALTIME:
+            # Create Request for Live Data Provider
+            args = [interval, symbols]
+            # Add Timeout to prevent hung jobs
+            kwargs = {'timeout': DEFAULT_LIVE_OFFSET+prov.close_buffer_seconds+30}
+        else:
+            logger.error(f"Provider {provider} is not a valid provider type.")
+            raise ValueError(f"Provider {provider} is not a valid provider type.")
 
         # Pull / Insert Data Into QuasarDB
         prov = self._providers[provider]
         buf = []
         logger.info(f"Requesting data from provider.")
-        async for bar in prov.get_history_many(reqs):
+        async for bar in prov.get_data(*args, **kwargs):
             buf.append(bar)
             if len(buf) >= BATCH_SIZE:
-                await self._insert_bars(provider, interval, buf)
+                await self._insert_bars(prov.provider_type, provider, interval, buf)
                 buf.clear()
         if buf:
-            await self._insert_bars(provider, interval, buf)
+            await self._insert_bars(prov.provider_type, provider, interval, buf)
+
 

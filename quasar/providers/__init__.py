@@ -1,7 +1,7 @@
 from importlib.metadata import entry_points
 from typing import Dict, Type
 
-from ..provider_base import HistoricalDataProvider                # noqa: F401
+from .core import HistoricalDataProvider, Req, Bar, Interval, ProviderType               # noqa: F401
 
 # Centralized Provider Registry
 _registry: Dict[str, Type[HistoricalDataProvider]] = {}
@@ -21,6 +21,7 @@ def _autodiscover():
     """Import built-ins and external entry-points"""
     # Built-Ins
     from .eodhd import EODHDProvider
+    from .kraken import KrakenProvider
 
     # External Entry Points
     for ep in entry_points(group="quasar.providers"):
@@ -29,4 +30,5 @@ def _autodiscover():
 
 # Re-Export Built-Ins
 from .eodhd import EODHDProvider
-__all__ = ['HistoricalDataProvider', 'EODHDProvider']
+from .kraken import KrakenProvider
+__all__ = ['HistoricalDataProvider', 'EODHDProvider', 'KrakenProvider', 'Bar', 'Req', 'Interval', 'ProviderType']

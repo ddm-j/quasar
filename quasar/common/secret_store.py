@@ -5,6 +5,7 @@ _DEFAULT_PATHS = [
     Path(os.getenv("QUASAR_SECRET_FILE", "")),  # explicit env var first
     Path("/run/secrets/quasar.json"),           # docker / ECS
     Path.home() / ".quasar_secrets.json",       # bare‑metal dev
+    Path('./.secrets/.quasar_secrets.json'),    # dev project dir
 ]
 
 class SecretsFileNotFoundError(Exception):
