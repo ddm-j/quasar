@@ -104,7 +104,7 @@ class TestDataHub(unittest.IsolatedAsyncioTestCase):
         # Test Unable to Load Provider Config
         self.datahub._providers = {}
         self.mock_secret_store.get.side_effect = Exception("Provider not found")
-        await self.datahub.refresh_subscriptions()
+        await self.datahub._refresh_subscriptions()
         self.assertEqual(len(self.datahub._providers), 0)
 
         # Test Successful Provider Class Load
@@ -114,7 +114,7 @@ class TestDataHub(unittest.IsolatedAsyncioTestCase):
             mock_provider = MagicMock()
             mock_load.return_value = lambda **kwargs: mock_provider
             
-            await self.datahub.refresh_subscriptions()
+            await self.datahub._refresh_subscriptions()
             
             self.assertIn("TestProvider", self.datahub._providers)
             self.assertEqual(len(self.datahub.job_keys), 1)
@@ -126,7 +126,7 @@ class TestDataHub(unittest.IsolatedAsyncioTestCase):
             mock_provider = MagicMock()
             mock_load.side_effect = Exception("Failed to load provider code")
             
-            await self.datahub.refresh_subscriptions()
+            await self.datahub._refresh_subscriptions()
             
             self.assertNotIn("TestProvider", self.datahub._providers)
             self.assertEqual(len(self.datahub.job_keys), 0)
@@ -138,7 +138,7 @@ class TestDataHub(unittest.IsolatedAsyncioTestCase):
             mock_provider = MagicMock()
             mock_load.return_value = lambda **kwargs: mock_provider
             
-            await self.datahub.refresh_subscriptions()
+            await self.datahub._refresh_subscriptions()
             
             self.assertNotIn("ObsoleteProvider", self.datahub._providers)
             self.assertEqual(len(self.datahub.job_keys), 1)

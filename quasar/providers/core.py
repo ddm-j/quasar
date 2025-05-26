@@ -1,4 +1,3 @@
-# quasar/provider_base.py
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timezone, timedelta
@@ -21,10 +20,11 @@ from typing import (
     NamedTuple,
     overload
 )
-
 import logging
-
 import websockets.asyncio
+
+from quasar.common.context import DerivedContext
+
 logger = logging.getLogger(__name__)
 
 # Provider Primitives
@@ -43,6 +43,19 @@ class Bar(TypedDict):
 # Provider request type
 class Req(NamedTuple):
     sym: str; start: date; end: date; interval: Interval
+
+# Symbol info type
+class SymbolInfo(TypedDict):
+    provider: str
+    provider_id: str | None
+    isin: str | None
+    symbol: str
+    name: str
+    exchange: str
+    asset_class: str
+    base_currency: str
+    quote_currency: str
+    country: str | None
 
 # Provider Class Type Enum
 class ProviderType(Enum):
@@ -76,9 +89,16 @@ class DataProvider(ABC):
     """
     Base class for all data provider types
     """
-    
-    def __init__(self, **config):
-        self.cfg = config
+    RATE_LIMIT = None      # (calls, seconds), e.g. (1000, 60)
+    CONCURRENCY = 5        # open sockets
+
+    def __init__(self, context: DerivedContext):
+        calls, seconds = self.RATE_LIMIT or (float("inf"), 1)
+        self._limiter = AsyncLimiter(calls, seconds)
+        self._session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(limit=self.CONCURRENCY)
+        )
+        self.context = context
 
     @property
     @abstractmethod
@@ -117,29 +137,41 @@ class DataProvider(ABC):
         else:
             raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
-class HistoricalDataProvider(DataProvider):
-    """
-    Base class for all historical data provider types
-    """
-    provider_type = ProviderType.HISTORICAL
-    RATE_LIMIT = None      # (calls, seconds), e.g. (1000, 60)
-    CONCURRENCY = 5        # open sockets
-    
-    def __init__(self, **config):
-        calls, seconds = self.RATE_LIMIT or (float("inf"), 1)
-        self._limiter = AsyncLimiter(calls, seconds)
-        self._session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(limit=self.CONCURRENCY)
-        )
-        self.cfg = config
+    @abstractmethod
+    async def get_available_symbols() -> list[SymbolInfo]:
+        """
+        Returns a list[SymbolInfo] of all available symbols for trading on this provider.
+        """
 
     async def _api_get(
             self,
             url: str
     ) -> dict:
+        """
+        Built-in rate-limited GET request method.
+        """
         async with self._limiter:
             async with self._session.get(url) as r:
                 return await r.json()
+
+
+    async def aclose(self):
+        await self._session.close()
+
+    async def __aenter__(self):   
+        return self
+
+    async def __aexit__(self, *exc):
+        await self.aclose()
+
+class HistoricalDataProvider(DataProvider):
+    """
+    Base class for all historical data provider types
+    """
+    provider_type = ProviderType.HISTORICAL
+    
+    def __init__(self, context: DerivedContext):
+        super().__init__(context)
 
     async def get_history_many(          # OPTIONAL override
         self,
@@ -166,23 +198,14 @@ class HistoricalDataProvider(DataProvider):
         """
 
 
-    async def aclose(self):
-        await self._session.close()
-
-    async def __aenter__(self):   
-        return self
-
-    async def __aexit__(self, *exc):
-        await self.aclose()
-
 class LiveDataProvider(DataProvider):
     """
     Base class for all live data provider types
     """
     provider_type = ProviderType.REALTIME
 
-    def __init__(self, **config):
-        super().__init__(**config)
+    def __init__(self, context: DerivedContext):
+        super().__init__(context)
 
     @property
     @abstractmethod

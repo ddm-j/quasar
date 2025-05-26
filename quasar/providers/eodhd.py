@@ -1,16 +1,94 @@
-from quasar.providers.core import HistoricalDataProvider, Interval, Bar
+from quasar.providers.core import HistoricalDataProvider, Interval, Bar, SymbolInfo
 from quasar.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
 import requests
 import aiohttp
 
-BASE = 'https://eodhd.com/api/eod'
+BASE = 'https://eodhd.com/api/'
 
 @register_provider
 class EODHDProvider(HistoricalDataProvider):
     name = 'EODHD'
     RATE_LIMIT = (1000, 60)
+
+    async def get_available_symbols(self) -> list[SymbolInfo]:
+        """
+        Get Available Symbols from EODHD (that we're interested in trading)
+        """ 
+        symbols = []
+
+        # Pull Data from Exchanges of Interest
+        exchanges = ['NASDAQ', 'NYSE', 'CC', 'FOREX']
+        for exchange in exchanges:
+            url = f"{BASE}/exchange-symbol-list/{exchange}?" \
+                f"api_token={self.context.get('api_token')}&fmt=json"
+            data = await self._api_get(url)
+            symbols.extend(data)
+        
+
+        class_map = {
+            'common stock': 'equity',
+            'fund': 'fund',
+            'eft': 'eft',
+            'bond': 'bond',
+            'currency': 'currency',
+        }
+
+        symbol_info = []
+        for e in symbols:
+            # Asset Class / Exchange Information
+            # Crypto and FOREX from EODHD are not exchange specific
+            if e['Exchange'] == 'CC':
+                exchange = None
+                asset_class = 'crypto'
+            elif e['Exchange'] == 'FOREX':
+                exchange = None
+                asset_class = 'currency'
+            else:
+                exchange = e['Exchange']
+                asset_class = class_map.get(e['Type'].lower())
+            if asset_class is None:
+                continue
+
+            # Currency Information
+            base_currency = 'USD'
+            quote_currency = None
+            currs = None
+            if asset_class == 'crypto':
+                currs = e['Code'].split('-')
+            elif asset_class == 'currency':
+                try:
+                    currs = [e['Code'][:3], e['Code'][3:]]
+                    assert len(currs[0]) == 3
+                    assert len(currs[1]) == 3
+                except:
+                    continue
+            if currs:
+                if len(currs) == 2:
+                    base_currency = currs[0]
+                    quote_currency = currs[1]
+                    if quote_currency != 'USD':
+                        # Skip non-USD pairs
+                        continue
+                else:
+                    continue
+
+            syminfo = SymbolInfo(
+                provider=self.name,
+                provider_id=None,
+                isin=e['Isin'],
+                symbol=f"{e['Code']}.{e['Exchange']}",
+                name=e['Name'],
+                exchange=exchange,
+                asset_class=asset_class,
+                base_currency=base_currency,
+                quote_currency=quote_currency,
+                country=e['Country']
+            )
+            symbol_info.append(syminfo)
+
+        return symbol_info
 
     async def get_history(
         self,
@@ -34,11 +112,11 @@ class EODHDProvider(HistoricalDataProvider):
 
         # Create Request
         url = (
-            f"{BASE}/{sym}"
+            f"{BASE}/eod/{sym}"
             f"?from={str(start)}"
             f"&to={str(end)}"
             f"&period={interval}"
-            f"&api_token={self.cfg['api_token']}&fmt=json"
+            f"&api_token={self.context.get('api_token')}&fmt=json"
         )
         
         # Make Request (Uses Rate Builtin Rate Limiter)

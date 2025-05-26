@@ -1,10 +1,24 @@
 -- PROVDER SUBSCRIPTIONS TABLE
 CREATE TABLE IF NOT EXISTS provider_subscription (
     provider TEXT NOT NULL,
-    interval TEXT NOT NULL REFERENCES accepted_intervals(interval),
+    provider_class_type TEXT NOT NULL DEFAULT 'provider',
+    interval TEXT NOT NULL,
     sym TEXT NOT NULL,
     cron TEXT,
-    PRIMARY KEY (provider, interval, sym)
+    PRIMARY KEY (provider, interval, sym),
+
+    CONSTRAINT fk_subscription_interval
+        FOREIGN KEY (interval) REFERENCES accepted_intervals(interval), 
+
+    CONSTRAINT fk_subscription_to_code_registry
+        FOREIGN KEY (provider, provider_class_type)
+        REFERENCES code_registry (class_name, class_type)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_subscription_to_assets
+        FOREIGN KEY (provider, provider_class_type, sym)
+        REFERENCES assets (class_name, class_type, symbol)
+        ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS sub_cron_bucket
     ON provider_subscription (provider, interval, cron);

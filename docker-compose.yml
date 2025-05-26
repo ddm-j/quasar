@@ -17,24 +17,60 @@ services:
       timeout: 5s
       retries: 5
 
-  datahub:
-    build: ./            
-    container_name: datahub
+  registry:
+    build:            
+      context: .
+      dockerfile: quasar/registry/Dockerfile
+    container_name: registry
     depends_on:
       quasardb:
         condition: service_healthy
     environment:
       LOGLEVEL: DEBUG
       DSN: "postgresql://postgres:password@quasardb:5432/postgres"
+      QUASAR_SYSTEM_CONTEXT: "/run/secrets/system_context"
+    ports:
+      - "8080:8080"
+    command: ["python", "-m", "quasar.registry.app"]
+    restart: unless-stopped
+    volumes:
+      - dynamic_providers:/app/dynamic_providers
+      - ./quasar:/app/quasar
+    secrets:
+      - system_context
+
+  datahub:
+    build:            
+      context: .
+      dockerfile: quasar/datahub/Dockerfile
+    container_name: datahub
+    depends_on:
+      quasardb:
+        condition: service_healthy
+      registry:
+        condition: service_started
+    environment:
+      LOGLEVEL: DEBUG
+      DSN: "postgresql://postgres:password@quasardb:5432/postgres"
       QUASAR_SECRET_FILE: "/run/secrets/quasar"
+      QUASAR_SYSTEM_CONTEXT: "/run/secrets/system_context"
+    ports:
+      - "8081:8080"
     secrets:
       - quasar
+      - system_context
     command: ["python", "-m", "quasar.datahub.app"]
     restart: unless-stopped
+    volumes:
+      - dynamic_providers:/app/dynamic_providers
+      - ./quasar:/app/quasar
 
 volumes:
   tsdb-data:
+  dynamic_providers:
 
 secrets:
   quasar:
     file: ./.secrets/.quasar_secrets.json
+  system_context:
+    file: ./.secrets/system_context

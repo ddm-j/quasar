@@ -1,3 +1,16 @@
+-- Asset Mappings
+INSERT INTO asset_mapping (common_symbol, provider_name, provider_symbol) VALUES
+    ('BTCUSD', 'EODHD', 'BTC-USD.CC'),
+    ('ETHUSD', 'EODHD', 'ETH-USD.CC'),
+    ('ADAUSD', 'EODHD', 'ADA-USD.CC'),
+    ('XRPUSD', 'EODHD', 'XRP-USD.CC'),
+
+    ('BTCUSD', 'KRAKEN', 'BTC/USD'),
+    ('ETHUSD', 'KRAKEN', 'ETH/USD'),
+    ('ADAUSD', 'KRAKEN', 'ADA/USD'),
+    ('XRPUSD', 'KRAKEN', 'XRP/USD')
+ON CONFLICT (provider_name, provider_symbol) DO NOTHING;
+
 -- Testing Subscriptions to Initialize System
 INSERT INTO provider_subscription
 (provider, interval, sym)

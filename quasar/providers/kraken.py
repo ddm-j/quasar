@@ -1,4 +1,4 @@
-from quasar.providers.core import LiveDataProvider, Interval, Bar
+from quasar.providers.core import LiveDataProvider, Interval, Bar, SymbolInfo
 from quasar.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
@@ -7,16 +7,76 @@ import aiohttp
 import websockets
 import json
 import re
+import urllib.parse
+
+from quasar.common.context import DerivedContext
+
+# class SymbolInfo(TypedDict):
+#     provider: str
+#     provider_id: str | None
+#     isin: str | None
+#     symbol: str
+#     name: str
+#     exchange: str
+#     asset_class: str
+#     base_currency: str
+#     quote_currency: str
+#     country: str | None
 
 @register_provider
 class KrakenProvider(LiveDataProvider):
     name = 'KRAKEN'
-    RATE_LIMIT = None
+    RATE_LIMIT = (1000, 60)
     close_buffer_seconds = 5
 
-    def __init__(self, **config):
-        super().__init__(**config)
+    def __init__(self, context: DerivedContext):
+        super().__init__(context)
         self._url = "wss://ws.kraken.com/v2"
+
+    async def get_available_symbols(self) -> list[SymbolInfo]:
+        # Get Available Trading Pairs from Kraken
+        base_url = f"https://api.kraken.com/0/public/AssetPairs"
+        params = {
+            'country_code': 'US:TX'
+        }
+        query_string = urllib.parse.urlencode(params)
+        url = f"{base_url}?{query_string}"
+
+        data = await self._api_get(url)
+        result = data.get('result')
+        if not result:
+            raise ValueError("Error fetching asset pairs from Kraken")
+        
+        # These Values are the same for all symbols from Kraken
+        asset_class = 'crypto'
+        country = None
+        isin = None
+        exchange = 'Kraken'
+        symbols = []
+        for sym, e in result.items():
+            if e['quote'] not in ['ZUSD', 'USDC']:
+                continue
+            quote_currency = 'USD' if e['quote'] == 'ZUSD' else 'USDC'
+            base_currency = e['base']
+            if not e.get('wsname') or not e.get('altname'):
+                continue
+            symbol = SymbolInfo(
+                provider=self.name,
+                provider_id=e['altname'],
+                isin=isin,
+                symbol=e['wsname'],
+                name=sym,
+                exchange=exchange,
+                asset_class=asset_class,
+                base_currency=base_currency,
+                quote_currency=quote_currency,
+                country=country
+            )
+            symbols.append(symbol)
+
+        return symbols
+
+
 
     async def _connect(self):
         """
