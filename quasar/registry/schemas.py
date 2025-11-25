@@ -1,0 +1,124 @@
+"""
+Registry-specific Pydantic schemas for API request/response models.
+"""
+from typing import Optional, List, Literal, Dict, Any
+from pydantic import BaseModel, Field
+
+
+# Path parameter types
+ClassType = Literal["provider", "broker"]
+
+
+# File Upload Response
+class FileUploadResponse(BaseModel):
+    """Response model for file upload endpoint."""
+    status: str = Field(..., description="Upload status message")
+
+
+# Asset Update Response
+class UpdateAssetsResponse(BaseModel):
+    """Response model for asset update endpoints."""
+    class_name: str
+    class_type: str
+    total_symbols: int = 0
+    processed_symbols: int = 0
+    added_symbols: int = 0
+    updated_symbols: int = 0
+    failed_symbols: int = 0
+    status: int = 200
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+
+# Class Summary Response
+class ClassSummaryItem(BaseModel):
+    """Single class summary item."""
+    id: int
+    class_name: str
+    class_type: str
+    class_subtype: str
+    uploaded_at: str
+    asset_count: int
+
+
+# Delete Class Response
+class DeleteClassResponse(BaseModel):
+    """Response model for delete class endpoint."""
+    message: str
+    class_name: str
+    class_type: str
+    file_deleted: bool
+
+
+# Asset Query Parameters
+class AssetQueryParams(BaseModel):
+    """Query parameters for GET /internal/assets endpoint."""
+    limit: int = Field(default=25, ge=1, le=100, description="Number of items per page")
+    offset: int = Field(default=0, ge=0, description="Starting index")
+    sort_by: str = Field(default="class_name,symbol", description="Column(s) to sort by, comma-separated")
+    sort_order: str = Field(default="asc", description="Sort order ('asc' or 'desc'), comma-separated if multiple sort_by")
+    class_name_like: Optional[str] = Field(default=None, description="Partial match for class_name")
+    class_type: Optional[str] = Field(default=None, description="Exact match for class_type ('provider' or 'broker')")
+    asset_class: Optional[str] = Field(default=None, description="Exact match for asset_class")
+    base_currency_like: Optional[str] = Field(default=None, description="Partial match for base_currency")
+    quote_currency_like: Optional[str] = Field(default=None, description="Partial match for quote_currency")
+    country_like: Optional[str] = Field(default=None, description="Partial match for country")
+    symbol_like: Optional[str] = Field(default=None, description="Partial match for symbol")
+    name_like: Optional[str] = Field(default=None, description="Partial match for name")
+    exchange_like: Optional[str] = Field(default=None, description="Partial match for exchange")
+
+
+# Asset Item
+class AssetItem(BaseModel):
+    """Single asset item."""
+    id: int
+    class_name: str
+    class_type: str
+    external_id: Optional[str] = None
+    isin: Optional[str] = None
+    symbol: str
+    name: Optional[str] = None
+    exchange: Optional[str] = None
+    asset_class: Optional[str] = None
+    base_currency: Optional[str] = None
+    quote_currency: Optional[str] = None
+    country: Optional[str] = None
+
+
+# Asset Response
+class AssetResponse(BaseModel):
+    """Response model for GET /internal/assets endpoint."""
+    items: List[AssetItem]
+    total_items: int
+    limit: int
+    offset: int
+    page: int
+    total_pages: int
+
+
+# Asset Mapping Create
+class AssetMappingCreate(BaseModel):
+    """Request model for creating asset mapping."""
+    common_symbol: str = Field(..., description="Common symbol identifier")
+    class_name: str = Field(..., description="Class name (provider/broker name)")
+    class_type: ClassType = Field(..., description="Class type: 'provider' or 'broker'")
+    class_symbol: str = Field(..., description="Class-specific symbol")
+    is_active: bool = Field(default=True, description="Whether the mapping is active")
+
+
+# Asset Mapping Response
+class AssetMappingResponse(BaseModel):
+    """Response model for asset mapping endpoints."""
+    common_symbol: str
+    class_name: str
+    class_type: str
+    class_symbol: str
+    is_active: bool
+
+
+# Asset Mapping Update
+class AssetMappingUpdate(BaseModel):
+    """Request model for updating asset mapping (partial update)."""
+    common_symbol: Optional[str] = Field(default=None, description="Common symbol identifier")
+    is_active: Optional[bool] = Field(default=None, description="Whether the mapping is active")
+

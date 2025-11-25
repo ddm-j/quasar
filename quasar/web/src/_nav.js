@@ -17,6 +17,7 @@ import {
   cilSpeedometer,
   cilSpreadsheet,
   cilStar,
+  cilListRich,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react-pro'
 import { Translation } from 'react-i18next'
@@ -41,6 +42,18 @@ const _nav = [
   {
     component: CNavTitle,
     name: <Translation>{(t) => t('data')}</Translation>,
+  },
+  {
+    component: CNavItem,
+    name: <Translation>{(t) => t('Assets')}</Translation>,
+    to: '/assets',
+    icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: <Translation>{(t) => t('Mappings')}</Translation>,
+    to: '/mappings',
+    icon: <CIcon icon={cilMap} customClassName="nav-icon" />,
   },
   {
     component: CNavTitle,

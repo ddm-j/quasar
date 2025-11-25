@@ -1,27 +1,27 @@
 -- Asset Mappings
-INSERT INTO asset_mapping (common_symbol, provider_name, provider_symbol) VALUES
-    ('BTCUSD', 'EODHD', 'BTC-USD.CC'),
-    ('ETHUSD', 'EODHD', 'ETH-USD.CC'),
-    ('ADAUSD', 'EODHD', 'ADA-USD.CC'),
-    ('XRPUSD', 'EODHD', 'XRP-USD.CC'),
+INSERT INTO asset_mapping (common_symbol, class_name, class_type, class_symbol) VALUES
+    ('BTCUSD', 'EODHD', 'provider', 'BTC-USD.CC'),
+    ('ETHUSD', 'EODHD', 'provider', 'ETH-USD.CC'),
+    ('ADAUSD', 'EODHD', 'provider', 'ADA-USD.CC'),
+    ('XRPUSD', 'EODHD', 'provider', 'XRP-USD.CC'),
 
-    ('BTCUSD', 'KRAKEN', 'BTC/USD'),
-    ('ETHUSD', 'KRAKEN', 'ETH/USD'),
-    ('ADAUSD', 'KRAKEN', 'ADA/USD'),
-    ('XRPUSD', 'KRAKEN', 'XRP/USD')
-ON CONFLICT (provider_name, provider_symbol) DO NOTHING;
+--    ('BTCUSD', 'KRAKEN', 'provider', 'BTC/USD'),
+    ('ETHUSD', 'KRAKEN', 'provider', 'ETH/USD'),
+    ('ADAUSD', 'KRAKEN', 'provider', 'ADA/USD'),
+    ('XRPUSD', 'KRAKEN', 'provider', 'XRP/USD')
+ON CONFLICT (class_name, class_type, class_symbol) DO NOTHING;
 
 -- Testing Subscriptions to Initialize System
 INSERT INTO provider_subscription
-(provider, interval, sym)
+(provider, provider_class_type, interval, sym)
 VALUES
 -- historical subscriptions
-('EODHD', '1d', 'BTC-USD.CC'),
-('EODHD', '1d', 'ETH-USD.CC'),
-('EODHD', '1d', 'ADA-USD.CC'),
-('EODHD', '1d', 'XRP-USD.CC'),
+('EODHD', 'provider', '1d', 'BTC-USD.CC'),
+('EODHD', 'provider', '1d', 'ETH-USD.CC'),
+('EODHD', 'provider', '1d', 'ADA-USD.CC'),
+('EODHD', 'provider', '1d', 'XRP-USD.CC'),
 -- live subscriptions
-('KRAKEN', '1h', 'BTC/USD'),
-('KRAKEN', '1h', 'ETH/USD'),
-('KRAKEN', '1h', 'ADA/USD'),
-('KRAKEN', '1h', 'XRP/USD');
+--('KRAKEN', 'provider', '1h', 'BTC/USD'),
+('KRAKEN', 'provider', '1h', 'ETH/USD'),
+('KRAKEN', 'provider', '1h', 'ADA/USD'),
+('KRAKEN', 'provider', '1h', 'XRP/USD');

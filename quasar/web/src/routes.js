@@ -8,6 +8,12 @@ const Typography = React.lazy(() => import('./views/theme/typography/Typography'
 // Registry
 const Registry = React.lazy(() => import('./views/registry/Registry'))
 
+// Mappings
+const Assets = React.lazy(() => import('./views/assets/Assets'))
+
+// Mappings
+const Mappings = React.lazy(() => import('./views/mappings/Mappings'))
+
 // Base
 const Accordion = React.lazy(() => import('./views/base/accordion/Accordion'))
 const Breadcrumbs = React.lazy(() => import('./views/base/breadcrumbs/Breadcrumbs'))
@@ -77,6 +83,16 @@ const routes = [
     path: '/registry',
     name: <Translation>{(t) => t('Registry')}</Translation>,
     element: Registry,
+  },
+  {
+    path: '/assets',
+    name: <Translation>{(t) => t('Assets')}</Translation>,
+    element: Assets,
+  },
+  {
+    path: '/mappings',
+    name: <Translation>{(t) => t('Mappings')}</Translation>,
+    element: Mappings,
   },
   {
     path: '/theme',

@@ -17,8 +17,7 @@ class SystemContext:
             if not cls._instance._system_context_path.is_file():
                 logging.error(f"CRITIAL: System context path {cls._instance._system_context_path} does not exist.")
                 raise FileNotFoundError(f"System context path {cls._instance._system_context_path} does not exist.")
-        else:
-            raise RuntimeError("SystemContext is a singleton and cannot be instantiated multiple times.")   
+        # Return existing instance if already created (proper singleton behavior)
         return cls._instance
 
     def _read_system_context(self):

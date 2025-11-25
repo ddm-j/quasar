@@ -37,7 +37,6 @@ export const updateAllAssets = async () => {
 
     return data;
 }
-
 export const getRegisteredClasses = async () => {
     const response = await fetch(`${BASE_URL}internal/classes/summary`, {
         method: 'GET',
@@ -105,4 +104,74 @@ export const deleteRegisteredClass = async (classType, className) => {
   return responseData; // Contains { message: "...", class_name: "...", class_type: "..." } on success
                        // or { message: "...", ..., file_deletion_error: "..." } on partial success (207)
                        // or throws an error with { error: "..." }
+};
+
+export const getAssetMappings = async () => {
+  const response = await fetch(`${BASE_URL}internal/asset-mappings`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    // Use message from responseData if available, otherwise use a generic error
+    const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+}
+
+/**
+ * Fetches assets from the API with filtering, sorting, and pagination.
+ * @param {object} params - The query parameters.
+ * @param {number} [params.limit=25] - Number of items per page.
+ * @param {number} [params.offset=0] - Starting index.
+ * @param {string} [params.sort_by='class_name,symbol'] - Column(s) to sort by.
+ * @param {string} [params.sort_order='asc'] - Sort order ('asc' or 'desc').
+ * @param {string} [params.class_name_like] - Partial match for class_name.
+ * @param {string} [params.class_type] - Exact match for class_type.
+ * @param {string} [params.asset_class] - Exact match for asset_class.
+ * @param {string} [params.base_currency_like] - Partial match for base_currency.
+ * @param {string} [params.quote_currency_like] - Partial match for quote_currency.
+ * @param {string} [params.country_like] - Partial match for country.
+ * @param {string} [params.symbol_like] - Partial match for symbol.
+ * @param {string} [params.name_like] - Partial match for name.
+ * @param {string} [params.exchange_like] - Partial match for exchange.
+ * @returns {Promise<object>} - The API response (e.g., { items: [], total_items: 0, ... }).
+ */
+export const getAssets = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  // Add only defined parameters to the query string
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${BASE_URL}internal/assets${queryString ? `?${queryString}` : ''}`;
+
+  console.log('Fetching assets with URL:', url); // For debugging
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
+    console.error('Error fetching assets:', errorMessage, 'Response data:', data);
+    throw new Error(errorMessage);
+  }
+
+  return data; // Expected format: { items: [], total_items: X, limit: Y, offset: Z, ... }
 };

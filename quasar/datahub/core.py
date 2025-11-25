@@ -2,6 +2,7 @@ import asyncpg
 import importlib.util
 import inspect
 import hashlib
+import warnings
 from itertools import compress
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -10,7 +11,7 @@ from apscheduler.schedulers.base import STATE_RUNNING
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from functools import wraps
-from aiohttp import web
+from fastapi import HTTPException
 import asyncio
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from quasar.common.database_handler import DatabaseHandler
 from quasar.common.api_handler import APIHandler
 from quasar.common.context import SystemContext, DerivedContext
 from quasar.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider
+from quasar.datahub.schemas import ProviderValidateRequest, ProviderValidateResponse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -113,10 +115,17 @@ class DataHub(DatabaseHandler, APIHandler):
     def _setup_routes(self) -> None:
         """Define API routes for the DataHub."""
         logger.info("DataHub: Setting up API routes")
-        self._api_app.add_routes([
-            web.post('/internal/provider/validate', self._validate_provider),
-            web.get('/internal/providers/{provider_name}/available-symbols', self._handle_get_available_symbols)
-        ])
+        self._api_app.router.add_api_route(
+            '/internal/provider/validate',
+            self.validate_provider,
+            methods=['POST'],
+            response_model=ProviderValidateResponse
+        )
+        self._api_app.router.add_api_route(
+            '/internal/providers/{provider_name}/available-symbols',
+            self.handle_get_available_symbols,
+            methods=['GET']
+        )
 
     # OBJECT LIFECYCLE
     # ---------------------------------------------------------------------
@@ -175,7 +184,7 @@ class DataHub(DatabaseHandler, APIHandler):
                 provider_reg_data = await conn.fetchrow(query, name)
                 if not provider_reg_data:
                     logger.warning(f"Provider {name} not found in database.")
-                    Warning(f"Provider {name} not found in database.")
+                    warnings.warn(f"Provider {name} not found in database.")
                     return False
 
             # Get Provider Info
@@ -187,11 +196,11 @@ class DataHub(DatabaseHandler, APIHandler):
             # Ensure the File Exsits
             if not FILE_PATH.startswith(ALLOWED_DYNAMIC_PATH):
                 logger.warning(f"File {FILE_PATH} not in allowed path {ALLOWED_DYNAMIC_PATH}")
-                Warning(f"File {FILE_PATH} not in allowed path {ALLOWED_DYNAMIC_PATH}")
+                warnings.warn(f"File {FILE_PATH} not in allowed path {ALLOWED_DYNAMIC_PATH}")
                 return False
             if not Path(FILE_PATH).is_file():
                 logger.warning(f"File {FILE_PATH} not found")
-                Warning(f"File {FILE_PATH} not found")
+                warnings.warn(f"File {FILE_PATH} not found")
                 return False
             
             # Verify File Hash
@@ -202,7 +211,7 @@ class DataHub(DatabaseHandler, APIHandler):
             sha256_hash = sha256.digest()
             if sha256_hash != FILE_HASH:
                 logger.warning(f"File {FILE_PATH} hash does not match database hash. {FILE_HASH} != {sha256_hash}")
-                Warning(f"File {FILE_PATH} hash does not match database hash")
+                warnings.warn(f"File {FILE_PATH} hash does not match database hash")
                 return False
 
             # Try Loading the Provider Class
@@ -212,7 +221,7 @@ class DataHub(DatabaseHandler, APIHandler):
                 logger.info(f"Provider {name} class loaded successfully.")
             except Exception as e:
                 logger.warning(f"Unable to load provider {name} class. This provider will be skipped. Error message: {e}")
-                Warning(f"Unable to load provider {name} class. This provider will be skipped.")
+                warnings.warn(f"Unable to load provider {name} class. This provider will be skipped.")
                 return False
 
             # Configure Provider Context
@@ -325,6 +334,23 @@ class DataHub(DatabaseHandler, APIHandler):
 
             return reqs
 
+    async def _insert_with_conflict_handling(
+            self,
+            conn: asyncpg.Connection,
+            table: str,
+            records: list[tuple]
+    ):
+        """
+        Insert records using INSERT with ON CONFLICT DO NOTHING.
+        This is slower than COPY but handles duplicates gracefully.
+        """
+        insert_query = f"""
+            INSERT INTO {table} (ts, sym, provider, provider_class_type, interval, o, h, l, c, v)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (ts, sym, interval, provider) DO NOTHING
+        """
+        await conn.executemany(insert_query, records)
+
     async def _insert_bars(
             self,
             provider_type: ProviderType,
@@ -332,21 +358,36 @@ class DataHub(DatabaseHandler, APIHandler):
             interval: str,
             bars: list[Bar]
     ):
-        """Batch Insertion of records into QuasarDB"""
+        """Batch Insertion of records into QuasarDB with duplicate key handling"""
         dbs = ['historical_data', 'live_data']
         db = dbs[provider_type.value]
-        logger.info(f'Inserting provider data into database {db}: {provider}, {interval}')
+        logger.info(f'Inserting {len(bars)} bars into {db}: {provider}, {interval}')
         records = [
-            (b['ts'], b['sym'], provider, interval, b['o'], b['h'], b['l'], b['c'], b['v']) for b in bars
+            (b['ts'], b['sym'], provider, 'provider', interval, b['o'], b['h'], b['l'], b['c'], b['v']) 
+            for b in bars
         ]
         async with self.pool.acquire() as conn:
-            await conn.copy_records_to_table(db, records=records)
+            try:
+                # Try fast COPY method first
+                # Records tuple order: (ts, sym, provider, provider_class_type, interval, o, h, l, c, v)
+                await conn.copy_records_to_table(db, records=records)
+            except asyncpg.exceptions.UniqueViolationError:
+                # Duplicates detected - fall back to INSERT with ON CONFLICT
+                # When copy_records_to_table fails, the connection enters an aborted transaction state
+                # Use a fresh connection for the fallback to avoid transaction state issues
+                logger.warning(
+                    f"Duplicate keys detected in batch for {provider}/{interval}. "
+                    f"Falling back to INSERT with ON CONFLICT handling."
+                )
+                # Acquire a fresh connection for the fallback to avoid aborted transaction state
+                async with self.pool.acquire() as fallback_conn:
+                    await self._insert_with_conflict_handling(fallback_conn, db, records)
+            except Exception as e:
+                # Re-raise other exceptions
+                logger.error(f"Error inserting bars into {db}: {e}", exc_info=True)
+                raise
 
-    async def _handle_get_available_symbols(self, request: web.Request) -> web.Response:
-        provider_name = request.match_info.get('provider_name')
-        if not provider_name:
-            return web.json_response({'error': 'Provider name missing'}, status=400)
-
+    async def handle_get_available_symbols(self, provider_name: str) -> list[dict]:
         logger.info(f"API request: Get available symbols for provider '{provider_name}'")
         provider_instance = self._providers.get(provider_name)
         if not provider_instance:
@@ -357,45 +398,44 @@ class DataHub(DatabaseHandler, APIHandler):
 
         if not provider_instance:
             logger.warning(f"Provider '{provider_name}' not found or not loaded for API request.")
-            return web.json_response({'error': f"Provider '{provider_name}' not found or not loaded"}, status=404)
+            raise HTTPException(status_code=404, detail=f"Provider '{provider_name}' not found or not loaded")
 
         if not hasattr(provider_instance, 'get_available_symbols'):
             logger.error(f"Provider '{provider_name}' does not implement get_available_symbols method.")
-            return web.json_response({'error': f"Provider '{provider_name}' does not support symbol discovery"}, status=501)
+            raise HTTPException(status_code=501, detail=f"Provider '{provider_name}' does not support symbol discovery")
 
         try:
             # Assuming get_available_symbols is an async method
             symbols = await provider_instance.get_available_symbols()
             # ProviderSymbolInfo is a TypedDict, which is inherently JSON serializable if its contents are.
-            return web.json_response(symbols, status=200)
+            # Convert to list of dicts for JSON serialization
+            return [dict(symbol) if isinstance(symbol, dict) else symbol for symbol in symbols]
         except NotImplementedError:
             logger.error(f"get_available_symbols not implemented for provider '{provider_name}'.")
-            return web.json_response({'error': f"Symbol discovery not implemented for provider '{provider_name}'"}, status=501)
+            raise HTTPException(status_code=501, detail=f"Symbol discovery not implemented for provider '{provider_name}'")
         except Exception as e:
             logger.error(f"Error fetching symbols for provider '{provider_name}': {e}", exc_info=True)
-            return web.json_response({'error': f"Internal server error while fetching symbols for '{provider_name}'"}, status=500)
+            raise HTTPException(status_code=500, detail=f"Internal server error while fetching symbols for '{provider_name}'")
 
-    async def _validate_provider(self, request: web.Request) -> web.Response:
+    async def validate_provider(self, request: ProviderValidateRequest) -> ProviderValidateResponse:
         """
         Validate Custom Provider Code
         Service to Service API endpoint
         """
         try:
-            # Get File Path
-            data = await request.json()
-            file_path = data.get('file_path')
+            file_path = request.file_path
             if not file_path:
-                return web.json_response({'error': 'Internal API Error, file path not provided to datahub'}, status=500)
+                raise HTTPException(status_code=500, detail='Internal API Error, file path not provided to datahub')
             if not file_path.startswith(ALLOWED_DYNAMIC_PATH):
-                return web.json_response({'error': f'File {file_path} not in allowed path {ALLOWED_DYNAMIC_PATH}'}, status=403)
+                raise HTTPException(status_code=403, detail=f'File {file_path} not in allowed path {ALLOWED_DYNAMIC_PATH}')
             if not Path(file_path).is_file():
-                return web.json_response({'error': f'File {file_path} not found'}, status=404)
+                raise HTTPException(status_code=404, detail=f'File {file_path} not found')
             
             # Dynamically Import the Module
             module_name = Path(file_path).stem
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             if spec is None or spec.loader is None:
-                return web.json_response({'error': f'Unable to load module {module_name} from {file_path}'}, status=500)
+                raise HTTPException(status_code=500, detail=f'Unable to load module {module_name} from {file_path}')
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
@@ -405,16 +445,16 @@ class DataHub(DatabaseHandler, APIHandler):
                 if member_class.__module__ == module.__name__:
                     defined_classes.append(member_class)
             if not defined_classes:
-                return web.json_response({'error': f'No classes found in {file_path}'}, status=500)
+                raise HTTPException(status_code=500, detail=f'No classes found in {file_path}')
             if len(defined_classes) > 1:
-                return web.json_response({'error': f'Multiple classes found in {file_path}'}, status=500)
+                raise HTTPException(status_code=500, detail=f'Multiple classes found in {file_path}')
             
             # Check if Class is the correct subclass
             the_class = defined_classes[0]
             is_valid_subclass = [issubclass(the_class, HistoricalDataProvider), \
                 issubclass(the_class, LiveDataProvider)]
             if not any(is_valid_subclass):
-                return web.json_response({'error': f'Class {the_class.__name__} in {file_path} is not a valid provider subclass'}, status=500)
+                raise HTTPException(status_code=500, detail=f'Class {the_class.__name__} in {file_path} is not a valid provider subclass')
             subclass_types = ['Historical', 'Live']
             subclass_type = list(compress(subclass_types, is_valid_subclass))[0]
 
@@ -425,21 +465,22 @@ class DataHub(DatabaseHandler, APIHandler):
                 if not isinstance(class_name, str):    
                     class_name = None
             if class_name is None:
-                return web.json_response({'error': f'Class {the_class.__name__} in {file_path} does not have a valid name attribute'}, status=500)
+                raise HTTPException(status_code=500, detail=f'Class {the_class.__name__} in {file_path} does not have a valid name attribute')
 
             logger.info(f"Provider {class_name} validated successfully.")
-            resp = web.json_response({
-                'status': 'success',
-                'class_name': class_name,
-                'subclass_type': subclass_type,
-                'module_name': module_name,
-                'file_path': file_path
-            }, status=200)
-            return resp
+            return ProviderValidateResponse(
+                status='success',
+                class_name=class_name,
+                subclass_type=subclass_type,
+                module_name=module_name,
+                file_path=file_path
+            )
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error validating provider: {e}", exc_info=True)
-            return web.json_response({'error': f'Internal API Error: {e}'}, status=500)
+            raise HTTPException(status_code=500, detail=f'Internal API Error: {e}')
 
     @safe_job(default_return=None)
     async def get_data(self, provider: str, interval: str, symbols: list[str]):
@@ -456,8 +497,8 @@ class DataHub(DatabaseHandler, APIHandler):
             # Build Requests For Historical Data Provider
             reqs = await self._build_reqs_historical(provider, interval, symbols)
             if not reqs:
-                logger.warning("{provider} has no valid requests to make.")
-                Warning("{provider} has no valid requests to make.")
+                logger.warning(f"{provider} has no valid requests to make.")
+                warnings.warn(f"{provider} has no valid requests to make.")
                 return
             args = [reqs]
             kwargs = {}

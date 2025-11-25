@@ -30,7 +30,7 @@ class EODHDProvider(HistoricalDataProvider):
         class_map = {
             'common stock': 'equity',
             'fund': 'fund',
-            'eft': 'eft',
+            'etf': 'etf',
             'bond': 'bond',
             'currency': 'currency',
         }

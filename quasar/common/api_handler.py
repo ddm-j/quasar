@@ -1,13 +1,15 @@
 from typing import Optional
 from abc import ABC, abstractmethod
-from aiohttp import web
-import aiohttp_cors
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+import asyncio
 
 import logging
 logger = logging.getLogger(__name__)
 
 class APIHandler(ABC):
-    """A class that serves an aiohttp web application and manages it's lifecycle."""
+    """A class that serves a FastAPI web application and manages it's lifecycle."""
 
     @property
     @abstractmethod
@@ -22,19 +24,19 @@ class APIHandler(ABC):
         # API Server
         self._api_host = api_host
         self._api_port = api_port
-        self._api_app = web.Application()
-        self._api_runner: Optional[web.AppRunner] = None
-        self._api_site: Optional[web.TCPSite] = None
+        self._api_app = FastAPI(title=f"{self.name} API")
+        self._server: Optional[uvicorn.Server] = None
+        self._server_task: Optional[asyncio.Task] = None
 
         # Setup CORS
-        self._cors = aiohttp_cors.setup(self._api_app, defaults={
-            "http://localhost:3000": aiohttp_cors.ResourceOptions(
-                allow_credentials=True,
-                expose_headers="*",
-                allow_headers="*",
-                allow_methods=["GET", "POST"],
-            ),
-        })
+        self._api_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["http://localhost:3000"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            expose_headers=["*"],
+        )
 
         # Setup Routes
         self._setup_routes()
@@ -44,23 +46,38 @@ class APIHandler(ABC):
         """
         Subclasses must implement this method to add their routes 
         to self._api_app.
-        Example: self._api_app.add_routes([web.get('/status', self.handle_status)])
+        Example: self._api_app.router.add_api_route('/status', self.handle_status, methods=['GET'])
+        Or use APIRouter: router = APIRouter(); router.get('/status')(self.handle_status)
         """
         pass
 
     async def start_api_server(self) -> None:
         """Start the internal API server."""
-        self._api_runner = web.AppRunner(self._api_app)
-        await self._api_runner.setup()
-        self._api_site = web.TCPSite(self._api_runner, self._api_host, self._api_port)
-        await self._api_site.start()
+        config = uvicorn.Config(
+            self._api_app,
+            host=self._api_host,
+            port=self._api_port,
+            log_level="info",
+            access_log=False,  # We handle logging ourselves
+        )
+        self._server = uvicorn.Server(config)
+        
+        # Run server in background task
+        self._server_task = asyncio.create_task(self._server.serve())
         logger.info(f"{self.name} Internal API server started on http://{self._api_host}:{self._api_port}")
 
     async def stop_api_server(self) -> None:
         """Stop the internal API server."""
-        if self._api_site:
-            await self._api_site.stop()
+        if self._server:
+            self._server.should_exit = True
+            # Wait for server to shutdown
+            if self._server_task:
+                try:
+                    await asyncio.wait_for(self._server_task, timeout=5.0)
+                except asyncio.TimeoutError:
+                    logger.warning(f"{self.name} API server shutdown timeout")
+                except Exception as e:
+                    logger.error(f"{self.name} Error stopping API server: {e}")
+                finally:
+                    self._server_task = None
             logger.info(f"{self.name} Internal API server stopped.")
-        if self._api_runner:
-            await self._api_runner.cleanup()
-            logger.info(f"{self.name} Internal API runner cleaned up.")
