@@ -8,9 +8,12 @@ import CIcon from '@coreui/icons-react';
 import { cilArrowRight } from '@coreui/icons';
 import Select, { components } from 'react-select'; // For synchronous search if options are pre-loaded or filtered client-side
 import AsyncSelect from 'react-select/async'; // For asynchronous server-side search
+import AsyncCreatableSelect from 'react-select/async-creatable'; // For async search with create option
 import { 
   getAssets,
   getRegisteredClasses,
+  createAssetMapping,
+  getAssetMappings,
 } from '../services/registry_api';  
 
 // Custom component to render options with symbol and name
@@ -45,26 +48,33 @@ const SingleValue = (props) => {
 };
 
 
-const MappingAddModal = ({ visible, onClose }) => {
+const MappingAddModal = ({ visible, onClose, onSuccess }) => {
   const [fromClassName, setFromClassName] = useState('');
   // For react-select, the value is an object or null
   const [fromClassSymbol, setFromClassSymbol] = useState(null);
-  const [toCommonSymbol, setToCommonSymbol] = useState('');
+  // For common symbol, using react-select format (object with value/label) or string for new values
+  const [toCommonSymbol, setToCommonSymbol] = useState(null);
 
   const [isLoadingSymbols, setIsLoadingSymbols] = useState(false);
+  const [isLoadingCommonSymbols, setIsLoadingCommonSymbols] = useState(false);
 
   // State for loading class names
   const [classData, setClassData] = useState([]);
   const [isLoadingClassData, setIsLoadingClassData] = useState(false);
   const [errorClassData, setErrorClassData] = useState(null);
 
+  // State for saving
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
   useEffect(() => {
     if (visible) {
       setFromClassName("");
       setFromClassSymbol(null);
-      setToCommonSymbol("");
+      setToCommonSymbol(null);
       setErrorClassData(null);
       setClassData([]);
+      setSaveError(null);
 
       const fetchClassNames = async () => {
         setIsLoadingClassData(true);
@@ -119,19 +129,110 @@ const MappingAddModal = ({ visible, onClose }) => {
     [fromClassName] // Dependency: re-create this function if fromClassName changes
   );
 
+  // This function will be called by AsyncCreatableSelect to load existing common symbol options
+  const loadCommonSymbolOptions = useCallback(
+    async (inputValue, callback) => {
+      if (inputValue.length < 1) {
+        // Load some default options when input is empty
+        setIsLoadingCommonSymbols(true);
+        try {
+          const mappings = await getAssetMappings();
+          // Extract unique common symbols
+          const uniqueSymbols = [...new Set(mappings.map(m => m.common_symbol))].sort();
+          const options = uniqueSymbols.map(symbol => ({
+            value: symbol,
+            label: symbol,
+          }));
+          callback(options);
+        } catch (error) {
+          console.error("Error loading common symbol options:", error);
+          callback([]);
+        } finally {
+          setIsLoadingCommonSymbols(false);
+        }
+        return;
+      }
+
+      // Filter existing common symbols based on input
+      setIsLoadingCommonSymbols(true);
+      try {
+        const mappings = await getAssetMappings();
+        // Filter common symbols that match the input (case-insensitive)
+        const filteredSymbols = [...new Set(mappings.map(m => m.common_symbol))]
+          .filter(symbol => symbol.toLowerCase().includes(inputValue.toLowerCase()))
+          .sort();
+        
+        const options = filteredSymbols.map(symbol => ({
+          value: symbol,
+          label: symbol,
+        }));
+        callback(options);
+      } catch (error) {
+        console.error("Error loading common symbol options:", error);
+        callback([]);
+      } finally {
+        setIsLoadingCommonSymbols(false);
+      }
+    },
+    [] // No dependencies - loads all mappings
+  );
+
   const handleFromClassNameChange = (e) => {
     setFromClassName(e.target.value);
     setFromClassSymbol(null); // Reset symbol when class name changes
   };
 
-  const handleSave = () => {
-    console.log("Saving Mapping:", {
-      toCommonSymbol,
-      fromClassName,
-      fromClassType: classData.find(cls => cls.class_name === fromClassName)?.class_type || null,
-      fromClassSymbol: fromClassSymbol ? fromClassSymbol.value : null, // Extract the actual symbol value
-    });
-    // onClose(); // Close modal on save
+  const handleSave = async () => {
+    // Validate required fields
+    if (!fromClassName || !fromClassSymbol || !toCommonSymbol) {
+      setSaveError("Please fill in all required fields.");
+      return;
+    }
+
+    // Extract common symbol value from react-select option object
+    // AsyncCreatableSelect always provides an object with { value, label } format
+    const commonSymbolValue = toCommonSymbol.value ? toCommonSymbol.value.trim() : null;
+    
+    if (!commonSymbolValue) {
+      setSaveError("Common symbol cannot be empty.");
+      return;
+    }
+
+    // Find the class type from classData
+    const selectedClass = classData.find(cls => cls.class_name === fromClassName);
+    if (!selectedClass) {
+      setSaveError("Selected class not found.");
+      return;
+    }
+
+    const classType = selectedClass.class_type;
+    const classSymbol = fromClassSymbol.value;
+
+    // Build the request payload
+    const mappingData = {
+      common_symbol: commonSymbolValue,
+      class_name: fromClassName,
+      class_type: classType,
+      class_symbol: classSymbol,
+      is_active: true,
+    };
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      await createAssetMapping(mappingData);
+      // Success - close modal and refresh parent list
+      if (onSuccess) {
+        onSuccess();
+      }
+      onClose();
+    } catch (error) {
+      console.error("Error creating asset mapping:", error);
+      setSaveError(error.message || "Failed to create mapping. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
 
@@ -199,24 +300,56 @@ const MappingAddModal = ({ visible, onClose }) => {
               <CRow className="mb-3">
                 <CCol>
                   <CFormLabel htmlFor="to_common_symbol">Common Symbol</CFormLabel>
-                  <CFormInput
-                    type="text"
+                  <AsyncCreatableSelect
                     id="to_common_symbol"
+                    cacheOptions
+                    loadOptions={loadCommonSymbolOptions}
+                    defaultOptions
                     value={toCommonSymbol}
-                    onChange={(e) => setToCommonSymbol(e.target.value)}
-                    disabled={!fromClassSymbol}
+                    onChange={(selectedOption) => setToCommonSymbol(selectedOption)}
+                    placeholder="Type to search or create new common symbol..."
+                    isDisabled={!fromClassSymbol || isSaving}
+                    isLoading={isLoadingCommonSymbols}
+                    isClearable
+                    formatCreateLabel={(inputValue) => `Create "${inputValue}"`}
+                    noOptionsMessage={({ inputValue }) => 
+                      !inputValue ? "Type to search or create..." : `No matches found. Press Enter to create "${inputValue}"`
+                    }
+                    loadingMessage={() => "Loading common symbols..."}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        minHeight: '38px',
+                      }),
+                    }}
                   />
                 </CCol>
               </CRow>
             </CCol>
           </CRow>
+          {saveError && (
+            <CRow>
+              <CCol>
+                <div className="alert alert-danger" role="alert">
+                  {saveError}
+                </div>
+              </CCol>
+            </CRow>
+          )}
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={onClose}>
+          <CButton color="secondary" onClick={onClose} disabled={isSaving}>
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleSave} disabled={!fromClassName || !fromClassSymbol || !toCommonSymbol}>
-            Save Mapping (Simulated)
+          <CButton color="primary" onClick={handleSave} disabled={!fromClassName || !fromClassSymbol || !toCommonSymbol || isSaving}>
+            {isSaving ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Mapping'
+            )}
           </CButton>
         </CModalFooter>
       </CForm>

@@ -1,7 +1,12 @@
 const BASE_URL = 'http://localhost:8080/' // API URL
 
 export const updateAssetsForClass = async (classType, className) => {
-    const response = await fetch(`${BASE_URL}internal/${encodeURIComponent(classType)}/${encodeURIComponent(className)}/update-assets`, {
+    const params = new URLSearchParams({
+        class_type: classType,
+        class_name: className
+    });
+    
+    const response = await fetch(`${BASE_URL}internal/update-assets?${params.toString()}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -11,8 +16,8 @@ export const updateAssetsForClass = async (classType, className) => {
 
 
     if (!response.ok) {
-        // Use message from responseData if available, otherwise use a generic error
-        const errorMessage = responseData.error || responseData.message || `HTTP error! status: ${response.status}`;
+        // Use message from data if available, otherwise use a generic error
+        const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
         throw new Error(errorMessage);
     }
 
@@ -30,8 +35,8 @@ export const updateAllAssets = async () => {
 
 
     if (!response.ok) {
-        // Use message from responseData if available, otherwise use a generic error
-        const errorMessage = responseData.error || responseData.message || `HTTP error! status: ${response.status}`;
+        // Use message from data if available, otherwise use a generic error
+        const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
         throw new Error(errorMessage);
     }
 
@@ -47,8 +52,8 @@ export const getRegisteredClasses = async () => {
     const data = await response.json();
 
     if (!response.ok) {
-        // Use message from responseData if available, otherwise use a generic error
-        const errorMessage = responseData.error || responseData.message || `HTTP error! status: ${response.status}`;
+        // Use message from data if available, otherwise use a generic error
+        const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
         throw new Error(errorMessage);
     }
 
@@ -62,7 +67,11 @@ export const uploadCode = async (classType, file, secretsObject) => {
   const secretsString = JSON.stringify(secretsObject);
   formData.append('secrets', secretsString);
 
-  const response = await fetch(`${BASE_URL}internal/${encodeURIComponent(classType)}/upload`, {
+  const params = new URLSearchParams({
+    class_type: classType
+  });
+
+  const response = await fetch(`${BASE_URL}internal/upload?${params.toString()}`, {
     method: 'POST',
     body: formData,
   });
@@ -78,7 +87,12 @@ export const uploadCode = async (classType, file, secretsObject) => {
   return responseData;
 };
 export const deleteRegisteredClass = async (classType, className) => {
-  const response = await fetch(`${BASE_URL}internal/delete/${encodeURIComponent(classType)}/${encodeURIComponent(className)}`, {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+  
+  const response = await fetch(`${BASE_URL}internal/delete?${params.toString()}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json', // Optional for DELETE if no body, but good practice
@@ -123,6 +137,121 @@ export const getAssetMappings = async () => {
   }
 
   return data;
+}
+
+/**
+ * Creates a new asset mapping.
+ * @param {object} mappingData - The mapping data.
+ * @param {string} mappingData.common_symbol - Common symbol identifier.
+ * @param {string} mappingData.class_name - Class name (provider/broker name).
+ * @param {string} mappingData.class_type - Class type: 'provider' or 'broker'.
+ * @param {string} mappingData.class_symbol - Class-specific symbol.
+ * @param {boolean} [mappingData.is_active=true] - Whether the mapping is active.
+ * @returns {Promise<object>} - The created mapping response.
+ */
+export const createAssetMapping = async (mappingData) => {
+  const response = await fetch(`${BASE_URL}internal/asset-mappings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(mappingData),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+}
+
+/**
+ * Updates an existing asset mapping.
+ * @param {string} class_name - Class name (provider/broker name).
+ * @param {string} class_type - Class type: 'provider' or 'broker'.
+ * @param {string} class_symbol - Class-specific symbol.
+ * @param {object} updateData - The update data (partial).
+ * @param {string} [updateData.common_symbol] - Common symbol identifier.
+ * @param {boolean} [updateData.is_active] - Whether the mapping is active.
+ * @returns {Promise<object>} - The updated mapping response.
+ */
+export const updateAssetMapping = async (class_name, class_type, class_symbol, updateData) => {
+  const params = new URLSearchParams({
+    class_name: class_name,
+    class_type: class_type,
+    class_symbol: class_symbol
+  });
+  
+  const response = await fetch(
+    `${BASE_URL}internal/asset-mappings?${params.toString()}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updateData),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+}
+
+/**
+ * Deletes an existing asset mapping.
+ * @param {string} class_name - Class name (provider/broker name).
+ * @param {string} class_type - Class type: 'provider' or 'broker'.
+ * @param {string} class_symbol - Class-specific symbol.
+ * @returns {Promise<void>} - Resolves on success, throws on error.
+ */
+export const deleteAssetMapping = async (class_name, class_type, class_symbol) => {
+  const params = new URLSearchParams({
+    class_name: class_name,
+    class_type: class_type,
+    class_symbol: class_symbol
+  });
+  
+  const response = await fetch(
+    `${BASE_URL}internal/asset-mappings?${params.toString()}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  // DELETE requests might return 204 No Content (no body) or a JSON error
+  // Check for 204 status FIRST before attempting to parse JSON
+  if (response.status === 204) {
+    // 204 No Content - successful deletion, no body
+    return;
+  }
+
+  let responseData;
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.indexOf("application/json") !== -1) {
+    responseData = await response.json();
+  } else {
+    // If no JSON body, create a default object
+    responseData = { message: response.statusText, status: response.status };
+  }
+
+  if (!response.ok) {
+    const errorMessage = responseData.detail || responseData.error || responseData.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return responseData;
 }
 
 /**

@@ -11,7 +11,7 @@ from apscheduler.schedulers.base import STATE_RUNNING
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 from functools import wraps
-from fastapi import HTTPException
+from fastapi import HTTPException, Query
 import asyncio
 from pathlib import Path
 
@@ -122,7 +122,7 @@ class DataHub(DatabaseHandler, APIHandler):
             response_model=ProviderValidateResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/providers/{provider_name}/available-symbols',
+            '/internal/providers/available-symbols',
             self.handle_get_available_symbols,
             methods=['GET']
         )
@@ -387,7 +387,10 @@ class DataHub(DatabaseHandler, APIHandler):
                 logger.error(f"Error inserting bars into {db}: {e}", exc_info=True)
                 raise
 
-    async def handle_get_available_symbols(self, provider_name: str) -> list[dict]:
+    async def handle_get_available_symbols(
+        self,
+        provider_name: str = Query(..., description="Provider name")
+    ) -> list[dict]:
         logger.info(f"API request: Get available symbols for provider '{provider_name}'")
         provider_instance = self._providers.get(provider_name)
         if not provider_instance:

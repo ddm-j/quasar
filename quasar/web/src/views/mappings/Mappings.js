@@ -18,19 +18,23 @@ import {
 
 // Add Mapping Modal
 import MappingAddModal from './MappingAddModal';
+// Edit Mapping Modal
+import MappingEditModal from './MappingEditModal';
 
 // API Imports
 import { 
-    getAssetMappings
- } from '../services/registry_api';
-import { use } from 'i18next';
+    getAssetMappings,
+    deleteAssetMapping,
+} from '../services/registry_api';
 
 const Mappings = () => {
   // State
   const [mappings, setMappings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false)
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [currentMapping, setCurrentMapping] = useState(null);
 
   // Fetch Mappings
   const fetchMappings = async () => {
@@ -92,19 +96,28 @@ const Mappings = () => {
     return is_active ? 'success' : 'danger';
   }
 
-  const handleDelete = (item) => {
+  const handleDelete = async (item) => {
     // Confirm deletion
-    // Call API: await deleteAssetMapping(item.class_name, item.class_type, item.class_symbol);
-    // Refresh list: fetchMappings();
-    console.log('Delete item:', item);
-    alert(`Simulating delete for: ${item.common_symbol}`);
+    const confirmMessage = `Are you sure you want to delete the mapping for "${item.common_symbol}" (${item.class_name}/${item.class_symbol})?`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      await deleteAssetMapping(item.class_name, item.class_type, item.class_symbol);
+      // Refresh list after successful deletion
+      // Log out arguments to the deleteAssetMapping function
+      console.log('Delete arguments:', item.class_name, item.class_type, item.class_symbol);
+      await fetchMappings();
+    } catch (err) {
+      setError(err.message || 'Failed to delete mapping');
+      alert(`Error deleting mapping: ${err.message || 'Unknown error'}`);
+    }
   };
 
   const handleEdit = (item) => {
-    // setCurrentItem(item);
-    // setModalVisible(true);
-    console.log('Edit item:', item);
-    alert(`Simulating edit for: ${item.common_symbol}`);
+    setCurrentMapping(item);
+    setIsEditModalVisible(true);
   };
   const handleAdd = () => {
     // setCurrentItem(null); // For a new item
@@ -197,6 +210,16 @@ const Mappings = () => {
         <MappingAddModal
             visible={isAddModalVisible}
             onClose={() => setIsAddModalVisible(false)}
+            onSuccess={() => fetchMappings()}
+        />
+        <MappingEditModal
+            visible={isEditModalVisible}
+            onClose={() => {
+              setIsEditModalVisible(false);
+              setCurrentMapping(null);
+            }}
+            onSuccess={() => fetchMappings()}
+            mapping={currentMapping}
         />
     </>
   );

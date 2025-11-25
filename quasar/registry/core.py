@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Any
 import os, asyncpg, base64, hashlib
 import aiohttp
-from fastapi import HTTPException, UploadFile, File, Form, Depends, Query
+from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
 from fastapi.responses import Response
 from urllib.parse import unquote_plus
 
@@ -47,13 +47,13 @@ class Registry(DatabaseHandler, APIHandler):
 
         # General Registry Routes
         self._api_app.router.add_api_route(
-            '/internal/{class_type}/upload',
+            '/internal/upload',
             self.handle_upload_file,
             methods=['POST'],
             response_model=FileUploadResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/{class_type}/{class_name}/update-assets',
+            '/internal/update-assets',
             self.handle_update_assets,
             methods=['POST'],
             response_model=UpdateAssetsResponse
@@ -71,7 +71,7 @@ class Registry(DatabaseHandler, APIHandler):
             response_model=List[ClassSummaryItem]
         )
         self._api_app.router.add_api_route(
-            '/internal/delete/{class_type}/{class_name}',
+            '/internal/delete',
             self.handle_delete_class,
             methods=['DELETE'],
             response_model=DeleteClassResponse
@@ -98,13 +98,13 @@ class Registry(DatabaseHandler, APIHandler):
             response_model=List[AssetMappingResponse]
         )
         self._api_app.router.add_api_route(
-            '/internal/asset-mappings/{class_name}/{class_type}/{class_symbol}',
+            '/internal/asset-mappings',
             self.handle_update_asset_mapping,
             methods=['PUT'],
             response_model=AssetMappingResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/asset-mappings/{class_name}/{class_type}/{class_symbol}',
+            '/internal/asset-mappings',
             self.handle_delete_asset_mapping,
             methods=['DELETE'],
             status_code=204
@@ -138,7 +138,7 @@ class Registry(DatabaseHandler, APIHandler):
     # # CODE UPLOAD / REGISTRATION
     async def handle_upload_file(
         self,
-        class_type: ClassType,
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
         file: UploadFile = File(...),
         secrets: str = Form(...)
     ) -> FileUploadResponse:
@@ -340,7 +340,11 @@ class Registry(DatabaseHandler, APIHandler):
             return None
 
     # # DELETE REGISTERED CLASS
-    async def handle_delete_class(self, class_type: ClassType, class_name: str) -> DeleteClassResponse:
+    async def handle_delete_class(
+        self,
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
+        class_name: str = Query(..., description="Class name (provider/broker name)")
+    ) -> DeleteClassResponse:
         """
         Endpoint to delete a registered class (provider or broker) by its class_name and class_type.
         """
@@ -405,7 +409,11 @@ class Registry(DatabaseHandler, APIHandler):
         )
 
     # # ASSET UPDATE / REGISRATION
-    async def handle_update_assets(self, class_type: ClassType, class_name: str) -> UpdateAssetsResponse:
+    async def handle_update_assets(
+        self,
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
+        class_name: str = Query(..., description="Class name (provider/broker name)")
+    ) -> UpdateAssetsResponse:
         """
         Endpoint to update assets for a given registered class_name and class_type.
         """
@@ -909,14 +917,14 @@ class Registry(DatabaseHandler, APIHandler):
 
     async def handle_update_asset_mapping(
         self,
-        class_name: str,
-        class_type: ClassType,
-        class_symbol: str,
-        update: AssetMappingUpdate
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
+        class_symbol: str = Query(..., description="Class-specific symbol"),
+        update: AssetMappingUpdate = Body(...)
     ) -> AssetMappingResponse:
         """
         API endpoint to update an existing asset mapping.
-        Identified by class_name, class_type, and class_symbol in the path.
+        Identified by class_name, class_type, and class_symbol as query parameters.
         Payload can contain 'common_symbol' and/or 'is_active' to update.
         """
         logger.info(f"Registry.handle_update_asset_mapping: Received PUT request for "
@@ -989,13 +997,13 @@ class Registry(DatabaseHandler, APIHandler):
 
     async def handle_delete_asset_mapping(
         self,
-        class_name: str,
-        class_type: ClassType,
-        class_symbol: str
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
+        class_symbol: str = Query(..., description="Class-specific symbol")
     ) -> Response: 
         """
         API endpoint to delete an existing asset mapping.
-        Identified by class_name, class_type, and class_symbol in the path.
+        Identified by class_name, class_type, and class_symbol as query parameters.
         """
         logger.info(
             f"Registry.handle_delete_asset_mapping: Received DELETE request for "
