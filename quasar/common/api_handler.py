@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import asyncio
+import os
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,10 +29,15 @@ class APIHandler(ABC):
         self._server: Optional[uvicorn.Server] = None
         self._server_task: Optional[asyncio.Task] = None
 
-        # Setup CORS
+        # Setup CORS - allow configurable origins via environment variable
+        # CORS_ORIGINS can be a comma-separated list: "http://localhost:3000,http://192.168.1.100:3000"
+        cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+        cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+        logger.debug(f"{self.name} CORS allowed origins: {cors_origins}")
+        
         self._api_app.add_middleware(
             CORSMiddleware,
-            allow_origins=["http://localhost:3000"],
+            allow_origins=cors_origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

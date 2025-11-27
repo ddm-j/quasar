@@ -49,8 +49,15 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 3000,
+      host: true, // Listen on all interfaces (0.0.0.0) for remote access
       proxy: {
-        // https://vitejs.dev/config/server-options.html
+        // Proxy API requests to backend services
+        // In production, nginx/ALB handles this routing instead
+        '/api/registry': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/registry/, '/internal'),
+        },
       },
     },
   }

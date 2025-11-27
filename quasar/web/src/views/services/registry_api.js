@@ -1,4 +1,5 @@
-const BASE_URL = 'http://localhost:8080/' // API URL
+// API base path - uses relative URL for proxy compatibility (dev: Vite proxy, prod: nginx/ALB)
+const API_BASE = '/api/registry/';
 
 export const updateAssetsForClass = async (classType, className) => {
     const params = new URLSearchParams({
@@ -6,7 +7,7 @@ export const updateAssetsForClass = async (classType, className) => {
         class_name: className
     });
     
-    const response = await fetch(`${BASE_URL}internal/update-assets?${params.toString()}`, {
+    const response = await fetch(`${API_BASE}update-assets?${params.toString()}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -25,7 +26,7 @@ export const updateAssetsForClass = async (classType, className) => {
 }
 
 export const updateAllAssets = async () => {
-    const response = await fetch(`${BASE_URL}internal/update-all-assets`, {
+    const response = await fetch(`${API_BASE}update-all-assets`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -43,7 +44,7 @@ export const updateAllAssets = async () => {
     return data;
 }
 export const getRegisteredClasses = async () => {
-    const response = await fetch(`${BASE_URL}internal/classes/summary`, {
+    const response = await fetch(`${API_BASE}classes/summary`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -71,7 +72,7 @@ export const uploadCode = async (classType, file, secretsObject) => {
     class_type: classType
   });
 
-  const response = await fetch(`${BASE_URL}internal/upload?${params.toString()}`, {
+  const response = await fetch(`${API_BASE}upload?${params.toString()}`, {
     method: 'POST',
     body: formData,
   });
@@ -92,7 +93,7 @@ export const deleteRegisteredClass = async (classType, className) => {
     class_name: className
   });
   
-  const response = await fetch(`${BASE_URL}internal/delete?${params.toString()}`, {
+  const response = await fetch(`${API_BASE}delete?${params.toString()}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json', // Optional for DELETE if no body, but good practice
@@ -121,7 +122,7 @@ export const deleteRegisteredClass = async (classType, className) => {
 };
 
 export const getAssetMappings = async () => {
-  const response = await fetch(`${BASE_URL}internal/asset-mappings`, {
+  const response = await fetch(`${API_BASE}asset-mappings`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -150,7 +151,7 @@ export const getAssetMappings = async () => {
  * @returns {Promise<object>} - The created mapping response.
  */
 export const createAssetMapping = async (mappingData) => {
-  const response = await fetch(`${BASE_URL}internal/asset-mappings`, {
+  const response = await fetch(`${API_BASE}asset-mappings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -186,7 +187,7 @@ export const updateAssetMapping = async (class_name, class_type, class_symbol, u
   });
   
   const response = await fetch(
-    `${BASE_URL}internal/asset-mappings?${params.toString()}`,
+    `${API_BASE}asset-mappings?${params.toString()}`,
     {
       method: 'PUT',
       headers: {
@@ -221,7 +222,7 @@ export const deleteAssetMapping = async (class_name, class_type, class_symbol) =
   });
   
   const response = await fetch(
-    `${BASE_URL}internal/asset-mappings?${params.toString()}`,
+    `${API_BASE}asset-mappings?${params.toString()}`,
     {
       method: 'DELETE',
       headers: {
@@ -283,7 +284,7 @@ export const getAssets = async (params = {}) => {
   });
 
   const queryString = queryParams.toString();
-  const url = `${BASE_URL}internal/assets${queryString ? `?${queryString}` : ''}`;
+  const url = `${API_BASE}assets${queryString ? `?${queryString}` : ''}`;
 
   console.log('Fetching assets with URL:', url); // For debugging
 

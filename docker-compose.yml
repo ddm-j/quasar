@@ -29,6 +29,9 @@ services:
       LOGLEVEL: DEBUG
       DSN: "postgresql://postgres:password@quasardb:5432/postgres"
       QUASAR_SYSTEM_CONTEXT: "/run/secrets/system_context"
+      # CORS_ORIGINS: Comma-separated list of allowed frontend origins
+      # For production, set to your actual domain: "https://quasar.yourdomain.com"
+      CORS_ORIGINS: "http://localhost:3000"
     ports:
       - "8080:8080"
     command: ["python", "-m", "quasar.registry.app"]
@@ -54,6 +57,8 @@ services:
       DSN: "postgresql://postgres:password@quasardb:5432/postgres"
       QUASAR_SECRET_FILE: "/run/secrets/quasar"
       QUASAR_SYSTEM_CONTEXT: "/run/secrets/system_context"
+      # CORS_ORIGINS: Comma-separated list of allowed frontend origins
+      CORS_ORIGINS: "http://localhost:3000"
     ports:
       - "8081:8080"
     secrets:

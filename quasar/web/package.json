@@ -21,7 +21,7 @@
     "build": "vite build",
     "lint": "eslint \"src/**/*.js\"",
     "serve": "vite preview",
-    "start": "vite",
+    "start": "vite --host",
     "zip": "git archive -o $npm_package_config_zipPrefix-$npm_package_config_theme-$npm_package_config_bundler-v$npm_package_version.zip -9 HEAD"
   },
   "dependencies": {
