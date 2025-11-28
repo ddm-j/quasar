@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import classNames from 'classnames'
-import { useTranslation } from 'react-i18next'
 import {
   CContainer,
   CForm,
@@ -25,23 +24,13 @@ import {
   cilMoon,
   cilSearch,
   cilSun,
-  cilLanguage,
-  cifGb,
-  cifEs,
-  cifPl,
 } from '@coreui/icons'
 
-import {
-  AppHeaderDropdown,
-  AppHeaderDropdownMssg,
-  AppHeaderDropdownNotif,
-  AppHeaderDropdownTasks,
-} from './header/index'
+import { AppHeaderDropdown } from './header/index'
 
 const AppHeader = () => {
   const headerRef = useRef()
   const { colorMode, setColorMode } = useColorModes('coreui-pro-react-admin-template-theme-modern')
-  const { i18n, t } = useTranslation()
 
   const dispatch = useDispatch()
   const asideShow = useSelector((state) => state.asideShow)
@@ -72,53 +61,17 @@ const AppHeader = () => {
               <CIcon icon={cilSearch} size="lg" className="my-1 mx-2 text-body-secondary" />
             </CInputGroupText>
             <CFormInput
-              placeholder={t('search')}
+              placeholder="Search..."
               aria-label="Search"
               aria-describedby="search-addon"
               className="bg-body-secondary border-0"
             />
           </CInputGroup>
         </CForm>
-        <CHeaderNav className="d-none d-md-flex ms-auto">
-          <AppHeaderDropdownNotif />
-          <AppHeaderDropdownTasks />
-          <AppHeaderDropdownMssg />
-        </CHeaderNav>
-        <CHeaderNav className="ms-auto ms-md-0">
+        <CHeaderNav className="ms-auto">
           <li className="nav-item py-1">
             <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
           </li>
-          <CDropdown variant="nav-item" placement="bottom-end">
-            <CDropdownToggle caret={false}>
-              <CIcon icon={cilLanguage} size="lg" />
-            </CDropdownToggle>
-            <CDropdownMenu>
-              <CDropdownItem
-                active={i18n.language === 'en'}
-                className="d-flex align-items-center"
-                as="button"
-                onClick={() => i18n.changeLanguage('en')}
-              >
-                <CIcon className="me-2" icon={cifGb} size="lg" /> English
-              </CDropdownItem>
-              <CDropdownItem
-                active={i18n.language === 'es'}
-                className="d-flex align-items-center"
-                as="button"
-                onClick={() => i18n.changeLanguage('es')}
-              >
-                <CIcon className="me-2" icon={cifEs} size="lg" /> Español
-              </CDropdownItem>
-              <CDropdownItem
-                active={i18n.language === 'pl'}
-                className="d-flex align-items-center"
-                as="button"
-                onClick={() => i18n.changeLanguage('pl')}
-              >
-                <CIcon className="me-2" icon={cifPl} size="lg" /> Polski
-              </CDropdownItem>
-            </CDropdownMenu>
-          </CDropdown>
           <CDropdown variant="nav-item" placement="bottom-end">
             <CDropdownToggle caret={false}>
               {colorMode === 'dark' ? (
@@ -137,7 +90,7 @@ const AppHeader = () => {
                 type="button"
                 onClick={() => setColorMode('light')}
               >
-                <CIcon className="me-2" icon={cilSun} size="lg" /> {t('light')}
+                <CIcon className="me-2" icon={cilSun} size="lg" /> Light
               </CDropdownItem>
               <CDropdownItem
                 active={colorMode === 'dark'}
@@ -146,7 +99,7 @@ const AppHeader = () => {
                 type="button"
                 onClick={() => setColorMode('dark')}
               >
-                <CIcon className="me-2" icon={cilMoon} size="lg" /> {t('dark')}
+                <CIcon className="me-2" icon={cilMoon} size="lg" /> Dark
               </CDropdownItem>
               <CDropdownItem
                 active={colorMode === 'auto'}

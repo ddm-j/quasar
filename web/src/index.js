@@ -5,7 +5,6 @@ import 'core-js'
 
 import App from './App'
 import store from './store'
-import './i18n'
 
 createRoot(document.getElementById('root')).render(
   <Provider store={store}>
