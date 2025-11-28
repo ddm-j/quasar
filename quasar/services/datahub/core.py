@@ -26,6 +26,7 @@ from quasar.services.datahub.schemas import ProviderValidateRequest, ProviderVal
 import logging
 logger = logging.getLogger(__name__)
 
+IMMEDIATE_PULL = True # Whether to pull data immediately upon subscription or wait for the next cron job (available for historical data providers ONLY)
 DEFAULT_LIVE_OFFSET = 30 # Default number of seconds to offset the subscription cron job for live data providers
 DEFAULT_LOOKBACK = 8000 # Default Number of bars to pull if we don't already have data
 BATCH_SIZE = 500 # Number of bars to batch insert into the database 
@@ -291,6 +292,10 @@ class DataHub(DatabaseHandler, APIHandler):
                     args=[r["provider"], r["interval"], r["syms"]],
                     id=key,
                 )
+                # Immediate Data Pull (development purposes)
+                if IMMEDIATE_PULL and prov_type == ProviderType.HISTORICAL:
+                    logger.info(f"Immediate data pull for new subscription: {r['provider']}, {r['interval']}, {r['syms']}")
+                    asyncio.create_task(self.get_data(r["provider"], r["interval"], r["syms"]))
             else:
                 # Update Scheduled Job (symbol subscription may have changed)
                 logger.debug(f"Updating scheduled job: {key}")
