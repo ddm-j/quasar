@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import Mock, AsyncMock, MagicMock
 import asyncpg
 
-from quasar.common.database_handler import DatabaseHandler
+from quasar.lib.common.database_handler import DatabaseHandler
 
 
 class ConcreteDatabaseHandler(DatabaseHandler):

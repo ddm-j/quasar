@@ -20,7 +20,7 @@ services:
   registry:
     build:            
       context: .
-      dockerfile: quasar/registry/Dockerfile
+      dockerfile: quasar/services/registry/Dockerfile
     container_name: registry
     depends_on:
       quasardb:
@@ -34,7 +34,7 @@ services:
       CORS_ORIGINS: "http://localhost:3000"
     ports:
       - "8080:8080"
-    command: ["python", "-m", "quasar.registry.app"]
+    command: ["python", "-m", "quasar.services.registry.app"]
     restart: unless-stopped
     volumes:
       - dynamic_providers:/app/dynamic_providers
@@ -45,7 +45,7 @@ services:
   datahub:
     build:            
       context: .
-      dockerfile: quasar/datahub/Dockerfile
+      dockerfile: quasar/services/datahub/Dockerfile
     container_name: datahub
     depends_on:
       quasardb:
@@ -64,7 +64,7 @@ services:
     secrets:
       - quasar
       - system_context
-    command: ["python", "-m", "quasar.datahub.app"]
+    command: ["python", "-m", "quasar.services.datahub.app"]
     restart: unless-stopped
     volumes:
       - dynamic_providers:/app/dynamic_providers

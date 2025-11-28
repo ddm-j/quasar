@@ -15,13 +15,13 @@ from fastapi import HTTPException, Query
 import asyncio
 from pathlib import Path
 
-from quasar.common.secret_store import SecretStore
-from quasar.common.offset_cron import OffsetCronTrigger
-from quasar.common.database_handler import DatabaseHandler
-from quasar.common.api_handler import APIHandler
-from quasar.common.context import SystemContext, DerivedContext
-from quasar.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider
-from quasar.datahub.schemas import ProviderValidateRequest, ProviderValidateResponse
+from quasar.lib.common.secret_store import SecretStore
+from quasar.lib.common.offset_cron import OffsetCronTrigger
+from quasar.lib.common.database_handler import DatabaseHandler
+from quasar.lib.common.api_handler import APIHandler
+from quasar.lib.common.context import SystemContext, DerivedContext
+from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider
+from quasar.services.datahub.schemas import ProviderValidateRequest, ProviderValidateResponse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -408,7 +408,6 @@ class DataHub(DatabaseHandler, APIHandler):
             raise HTTPException(status_code=501, detail=f"Provider '{provider_name}' does not support symbol discovery")
 
         try:
-            # Assuming get_available_symbols is an async method
             symbols = await provider_instance.get_available_symbols()
             # ProviderSymbolInfo is a TypedDict, which is inherently JSON serializable if its contents are.
             # Convert to list of dicts for JSON serialization

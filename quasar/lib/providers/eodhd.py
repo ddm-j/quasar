@@ -1,5 +1,5 @@
-from quasar.providers.core import HistoricalDataProvider, Interval, Bar, SymbolInfo
-from quasar.providers import register_provider
+from quasar.lib.providers.core import HistoricalDataProvider, Interval, Bar, SymbolInfo
+from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
 import requests

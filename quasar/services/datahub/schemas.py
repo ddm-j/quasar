@@ -4,7 +4,7 @@ DataHub-specific Pydantic schemas for API request/response models.
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-from quasar.providers.core import SymbolInfo
+from quasar.lib.providers.core import SymbolInfo
 
 
 class ProviderValidateRequest(BaseModel):

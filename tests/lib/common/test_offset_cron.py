@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import Mock, MagicMock
 
-from quasar.common.offset_cron import OffsetCronTrigger
+from quasar.lib.common.offset_cron import OffsetCronTrigger
 
 
 class TestOffsetCronTrigger:

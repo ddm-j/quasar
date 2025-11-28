@@ -4,7 +4,7 @@ from unittest.mock import Mock, AsyncMock, MagicMock, patch
 import asyncio
 import uvicorn
 
-from quasar.common.api_handler import APIHandler
+from quasar.lib.common.api_handler import APIHandler
 
 
 class ConcreteAPIHandler(APIHandler):
@@ -29,8 +29,8 @@ class TestAPIHandler:
         mock_server.serve = AsyncMock()
         mock_server_task = AsyncMock()
         
-        with patch('quasar.common.api_handler.uvicorn.Server', return_value=mock_server):
-            with patch('quasar.common.api_handler.asyncio.create_task', return_value=mock_server_task):
+        with patch('quasar.lib.common.api_handler.uvicorn.Server', return_value=mock_server):
+            with patch('quasar.lib.common.api_handler.asyncio.create_task', return_value=mock_server_task):
                 await handler.start_api_server()
                 
                 assert handler._server == mock_server

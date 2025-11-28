@@ -1,5 +1,5 @@
-from quasar.providers.core import LiveDataProvider, Interval, Bar, SymbolInfo
-from quasar.providers import register_provider
+from quasar.lib.providers.core import LiveDataProvider, Interval, Bar, SymbolInfo
+from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
 import requests
@@ -9,7 +9,7 @@ import json
 import re
 import urllib.parse
 
-from quasar.common.context import DerivedContext
+from quasar.lib.common.context import DerivedContext
 
 # class SymbolInfo(TypedDict):
 #     provider: str
