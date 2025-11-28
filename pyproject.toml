@@ -50,7 +50,13 @@ addopts = "--cov=quasar --cov-report=term-missing --cov-report=html"
 [tool.coverage.run]
 source = ["quasar"]
 branch = true
-omit = ["*/tests/*", "*/__pycache__/*"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    # Template providers - examples uploaded at runtime, not tested directly
+    "quasar/lib/providers/eodhd.py",
+    "quasar/lib/providers/kraken.py",
+]
 
 [tool.coverage.report]
 show_missing = true

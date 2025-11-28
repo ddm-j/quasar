@@ -167,8 +167,8 @@ class DataHub(DatabaseHandler, APIHandler):
         await self.close_pool()
 
     # ---------------------------------------------------------------------
-    # Private Methods
-    async def _load_provider_cls(self, name: str) -> bool:
+    # Provider Loading
+    async def load_provider_cls(self, name: str) -> bool:
         """
         Load Provider Class
         """
@@ -256,7 +256,7 @@ class DataHub(DatabaseHandler, APIHandler):
         seen_providers = set(r["provider"] for r in rows)
         invalid_providers = set()
         for name in seen_providers - current_providers:
-            didLoad = await self._load_provider_cls(name)
+            didLoad = await self.load_provider_cls(name)
             if not didLoad:
                 invalid_providers.add(name)
 
@@ -395,7 +395,7 @@ class DataHub(DatabaseHandler, APIHandler):
         provider_instance = self._providers.get(provider_name)
         if not provider_instance:
             # Attempt to load the provider if not already loaded
-            didLoad = await self._load_provider_cls(provider_name)
+            didLoad = await self.load_provider_cls(provider_name)
             if didLoad:
                 provider_instance = self._providers.get(provider_name)
 
