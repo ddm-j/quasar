@@ -138,9 +138,9 @@ class DataHub(DatabaseHandler, APIHandler):
         self._stop_scheduler()
 
         # Refresh DataProvider Subscriptions, then schedule them to run
-        await self._refresh_subscriptions()
+        await self.refresh_subscriptions()
         self._sched.add_job(
-            self._refresh_subscriptions,
+            self.refresh_subscriptions,
             trigger=IntervalTrigger(seconds=self._refresh_seconds),
             id='subscription_refresh',
             replace_existing=True,
@@ -242,9 +242,13 @@ class DataHub(DatabaseHandler, APIHandler):
             logger.error(f"Error loading provider {name}: {e}", exc_info=True)
             return False
 
-    async def _refresh_subscriptions(self):
+    async def refresh_subscriptions(self):
         """
-        Refresh Data Provider Subscriptions
+        Refresh Data Provider Subscriptions.
+        
+        Synchronizes scheduled data-fetching jobs with the current state of
+        the provider_subscription table. Loads new providers, removes obsolete
+        ones, and updates scheduled jobs accordingly.
         """
         logger.debug("Refreshing subscriptions.")
         # Fetch Current Subscriptions in the DB

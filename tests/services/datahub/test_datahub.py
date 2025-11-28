@@ -300,6 +300,91 @@ class TestDataHubAPIEndpoints:
                             )
                             
                             assert response.status_code == 500
+
+    def test_validate_provider_file_not_found_after_path_check(self, datahub_client):
+        """Test that validate_provider returns 404 when file doesn't exist (valid path prefix)."""
+        file_path = "/app/dynamic_providers/missing_file.py"
+        
+        # Path prefix is valid but file doesn't exist
+        with patch('pathlib.Path.is_file', return_value=False):
+            request = ProviderValidateRequest(file_path=file_path)
+            
+            response = datahub_client.post(
+                "/internal/provider/validate",
+                json=request.model_dump()
+            )
+            
+            assert response.status_code == 404
+            assert "not found" in response.json()["detail"]
+
+    def test_validate_provider_spec_loader_is_none(self, datahub_client):
+        """Test that validate_provider returns 500 when spec.loader is None."""
+        file_path = "/app/dynamic_providers/test.py"
+        
+        # Create a spec with loader=None
+        mock_spec = MagicMock()
+        mock_spec.loader = None
+        
+        with patch('pathlib.Path.is_file', return_value=True):
+            with patch('importlib.util.spec_from_file_location', return_value=mock_spec):
+                request = ProviderValidateRequest(file_path=file_path)
+                
+                response = datahub_client.post(
+                    "/internal/provider/validate",
+                    json=request.model_dump()
+                )
+                
+                assert response.status_code == 500
+                assert "Unable to load module" in response.json()["detail"]
+
+    def test_validate_provider_non_string_name_attribute(self, datahub_client):
+        """Test that validate_provider returns 500 when class name attribute is not a string."""
+        file_path = "/app/dynamic_providers/test.py"
+        
+        # Create a provider class with non-string name attribute
+        class ProviderWithIntName(HistoricalDataProvider):
+            name = 12345  # Non-string name
+            
+            async def get_history(self, sym, start, end, interval):
+                yield None
+                
+            async def get_available_symbols():
+                return []
+        
+        ProviderWithIntName.__module__ = 'test'
+        
+        def mock_spec_from_file(module_name, file_path, **kwargs):
+            spec = MagicMock()
+            spec.loader = MagicMock()
+            return spec
+        
+        def mock_module_from_spec(spec):
+            mock_module = type('MockModule', (), {
+                '__name__': 'test',
+                '__spec__': spec,
+                'ProviderWithIntName': ProviderWithIntName,
+            })()
+            return mock_module
+        
+        def mock_getmembers(module, predicate=None):
+            if predicate == inspect.isclass:
+                if hasattr(module, 'ProviderWithIntName'):
+                    return [('ProviderWithIntName', ProviderWithIntName)]
+            return []
+        
+        with patch('pathlib.Path.is_file', return_value=True):
+            with patch('importlib.util.spec_from_file_location', side_effect=mock_spec_from_file):
+                with patch('importlib.util.module_from_spec', side_effect=mock_module_from_spec):
+                    with patch('inspect.getmembers', side_effect=mock_getmembers):
+                        request = ProviderValidateRequest(file_path=file_path)
+                        
+                        response = datahub_client.post(
+                            "/internal/provider/validate",
+                            json=request.model_dump()
+                        )
+                        
+                        assert response.status_code == 500
+                        assert "valid name attribute" in response.json()["detail"]
     
     @pytest.mark.asyncio
     async def test_handle_get_available_symbols_provider_exists(
@@ -363,6 +448,40 @@ class TestDataHubAPIEndpoints:
         
         assert exc_info.value.status_code == 501
 
+    @pytest.mark.asyncio
+    async def test_handle_get_available_symbols_raises_not_implemented_error(
+        self, datahub_with_mocks
+    ):
+        """Test that handle_get_available_symbols returns 501 when provider raises NotImplementedError."""
+        hub = datahub_with_mocks
+        
+        mock_provider = Mock()
+        mock_provider.get_available_symbols = AsyncMock(side_effect=NotImplementedError("Not implemented"))
+        hub._providers["TestProvider"] = mock_provider
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await hub.handle_get_available_symbols("TestProvider")
+        
+        assert exc_info.value.status_code == 501
+        assert "not implemented" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_handle_get_available_symbols_generic_exception(
+        self, datahub_with_mocks
+    ):
+        """Test that handle_get_available_symbols returns 500 for generic exceptions."""
+        hub = datahub_with_mocks
+        
+        mock_provider = Mock()
+        mock_provider.get_available_symbols = AsyncMock(side_effect=RuntimeError("Provider crashed"))
+        hub._providers["TestProvider"] = mock_provider
+        
+        with pytest.raises(HTTPException) as exc_info:
+            await hub.handle_get_available_symbols("TestProvider")
+        
+        assert exc_info.value.status_code == 500
+        assert "Internal server error" in exc_info.value.detail
+
 
 class TestDataHubLifecycleMethods:
     """Tests for DataHub lifecycle methods."""
@@ -404,6 +523,218 @@ class TestDataHubLifecycleMethods:
                 
                 hub.stop_api_server.assert_called_once()
                 hub.close_pool.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_start_calls_stop_scheduler_when_running(
+        self, datahub_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that start() calls _stop_scheduler to reset running scheduler."""
+        from apscheduler.schedulers.base import STATE_RUNNING
+        
+        hub = datahub_with_mocks
+        
+        # Add job keys to verify they get cleared
+        hub.job_keys.add("test_job_key_1")
+        hub.job_keys.add("test_job_key_2")
+        
+        # Create a mock scheduler that reports as running
+        mock_scheduler = Mock()
+        mock_scheduler.state = STATE_RUNNING  # state property returns STATE_RUNNING
+        hub._sched = mock_scheduler
+        
+        # Call _stop_scheduler directly (which is called by start())
+        hub._stop_scheduler()
+        
+        # Verify shutdown was called
+        mock_scheduler.shutdown.assert_called_once_with(wait=False)
+        # Verify job_keys were cleared
+        assert len(hub.job_keys) == 0
+
+
+class TestRefreshSubscriptions:
+    """Tests for DataHub.refresh_subscriptions() method."""
+
+    @pytest.mark.asyncio
+    async def test_refresh_loads_new_providers(
+        self, datahub_with_mocks, mock_asyncpg_pool, mock_provider_historical
+    ):
+        """Test that refresh_subscriptions loads new providers from database."""
+        hub = datahub_with_mocks
+        
+        # Mock database returning a subscription for a new provider
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[
+            {"provider": "NewProvider", "interval": "1d", "cron": "0 0 * * *", "syms": ["SYM1"]}
+        ])
+        
+        # Mock load_provider_cls to succeed and add the provider
+        async def mock_load(name):
+            hub._providers[name] = mock_provider_historical
+            return True
+        
+        with patch.object(hub, 'load_provider_cls', side_effect=mock_load):
+            await hub.refresh_subscriptions()
+            
+            hub.load_provider_cls.assert_called_once_with("NewProvider")
+            assert "NewProvider" in hub._providers
+
+    @pytest.mark.asyncio
+    async def test_refresh_handles_provider_load_failure(
+        self, datahub_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that refresh_subscriptions skips providers that fail to load."""
+        hub = datahub_with_mocks
+        
+        # Mock database returning subscriptions for an invalid provider
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[
+            {"provider": "InvalidProvider", "interval": "1d", "cron": "0 0 * * *", "syms": ["SYM1"]}
+        ])
+        
+        # Mock load_provider_cls to fail
+        with patch.object(hub, 'load_provider_cls', return_value=False):
+            await hub.refresh_subscriptions()
+            
+            # Provider should not be in the registry
+            assert "InvalidProvider" not in hub._providers
+            # No job should be scheduled for invalid provider
+            assert len(hub.job_keys) == 0
+
+    @pytest.mark.asyncio
+    async def test_refresh_removes_obsolete_providers_with_aclose(
+        self, datahub_with_mocks, mock_asyncpg_pool, mock_provider_historical
+    ):
+        """Test that obsolete providers with aclose method are properly closed and removed."""
+        hub = datahub_with_mocks
+        
+        # Pre-load an obsolete provider that has aclose
+        hub._providers["ObsoleteProvider"] = mock_provider_historical
+        
+        # Database returns empty subscriptions - provider is now obsolete
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+        
+        await hub.refresh_subscriptions()
+        
+        # Provider should be removed
+        assert "ObsoleteProvider" not in hub._providers
+        # aclose should have been called
+        mock_provider_historical.aclose.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_refresh_removes_obsolete_providers_without_aclose(
+        self, datahub_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that obsolete providers without aclose method are removed gracefully."""
+        hub = datahub_with_mocks
+        
+        # Create provider without aclose method
+        mock_provider = Mock()
+        mock_provider.provider_type = ProviderType.HISTORICAL
+        del mock_provider.aclose  # Ensure no aclose method
+        hub._providers["ObsoleteProvider"] = mock_provider
+        
+        # Database returns empty subscriptions - provider is now obsolete
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+        
+        await hub.refresh_subscriptions()
+        
+        # Provider should be removed without error
+        assert "ObsoleteProvider" not in hub._providers
+
+    @pytest.mark.asyncio
+    async def test_refresh_adds_new_scheduled_job(
+        self, datahub_with_mocks, mock_asyncpg_pool, mock_provider_historical
+    ):
+        """Test that refresh_subscriptions adds new scheduled jobs for subscriptions."""
+        hub = datahub_with_mocks
+        
+        # Pre-load the provider
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Mock database returning a new subscription
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[
+            {"provider": "TestProvider", "interval": "1d", "cron": "0 0 * * *", "syms": ["SYM1", "SYM2"]}
+        ])
+        
+        # Start the scheduler so we can add jobs
+        hub._sched.start()
+        
+        await hub.refresh_subscriptions()
+        
+        # Job key should be tracked
+        expected_key = "TestProvider|1d|0 0 * * *"
+        assert expected_key in hub.job_keys
+        # Job should exist in scheduler
+        assert hub._sched.get_job(expected_key) is not None
+        
+        hub._sched.shutdown(wait=False)
+
+    @pytest.mark.asyncio
+    async def test_refresh_updates_existing_job_symbols(
+        self, datahub_with_mocks, mock_asyncpg_pool, mock_provider_historical
+    ):
+        """Test that refresh_subscriptions updates job args when symbols change."""
+        hub = datahub_with_mocks
+        
+        # Pre-load the provider
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Start the scheduler and add initial job
+        hub._sched.start()
+        job_key = "TestProvider|1d|0 0 * * *"
+        hub.job_keys.add(job_key)
+        hub._sched.add_job(
+            func=hub.get_data,
+            trigger='interval',
+            seconds=3600,
+            args=["TestProvider", "1d", ["OLD_SYM"]],
+            id=job_key,
+        )
+        
+        # Mock database returning updated symbols
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[
+            {"provider": "TestProvider", "interval": "1d", "cron": "0 0 * * *", "syms": ["NEW_SYM1", "NEW_SYM2"]}
+        ])
+        
+        await hub.refresh_subscriptions()
+        
+        # Job should still exist with updated args
+        job = hub._sched.get_job(job_key)
+        assert job is not None
+        assert job.args == ["TestProvider", "1d", ["NEW_SYM1", "NEW_SYM2"]]
+        
+        hub._sched.shutdown(wait=False)
+
+    @pytest.mark.asyncio
+    async def test_refresh_removes_unsubscribed_job(
+        self, datahub_with_mocks, mock_asyncpg_pool, mock_provider_historical
+    ):
+        """Test that refresh_subscriptions removes jobs for unsubscribed data."""
+        hub = datahub_with_mocks
+        
+        # Pre-load the provider
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Start the scheduler and add existing job
+        hub._sched.start()
+        job_key = "TestProvider|1d|0 0 * * *"
+        hub.job_keys.add(job_key)
+        hub._sched.add_job(
+            func=hub.get_data,
+            trigger='interval',
+            seconds=3600,
+            args=["TestProvider", "1d", ["SYM1"]],
+            id=job_key,
+        )
+        
+        # Mock database returning no subscriptions - job should be removed
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+        
+        await hub.refresh_subscriptions()
+        
+        # Job should be removed
+        assert job_key not in hub.job_keys
+        assert hub._sched.get_job(job_key) is None
+        
+        hub._sched.shutdown(wait=False)
 
 
 class TestDataHubGetData:
@@ -487,6 +818,105 @@ class TestDataHubGetData:
             
             # Should have been called twice: once for 500 bars, once for 250
             assert len(insert_calls) == 2
+
+    @pytest.mark.asyncio
+    async def test_get_data_handles_unique_violation_fallback(
+        self, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn, mock_asyncpg_pool
+    ):
+        """Test that _insert_bars falls back to INSERT ON CONFLICT when COPY fails with duplicates."""
+        import asyncpg.exceptions
+        
+        hub = datahub_with_mocks
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Mock last_updated query to return empty (so requests are generated)
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+        
+        # First call to copy_records_to_table raises UniqueViolationError
+        mock_asyncpg_conn.copy_records_to_table = AsyncMock(
+            side_effect=asyncpg.exceptions.UniqueViolationError("duplicate key")
+        )
+        # Fallback executemany should succeed
+        mock_asyncpg_conn.executemany = AsyncMock()
+        
+        await hub.get_data("TestProvider", "1d", ["TEST"])
+        
+        # Verify fallback was used - executemany should have been called
+        mock_asyncpg_conn.executemany.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_get_data_reraises_non_unique_db_errors(
+        self, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn
+    ):
+        """Test that non-UniqueViolation DB errors are caught by @safe_job decorator."""
+        hub = datahub_with_mocks
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Mock last_updated query to return empty
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+        
+        # Raise a different database error
+        mock_asyncpg_conn.copy_records_to_table = AsyncMock(
+            side_effect=Exception("Connection lost")
+        )
+        
+        # get_data is decorated with @safe_job which catches and logs errors
+        result = await hub.get_data("TestProvider", "1d", ["TEST"])
+        
+        # Should return None (default from @safe_job) instead of raising
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_data_historical_no_valid_requests_returns_early(
+        self, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn
+    ):
+        """Test that get_data returns early when all symbols are already up-to-date."""
+        hub = datahub_with_mocks
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Mock last_updated query to return symbols that are already up-to-date
+        # All symbols have been updated recently, so no requests needed
+        from datetime import date
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            {"sym": "TEST", "d": date.today()}  # Already updated today
+        ])
+        
+        # Track if insert_bars is called
+        insert_called = False
+        async def track_insert(*args, **kwargs):
+            nonlocal insert_called
+            insert_called = True
+        
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            with patch.object(hub, '_insert_bars', side_effect=track_insert):
+                await hub.get_data("TestProvider", "1d", ["TEST"])
+            
+            # Should have issued a warning about no valid requests
+            assert len(w) == 1
+            assert "no valid requests" in str(w[0].message)
+        
+        # Insert should never have been called
+        assert not insert_called
+
+    @pytest.mark.asyncio
+    async def test_get_data_invalid_provider_type_returns_none(
+        self, datahub_with_mocks
+    ):
+        """Test that get_data returns None for provider with invalid type (caught by @safe_job)."""
+        hub = datahub_with_mocks
+        
+        # Create a mock provider with an invalid provider_type
+        mock_provider = Mock()
+        mock_provider.provider_type = None  # Invalid type
+        hub._providers["BadProvider"] = mock_provider
+        
+        # get_data is decorated with @safe_job which catches exceptions
+        result = await hub.get_data("BadProvider", "1d", ["TEST"])
+        
+        # Should return None (default from @safe_job) due to the invalid type causing an error
+        assert result is None
 
 
 # =============================================================================
