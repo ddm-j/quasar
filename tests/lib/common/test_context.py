@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from quasar.common.context import SystemContext, DerivedContext
+from quasar.lib.common.context import SystemContext, DerivedContext
 
 
 class TestSystemContext:

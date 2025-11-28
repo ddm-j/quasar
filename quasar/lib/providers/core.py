@@ -23,7 +23,7 @@ from typing import (
 import logging
 import websockets.asyncio
 
-from quasar.common.context import DerivedContext
+from quasar.lib.common.context import DerivedContext
 
 logger = logging.getLogger(__name__)
 

@@ -8,8 +8,8 @@ import json
 import os
 from io import BytesIO
 
-from quasar.registry.core import Registry
-from quasar.registry.schemas import (
+from quasar.services.registry.core import Registry
+from quasar.services.registry.schemas import (
     AssetMappingCreate, AssetMappingUpdate, AssetQueryParams,
     ClassType
 )

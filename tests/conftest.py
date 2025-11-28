@@ -23,11 +23,11 @@ if "QUASAR_SYSTEM_CONTEXT" not in os.environ:
     _temp_context_file.close()
     os.environ["QUASAR_SYSTEM_CONTEXT"] = _temp_context_file.name
 
-from quasar.datahub.core import DataHub
-from quasar.registry.core import Registry
-from quasar.common.secret_store import SecretStore
-from quasar.common.context import SystemContext, DerivedContext
-from quasar.providers.core import ProviderType
+from quasar.services.datahub.core import DataHub
+from quasar.services.registry.core import Registry
+from quasar.lib.common.secret_store import SecretStore
+from quasar.lib.common.context import SystemContext, DerivedContext
+from quasar.lib.providers.core import ProviderType
 
 
 # pytest-asyncio is configured in pyproject.toml to auto-detect async tests
@@ -116,7 +116,7 @@ def mock_provider_historical() -> Mock:
     provider.provider_type = ProviderType.HISTORICAL
     
     async def mock_get_data(reqs):
-        from quasar.providers.core import Bar
+        from quasar.lib.providers.core import Bar
         from datetime import datetime, timezone
         # Yield a few mock bars
         for i in range(3):
@@ -158,7 +158,7 @@ def mock_provider_live() -> Mock:
     provider.close_buffer_seconds = 10
     
     async def mock_get_data(interval, symbols, timeout=None):
-        from quasar.providers.core import Bar
+        from quasar.lib.providers.core import Bar
         from datetime import datetime, timezone
         # Return mock bars as async generator (like the real implementation)
         bars = [
@@ -277,7 +277,7 @@ def datahub_with_mocks(
 ) -> DataHub:
     """Create DataHub instance with mocked dependencies."""
     # Patch SystemContext singleton
-    monkeypatch.setattr("quasar.datahub.core.SystemContext", lambda: mock_system_context)
+    monkeypatch.setattr("quasar.services.datahub.core.SystemContext", lambda: mock_system_context)
     
     # Create DataHub with mocked pool
     hub = DataHub(
@@ -300,7 +300,7 @@ def registry_with_mocks(
     mock_aesgcm = Mock()
     mock_system_context.get_derived_context = Mock(return_value=mock_aesgcm)
     mock_system_context.create_context_data = Mock(return_value=(b'test_nonce', b'test_ciphertext'))
-    monkeypatch.setattr("quasar.registry.core.SystemContext", lambda: mock_system_context)
+    monkeypatch.setattr("quasar.services.registry.core.SystemContext", lambda: mock_system_context)
     
     # Create Registry with mocked pool
     registry = Registry(

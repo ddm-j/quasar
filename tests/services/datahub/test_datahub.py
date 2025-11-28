@@ -8,10 +8,10 @@ import inspect
 from datetime import datetime, timezone, date, timedelta
 import hashlib
 
-from quasar.datahub.core import DataHub, load_provider_from_file_path
-from quasar.datahub.schemas import ProviderValidateRequest, ProviderValidateResponse
-from quasar.providers.core import HistoricalDataProvider, LiveDataProvider, ProviderType, Req, Bar
-from quasar.common.secret_store import SecretStore
+from quasar.services.datahub.core import DataHub, load_provider_from_file_path
+from quasar.services.datahub.schemas import ProviderValidateRequest, ProviderValidateResponse
+from quasar.lib.providers.core import HistoricalDataProvider, LiveDataProvider, ProviderType, Req, Bar
+from quasar.lib.common.secret_store import SecretStore
 
 
 class TestDataHubAPIEndpoints:

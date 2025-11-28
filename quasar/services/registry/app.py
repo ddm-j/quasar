@@ -1,5 +1,5 @@
 import asyncio, os, logging
-from quasar.registry import Registry
+from quasar.services.registry import Registry
 
 level = os.getenv("LOGLEVEL", "INFO").upper()
 logging.basicConfig(

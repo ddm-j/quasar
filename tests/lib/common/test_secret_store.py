@@ -6,7 +6,7 @@ import json
 import tempfile
 import os
 
-from quasar.common.secret_store import SecretStore, SecretsFileNotFoundError
+from quasar.lib.common.secret_store import SecretStore, SecretsFileNotFoundError
 
 
 class TestSecretStore:
@@ -44,7 +44,7 @@ class TestSecretStore:
                 mock_load.return_value = secrets["test_provider"]
                 
                 # Set the default path to our temp file
-                import quasar.common.secret_store as secret_store_module
+                import quasar.lib.common.secret_store as secret_store_module
                 original_paths = secret_store_module._DEFAULT_PATHS
                 secret_store_module._DEFAULT_PATHS = [Path(temp_path)]
                 
@@ -72,7 +72,7 @@ class TestSecretStore:
             store = SecretStore(mode="auto")
             
             # Mock Path.is_file to return True for our temp file
-            with patch('quasar.common.secret_store.Path') as mock_path:
+            with patch('quasar.lib.common.secret_store.Path') as mock_path:
                 mock_path_instance = Mock()
                 mock_path_instance.is_file.return_value = True
                 mock_path_instance.read_text.return_value = json.dumps(secrets)
@@ -90,7 +90,7 @@ class TestSecretStore:
     @pytest.mark.asyncio
     async def test_get_raises_error_in_auto_mode_file_not_found(self):
         """Test that get() raises error when file not found in auto mode."""
-        import quasar.common.secret_store as secret_store_module
+        import quasar.lib.common.secret_store as secret_store_module
         
         store = SecretStore(mode="auto")
         store._cache = {}

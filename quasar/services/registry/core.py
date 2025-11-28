@@ -5,10 +5,10 @@ from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
 from fastapi.responses import Response
 from urllib.parse import unquote_plus
 
-from quasar.common.database_handler import DatabaseHandler
-from quasar.common.api_handler import APIHandler
-from quasar.common.context import SystemContext, DerivedContext
-from quasar.registry.schemas import (
+from quasar.lib.common.database_handler import DatabaseHandler
+from quasar.lib.common.api_handler import APIHandler
+from quasar.lib.common.context import SystemContext, DerivedContext
+from quasar.services.registry.schemas import (
     ClassType, FileUploadResponse, UpdateAssetsResponse, ClassSummaryItem,
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
     AssetMappingCreate, AssetMappingResponse, AssetMappingUpdate
@@ -496,10 +496,10 @@ class Registry(DatabaseHandler, APIHandler):
         }
 
         # Fetch available symbols from DataHub
-        datahub_url = f'http://datahub:8080/internal/providers/{class_name}/available-symbols'
+        datahub_url = f'http://datahub:8080/internal/providers/available-symbols'
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(datahub_url) as response:
+                async with session.get(datahub_url, params={'provider_name': class_name}) as response:
                     if response.status == 200:
                         symbol_info_list = await response.json()
                         if not isinstance(symbol_info_list, list):
