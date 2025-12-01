@@ -1,6 +1,7 @@
 import React from 'react'
 import CIcon from '@coreui/icons-react'
 import {
+  cilChartLine,
   cilChartPie,
   cilListRich,
   cilMap,
@@ -37,6 +38,12 @@ const _nav = [
     name: 'Mappings',
     to: '/mappings',
     icon: <CIcon icon={cilMap} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Data Explorer',
+    to: '/data-explorer',
+    icon: <CIcon icon={cilChartLine} customClassName="nav-icon" />,
   },
   {
     component: CNavTitle,

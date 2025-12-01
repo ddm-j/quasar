@@ -56,7 +56,10 @@ export default defineConfig(({ mode }) => {
         '/api/registry': {
           target: 'http://localhost:8080',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/registry/, '/internal'),
+        },
+        '/api/datahub': {
+          target: 'http://localhost:8081',
+          changeOrigin: true,
         },
       },
     },
