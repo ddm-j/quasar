@@ -7,9 +7,46 @@
 **Phase**: DEVELOPMENT (Π₃)
 **Mode**: PLAN (Ω₃)
 
-Implementation plan created for Data Explorer Table View feature using Concept 1 (Standard Data Table). Detailed 6-phase plan with 17 steps covering component foundation, data processing, UI implementation, pagination controls, integration, and testing. Plan includes date-only sorting, most recent data first, and 50-100 records per page pagination.
+Implementation plan created for adding volume indicator to OHLCV candlestick chart. Plan includes minimal code changes to add volume histogram series using lightweight-charts library. Volume data is already available in API response, so only frontend changes are needed. Plan covers 3 phases: infrastructure setup, data transformation, and cleanup.
 
 ## 🔄 Recent Changes
+
+### Implementation: Volume Indicator for Candlestick Chart
+- **Status**: ✅ Code implementation completed
+- **File Modified**: `web/src/views/data-explorer/CandlestickChart.js`
+- **Changes Implemented**:
+  - ✅ Added `volumeSeriesRef` to track volume histogram series
+  - ✅ Created volume histogram series with proper scale margins (top: 0.7, bottom: 0)
+  - ✅ Adjusted candlestick series scale margins (top: 0.1, bottom: 0.4) to leave space for volume
+  - ✅ Transformed volume data with color coding (green for up days, red for down days)
+  - ✅ Set volume data when chart data is updated
+  - ✅ Added volume series cleanup in all error/clear scenarios
+  - ✅ Cleaned up volume ref in component cleanup function
+- **Visual Layout**:
+  - Top 10%: margin
+  - Middle 50%: candlestick series
+  - Bottom 30%: volume histogram
+  - Bottom 10%: margin
+- **Color Scheme**: Volume bars match candlestick colors (#26a69a for up, #ef5350 for down)
+- **Linter Status**: ✅ No errors
+- **Next Steps**: Testing and validation
+
+### Planning Session: Volume Indicator for Candlestick Chart
+- **Status**: ✅ Planning completed
+- **Document Created**: `docs/candlestick-chart-volume-indicator-plan.md`
+- **Approach**: Minimal changes using lightweight-charts histogram series
+- **Plan Structure**: 3 phases, 8 detailed code changes
+- **Key Specifications**:
+  - Volume histogram at bottom 30% of chart
+  - Color-coded bars (green for up days, red for down days)
+  - Uses existing volume data from API response
+  - Scale margins: candlestick (top: 0.1, bottom: 0.4), volume (top: 0.7, bottom: 0)
+- **Implementation Phases**:
+  1. Add volume series infrastructure (ref, series creation, scale margins)
+  2. Transform and set volume data (with color coding)
+  3. Cleanup and error handling
+- **Estimated Time**: 30-45 minutes
+- **Files to Modify**: `web/src/views/data-explorer/CandlestickChart.js`
 
 ### Planning Session: Data Explorer Table View Implementation
 - **Status**: ✅ Planning completed

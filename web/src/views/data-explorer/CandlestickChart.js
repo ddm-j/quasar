@@ -14,6 +14,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
   const chartContainerRef = useRef(null)
   const chartRef = useRef(null)
   const candlestickSeriesRef = useRef(null)
+  const volumeSeriesRef = useRef(null)
   const cancelledRef = useRef(false)
   const resizeTimeoutRef = useRef(null)
   const [loading, setLoading] = useState(false)
@@ -143,6 +144,32 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
 
       candlestickSeriesRef.current = candlestickSeries
 
+      // Adjust candlestick series scale margins to leave space for volume
+      candlestickSeries.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.1, // Highest point of the series will be 10% away from the top
+          bottom: 0.2, // Lowest point will be 20% away from the bottom (leaving 20% for volume)
+        },
+      })
+
+      // Add volume histogram series
+      const volumeSeries = chart.addHistogramSeries({
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: '', // Set as an overlay by setting a blank priceScaleId
+      })
+
+      // Set the positioning of the volume series
+      volumeSeries.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.8, // Highest point of the series will be 80% away from the top (reduced height)
+          bottom: 0, // Lowest point will be at the very bottom
+        },
+      })
+
+      volumeSeriesRef.current = volumeSeries
+
       // Handle resize with debouncing
       handleResize = () => {
         // Clear existing timeout
@@ -193,6 +220,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
       // Clear refs
       chartRef.current = null
       candlestickSeriesRef.current = null
+      volumeSeriesRef.current = null
     }
   }, [])
 
@@ -202,6 +230,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
       // Clear chart if required props are missing
       if (candlestickSeriesRef.current) {
         candlestickSeriesRef.current.setData([])
+      }
+      if (volumeSeriesRef.current) {
+        volumeSeriesRef.current.setData([])
       }
       setChartData([])
       setAllData([])
@@ -254,8 +285,22 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             }))
             .sort((a, b) => a.time - b.time) // Sort ascending for chart
 
+          // Transform volume data with color coding
+          const volumeData = response.bars
+            .map(bar => ({
+              time: bar.time,
+              value: bar.volume,
+              color: bar.close >= bar.open ? '#26a69a' : '#ef5350', // Green for up, red for down
+            }))
+            .sort((a, b) => a.time - b.time) // Sort ascending to match chartData
+
           if (candlestickSeriesRef.current && !cancelledRef.current) {
             candlestickSeriesRef.current.setData(chartData)
+            
+            // Set volume data
+            if (volumeSeriesRef.current) {
+              volumeSeriesRef.current.setData(volumeData)
+            }
             
             // Store chart data for button functions
             setChartData(chartData)
@@ -294,6 +339,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             if (candlestickSeriesRef.current) {
               candlestickSeriesRef.current.setData([])
             }
+            if (volumeSeriesRef.current) {
+              volumeSeriesRef.current.setData([])
+            }
             setChartData([])
             setAllData([])
             setInitialViewRange(null)
@@ -311,6 +359,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
           setError(err.message || 'Failed to load chart data')
           if (candlestickSeriesRef.current) {
             candlestickSeriesRef.current.setData([])
+          }
+          if (volumeSeriesRef.current) {
+            volumeSeriesRef.current.setData([])
           }
         }
       } finally {
