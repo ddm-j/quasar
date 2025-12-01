@@ -45,66 +45,66 @@ class Registry(DatabaseHandler, APIHandler):
         """Define API routes for the Registry."""
         logger.info("Registry: Setting up API routes")
 
-        # General Registry Routes
+        # General Registry Routes (public API)
         self._api_app.router.add_api_route(
-            '/internal/upload',
+            '/api/registry/upload',
             self.handle_upload_file,
             methods=['POST'],
             response_model=FileUploadResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/update-assets',
+            '/api/registry/update-assets',
             self.handle_update_assets,
             methods=['POST'],
             response_model=UpdateAssetsResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/update-all-assets',
+            '/api/registry/update-all-assets',
             self.handle_update_all_assets,
             methods=['POST'],
             response_model=List[UpdateAssetsResponse]
         )
         self._api_app.router.add_api_route(
-            '/internal/classes/summary',
+            '/api/registry/classes/summary',
             self.handle_get_classes_summary,
             methods=['GET'],
             response_model=List[ClassSummaryItem]
         )
         self._api_app.router.add_api_route(
-            '/internal/delete',
+            '/api/registry/delete',
             self.handle_delete_class,
             methods=['DELETE'],
             response_model=DeleteClassResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/assets',
+            '/api/registry/assets',
             self.handle_get_assets,
             methods=['GET'],
             response_model=AssetResponse
         )
 
-        # Asset Mapping Routes
+        # Asset Mapping Routes (public API)
         self._api_app.router.add_api_route(
-            '/internal/asset-mappings',
+            '/api/registry/asset-mappings',
             self.handle_create_asset_mapping,
             methods=['POST'],
             response_model=AssetMappingResponse,
             status_code=201
         )
         self._api_app.router.add_api_route(
-            '/internal/asset-mappings',
+            '/api/registry/asset-mappings',
             self.handle_get_asset_mappings,
             methods=['GET'],
             response_model=List[AssetMappingResponse]
         )
         self._api_app.router.add_api_route(
-            '/internal/asset-mappings',
+            '/api/registry/asset-mappings',
             self.handle_update_asset_mapping,
             methods=['PUT'],
             response_model=AssetMappingResponse
         )
         self._api_app.router.add_api_route(
-            '/internal/asset-mappings',
+            '/api/registry/asset-mappings',
             self.handle_delete_asset_mapping,
             methods=['DELETE'],
             status_code=204
