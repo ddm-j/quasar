@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   CCard,
   CCardBody,
@@ -9,16 +9,12 @@ import {
   CNavLink,
   CTabContent,
   CTabPane,
-  CFormInput,
-  CFormSelect,
-  CButton,
-  CSpinner,
-  CInputGroup,
 } from '@coreui/react-pro'
-import CIcon from '@coreui/icons-react'
-import { cilMagnifyingGlass } from '@coreui/icons'
 import CandlestickChart from './CandlestickChart'
+import OHLCTable from './OHLCTable'
+import DataExplorerToolbar from './DataExplorerToolbar'
 import { searchSymbols } from '../services/datahub_api'
+import { downloadCSV } from '../../utils/csvExport'
 
 const DataExplorer = () => {
   const [activeKey, setActiveKey] = useState(1)
@@ -36,6 +32,9 @@ const DataExplorer = () => {
   const [selectedDataType, setSelectedDataType] = useState('')
   const [selectedInterval, setSelectedInterval] = useState('')
   const [availableIntervals, setAvailableIntervals] = useState([])
+  
+  // Data state for download functionality
+  const [currentData, setCurrentData] = useState([])
 
   // Handle symbol search
   const handleSearch = async () => {
@@ -62,6 +61,7 @@ const DataExplorer = () => {
     setSelectedDataType('')
     setSelectedInterval('')
     setAvailableIntervals([])
+    setCurrentData([]) // Clear data when clearing search
 
     try {
       const response = await searchSymbols(searchQuery.trim(), { limit: 50 })
@@ -137,6 +137,26 @@ const DataExplorer = () => {
     }
   }
 
+  // Handle data updates from child components
+  // Wrapped in useCallback to provide stable reference for child component dependencies
+  const handleDataChange = useCallback((data) => {
+    setCurrentData(data || [])
+  }, [])
+
+  // Handle download click
+  const handleDownload = () => {
+    if (currentData && currentData.length > 0 && selectedSymbol && selectedDataType && selectedInterval) {
+      // Convert chart data format to OHLC format if needed
+      // Chart data has time, open, high, low, close (no volume in chartData)
+      // We need to get the full data from the API response
+      // For now, we'll download what we have
+      downloadCSV(currentData, selectedSymbol, selectedDataType, selectedInterval)
+    }
+  }
+
+  // Determine if download button should be enabled
+  const canDownload = selectedSymbol && selectedDataType && selectedInterval && currentData && currentData.length > 0
+
   return (
     <CRow>
       <CCol xs={12}>
@@ -171,110 +191,25 @@ const DataExplorer = () => {
             <CTabContent>
               <CTabPane visible={activeKey === 1} className="p-3">
                 {/* Compact Toolbar */}
-                <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-                  {/* Search Group */}
-                  <div style={{ minWidth: '200px', maxWidth: '300px', flex: '0 1 auto' }}>
-                    <CInputGroup>
-                      <CFormInput
-                        type="text"
-                        placeholder="Search symbols..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={handleSearchKeyPress}
-                        aria-label="Search for trading symbols"
-                        aria-describedby={searchError ? "search-error" : undefined}
-                        aria-busy={isSearching}
-                      />
-                      <CButton
-                        color="primary"
-                        onClick={handleSearch}
-                        disabled={isSearching}
-                        aria-label={isSearching ? "Searching symbols" : "Search for symbols"}
-                        title="Search symbols"
-                      >
-                        {isSearching ? <CSpinner size="sm" aria-hidden="true" /> : <CIcon icon={cilMagnifyingGlass} />}
-                      </CButton>
-                    </CInputGroup>
-                    {searchError && (
-                      <div 
-                        id="search-error" 
-                        className="text-danger small mt-1" 
-                        role="alert"
-                        aria-live="polite"
-                      >
-                        {searchError}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Symbol Select */}
-                  <div className="flex-grow-1" style={{ minWidth: '280px' }}>
-                    <CFormSelect
-                      value={selectedSymbol ? searchResults.indexOf(selectedSymbol).toString() : ''}
-                      onChange={handleSymbolSelect}
-                      disabled={searchResults.length === 0}
-                      aria-label="Select a symbol from search results"
-                    >
-                      <option value="">Symbol...</option>
-                      {searchResults.map((symbol, index) => (
-                        <option key={index} value={index}>
-                          {symbol.common_symbol} ({symbol.provider}/{symbol.provider_symbol})
-                          {symbol.has_historical && symbol.has_live ? ' [H+L]' : symbol.has_historical ? ' [H]' : symbol.has_live ? ' [L]' : ''}
-                        </option>
-                      ))}
-                    </CFormSelect>
-                  </div>
-                  
-                  {/* Data Type - only show when symbol selected */}
-                  {selectedSymbol && (
-                    <div style={{ minWidth: '140px' }}>
-                      <CFormSelect
-                        value={selectedDataType}
-                        onChange={handleDataTypeChange}
-                        aria-label="Select data type"
-                        aria-describedby={!selectedDataType ? "data-type-help" : undefined}
-                      >
-                        <option value="">Type...</option>
-                        {selectedSymbol.has_historical && (
-                          <option value="historical">Historical</option>
-                        )}
-                        {selectedSymbol.has_live && (
-                          <option value="live">Live</option>
-                        )}
-                      </CFormSelect>
-                      {!selectedDataType && (
-                        <div id="data-type-help" className="sr-only">
-                          Select whether to view historical or live data
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Interval - only show when data type selected */}
-                  {selectedDataType && (
-                    <div style={{ minWidth: '120px' }}>
-                      <CFormSelect
-                        value={selectedInterval}
-                        onChange={(e) => setSelectedInterval(e.target.value)}
-                        disabled={availableIntervals.length === 0}
-                        aria-label="Select time interval"
-                        aria-describedby={availableIntervals.length === 0 ? "interval-help" : undefined}
-                      >
-                        <option value="">Interval...</option>
-                        {availableIntervals.map((interval) => (
-                          <option key={interval} value={interval}>
-                            {interval}
-                          </option>
-                        ))}
-                      </CFormSelect>
-                      {availableIntervals.length === 0 && (
-                        <div id="interval-help" className="text-muted small mt-1" role="status" aria-live="polite">
-                          No intervals available
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <DataExplorerToolbar
+                  idPrefix="chart"
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  handleSearch={handleSearch}
+                  handleSearchKeyPress={handleSearchKeyPress}
+                  searchResults={searchResults}
+                  isSearching={isSearching}
+                  searchError={searchError}
+                  selectedSymbol={selectedSymbol}
+                  handleSymbolSelect={handleSymbolSelect}
+                  selectedDataType={selectedDataType}
+                  handleDataTypeChange={handleDataTypeChange}
+                  selectedInterval={selectedInterval}
+                  setSelectedInterval={setSelectedInterval}
+                  availableIntervals={availableIntervals}
+                  handleDownload={handleDownload}
+                  canDownload={canDownload}
+                />
 
                 {/* Chart */}
                 <CandlestickChart
@@ -283,6 +218,7 @@ const DataExplorer = () => {
                   dataType={selectedDataType}
                   interval={selectedInterval}
                   limit={5000}
+                  onDataChange={handleDataChange}
                 />
 
                 {/* Symbol Info Footer */}
@@ -297,10 +233,47 @@ const DataExplorer = () => {
                 )}
               </CTabPane>
               <CTabPane visible={activeKey === 2} className="p-3">
-                <h6>Data Table</h6>
-                <p className="text-body-secondary">
-                  Table view coming soon. This will include a filterable table with symbols, number of bars, most recent data, etc.
-                </p>
+                {/* Compact Toolbar */}
+                <DataExplorerToolbar
+                  idPrefix="table"
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  handleSearch={handleSearch}
+                  handleSearchKeyPress={handleSearchKeyPress}
+                  searchResults={searchResults}
+                  isSearching={isSearching}
+                  searchError={searchError}
+                  selectedSymbol={selectedSymbol}
+                  handleSymbolSelect={handleSymbolSelect}
+                  selectedDataType={selectedDataType}
+                  handleDataTypeChange={handleDataTypeChange}
+                  selectedInterval={selectedInterval}
+                  setSelectedInterval={setSelectedInterval}
+                  availableIntervals={availableIntervals}
+                  handleDownload={handleDownload}
+                  canDownload={canDownload}
+                />
+
+                {/* Table */}
+                <OHLCTable
+                  provider={selectedProvider}
+                  symbol={selectedSymbolName}
+                  dataType={selectedDataType}
+                  interval={selectedInterval}
+                  limit={5000}
+                  onDataChange={handleDataChange}
+                />
+
+                {/* Symbol Info Footer */}
+                {selectedSymbol && (
+                  <div className="mt-2 pt-2 border-top">
+                    <small className="text-muted">
+                      <strong>Common:</strong> {selectedSymbol.common_symbol} | 
+                      <strong> Provider:</strong> {selectedSymbol.provider} | 
+                      <strong> Symbol:</strong> {selectedSymbol.provider_symbol}
+                    </small>
+                  </div>
+                )}
               </CTabPane>
             </CTabContent>
           </CCardBody>

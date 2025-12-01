@@ -10,7 +10,7 @@ import {
   cilChevronRight,
 } from '@coreui/icons'
 
-const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000 }) => {
+const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, onDataChange }) => {
   const chartContainerRef = useRef(null)
   const chartRef = useRef(null)
   const candlestickSeriesRef = useRef(null)
@@ -19,6 +19,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000 }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [chartData, setChartData] = useState([])
+  const [allData, setAllData] = useState([]) // Store full data with volume for download
   const [initialViewRange, setInitialViewRange] = useState(null)
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 500 })
 
@@ -203,8 +204,13 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000 }
         candlestickSeriesRef.current.setData([])
       }
       setChartData([])
+      setAllData([])
       setInitialViewRange(null)
       setError(null)
+      // Notify parent that data is cleared
+      if (onDataChange) {
+        onDataChange([])
+      }
       return
     }
 
@@ -225,6 +231,15 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000 }
         if (cancelledRef.current) return
 
         if (response.bars && response.bars.length > 0) {
+          // Store full data (with volume) for download
+          const fullData = [...response.bars]
+          setAllData(fullData)
+          
+          // Notify parent component of data change
+          if (onDataChange && !cancelledRef.current) {
+            onDataChange(fullData)
+          }
+
           // Transform API response to chart format
           // Backend returns: { time: int, open, high, low, close, volume }
           // Chart expects: { time: number, open, high, low, close }
@@ -280,8 +295,13 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000 }
               candlestickSeriesRef.current.setData([])
             }
             setChartData([])
+            setAllData([])
             setInitialViewRange(null)
             setError('No data available for the selected symbol and interval.')
+            // Notify parent that data is empty
+            if (onDataChange) {
+              onDataChange([])
+            }
           }
         }
       } catch (err) {
@@ -306,7 +326,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000 }
     return () => {
       cancelledRef.current = true
     }
-  }, [provider, symbol, dataType, interval, limit])
+  }, [provider, symbol, dataType, interval, limit, onDataChange])
 
   // Button handler functions
   const handleResetView = () => {
@@ -572,6 +592,7 @@ CandlestickChart.propTypes = {
   dataType: PropTypes.oneOf(['historical', 'live']),
   interval: PropTypes.string,
   limit: PropTypes.number,
+  onDataChange: PropTypes.func,
 }
 
 CandlestickChart.defaultProps = {
