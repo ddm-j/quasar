@@ -70,9 +70,33 @@ services:
       - dynamic_providers:/app/dynamic_providers
       - ./quasar:/app/quasar
 
+  strategy_engine:
+    build:
+      context: .
+      dockerfile: quasar/services/strategy_engine/Dockerfile
+    container_name: strategy_engine
+    depends_on:
+      quasardb:
+        condition: service_healthy
+    environment:
+      LOGLEVEL: DEBUG
+      DSN: "postgresql://postgres:password@quasardb:5432/postgres"
+      CORS_ORIGINS: "http://localhost:3000"
+      QUASAR_SYSTEM_CONTEXT: "/run/secrets/system_context"
+    ports:
+      - "8082:8082"
+    command: ["python", "-m", "quasar.services.strategy_engine.app"]
+    restart: unless-stopped
+    volumes:
+      - dynamic_strategies:/app/dynamic_strategies
+      - ./quasar:/app/quasar
+    secrets:
+      - system_context
+
 volumes:
   tsdb-data:
   dynamic_providers:
+  dynamic_strategies:
 
 secrets:
   quasar:
