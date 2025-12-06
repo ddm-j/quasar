@@ -20,7 +20,7 @@
 
 #### 🚧 In Progress
 - [ ] **Frontend Development**: Basic structure exists, needs features
-- [ ] **Strategy Execution**: Not yet implemented
+- [ ] **Strategy Execution**: Service + library scaffolding in place; runtime still pending
 - [ ] **Broker Integration**: Adaptor system not built
 - [ ] **Portfolio Management**: Aggregation logic incomplete
 
@@ -76,7 +76,7 @@
 ## 🐛 Known Issues
 
 1. **Frontend Lag**: Frontend significantly behind backend functionality
-2. **Strategy Engine Missing**: No strategy execution capability yet
+2. **Strategy Runtime Incomplete**: Service exists but scheduling/broker routing still missing
 3. **Broker System Missing**: No broker adaptor system implemented
 4. **Production Config**: Production deployment not configured
 5. **Documentation**: User-facing documentation incomplete
@@ -96,6 +96,7 @@
 - Created extensible provider system
 - Set up comprehensive test infrastructure
 - Deployed TimescaleDB schema
+- Added strategy engine scaffolding (service, Docker wiring, strategy library contracts)
 
 ## 🎯 Next Milestone Targets
 

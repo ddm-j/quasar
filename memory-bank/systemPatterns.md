@@ -11,7 +11,8 @@ Frontend (React/Vite)
     ↓ HTTP
 Backend Services (FastAPI)
     ├── Registry Service (Port 8080)
-    └── DataHub Service (Port 8081)
+    ├── DataHub Service (Port 8081)
+    └── StrategyEngine Service (Port 8082)
     ↓ PostgreSQL
 TimescaleDB (Port 5432)
 ```
@@ -48,6 +49,21 @@ TimescaleDB (Port 5432)
 - Scheduled job execution for data collection
 - Support for both REST and WebSocket providers
 - Rate limiting for external API calls
+
+### StrategyEngine Service
+**Purpose**: (WIP) strategy validation/execution surface
+
+**Current Responsibilities**:
+- Provide an internal `/strategy/validate` endpoint so Registry can vet uploaded strategies.
+- Expose health/readiness endpoints for Compose/Nginx.
+
+**Planned Responsibilities**:
+- Manage strategy instances, scheduling, broker routing, and policy enforcement.
+- Emit per-run telemetry consumed by the Portfolio Manager.
+
+**Key Patterns (established now)**:
+- Mirrors Registry/DataHub lifecycle via shared `DatabaseHandler`/`APIHandler`.
+- Uses dedicated `/app/dynamic_strategies` volume + `system_context` secret just like providers.
 
 ### Provider System
 **Purpose**: Pluggable data source adaptors

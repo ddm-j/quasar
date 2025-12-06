@@ -67,10 +67,12 @@ quasar/
 ├── quasar/
 │   ├── lib/
 │   │   ├── common/          # Shared utilities
-│   │   └── providers/       # Provider base classes & examples
+│   │   ├── providers/       # Provider base classes & examples
+│   │   └── strategies/      # Strategy contracts & templates
 │   └── services/
 │       ├── registry/        # Registry microservice
-│       └── datahub/         # DataHub microservice
+│       ├── datahub/         # DataHub microservice
+│       └── strategy_engine/ # Strategy validation/execution scaffold
 ├── web/                     # Frontend React app
 ├── db/
 │   └── schema/              # Database schema files
