@@ -5,7 +5,7 @@ repo_url: https://github.com/ddm-j/quasar
 repo_name: ddm-j/quasar
 
 docs_dir: .
-site_dir: site
+site_dir: ../site
 
 theme:
   name: material
@@ -64,7 +64,6 @@ plugins:
   - mike:
       canonical_version: latest
       alias_type: symlink
-      alias: latest
       version_selector: true
 
 nav:
