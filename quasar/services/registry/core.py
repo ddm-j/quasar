@@ -1,3 +1,5 @@
+"""Registry service core: code uploads, asset catalog, and mappings."""
+
 from typing import Optional, List, Dict, Any
 import os, asyncpg, base64, hashlib
 import aiohttp
@@ -17,12 +19,9 @@ from quasar.services.registry.schemas import (
 import logging
 logger = logging.getLogger(__name__)
 
+
 class Registry(DatabaseHandler, APIHandler):
-    """
-    A class that serves as a registry for the Quasar framework.
-    Both registering/unregistering new data providers/brokers, registering assets, and 
-    managing asset mappings between data providers and brokers.
-    """
+    """Manage uploaded provider/broker code and asset mappings."""
     name = "Registry"
     dynamic_provider = '/app/dynamic_providers'
     dynamic_broker = '/app/dynamic_brokers'
@@ -35,6 +34,15 @@ class Registry(DatabaseHandler, APIHandler):
             refresh_seconds: int = 30,
             api_host: str = '0.0.0.0',
             api_port: int = 8080) -> None:
+        """Create a Registry instance.
+
+        Args:
+            dsn (str | None): Database DSN for internal pool creation.
+            pool (asyncpg.Pool | None): Existing pool to reuse.
+            refresh_seconds (int): Reserved for future use.
+            api_host (str): Host interface for the internal API.
+            api_port (int): Port number for the internal API.
+        """
 
         # Initialize Supers
         DatabaseHandler.__init__(self, dsn=dsn, pool=pool)
@@ -142,8 +150,15 @@ class Registry(DatabaseHandler, APIHandler):
         file: UploadFile = File(...),
         secrets: str = Form(...)
     ) -> FileUploadResponse:
-        """
-        Custom code upload endpoint
+        """Upload custom provider/broker code and register it.
+
+        Args:
+            class_type (ClassType): Type of class being uploaded.
+            file (UploadFile): Python file containing the class.
+            secrets (str): Secrets payload for the class, encrypted before storage.
+
+        Returns:
+            FileUploadResponse: Status message and registered ID.
         """
         logger.info(f"Registry.handle_upload_file: Received POST request for {class_type} upload")
         
@@ -304,8 +319,19 @@ class Registry(DatabaseHandler, APIHandler):
             file_hash: bytes,
             nonce: bytes,
             ciphertext: bytes) -> int | None:
-        """
-        Register the uploaded code in the database.
+        """Persist uploaded code metadata and encrypted secrets.
+
+        Args:
+            class_name (str): Provider/broker class name.
+            class_type (str): ``provider`` or ``broker``.
+            class_subtype (str): Specific subclass type.
+            file_path (str): Stored file path.
+            file_hash (bytes): SHA256 hash of the file contents.
+            nonce (bytes): Encryption nonce.
+            ciphertext (bytes): Encrypted secrets payload.
+
+        Returns:
+            int | None: Registered row id or ``None`` when duplicate.
         """
         sql_insert_query = """
         INSERT INTO code_registry
@@ -345,8 +371,14 @@ class Registry(DatabaseHandler, APIHandler):
         class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
         class_name: str = Query(..., description="Class name (provider/broker name)")
     ) -> DeleteClassResponse:
-        """
-        Endpoint to delete a registered class (provider or broker) by its class_name and class_type.
+        """Delete a registered provider or broker and its stored file.
+
+        Args:
+            class_type (ClassType): ``provider`` or ``broker``.
+            class_name (str): Registered class name.
+
+        Returns:
+            DeleteClassResponse: Deletion status and file removal outcome.
         """
         # Verify if the class_name and class_type are registered
         query_file_path = """
@@ -414,8 +446,14 @@ class Registry(DatabaseHandler, APIHandler):
         class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
         class_name: str = Query(..., description="Class name (provider/broker name)")
     ) -> UpdateAssetsResponse:
-        """
-        Endpoint to update assets for a given registered class_name and class_type.
+        """Update assets for a specific registered provider or broker.
+
+        Args:
+            class_type (ClassType): ``provider`` or ``broker``.
+            class_name (str): Registered class name.
+
+        Returns:
+            UpdateAssetsResponse: Summary statistics for the operation.
         """
         # Verify if the class_name and class_type are registered
         query_provider_exists = """
@@ -442,9 +480,7 @@ class Registry(DatabaseHandler, APIHandler):
         return UpdateAssetsResponse(**stats)
 
     async def handle_update_all_assets(self) -> List[UpdateAssetsResponse]:
-        """
-        API Endpoint to trigger assets update for all registered code
-        """
+        """Trigger asset updates for all registered providers and brokers."""
         logger.info("Registry.handle_update_all_assets: Triggering asset update for all registered providers.")
         # Fetch all registered providers
         query_providers = """
@@ -618,8 +654,13 @@ class Registry(DatabaseHandler, APIHandler):
         return stats
 
     async def handle_get_assets(self, params: AssetQueryParams = Depends()) -> AssetResponse:
-        """
-        API endpoint to get assets with filtering, sorting, and pagination.
+        """Return assets with optional filtering, sorting, and pagination.
+
+        Args:
+            params (AssetQueryParams): Query parameters parsed by FastAPI.
+
+        Returns:
+            AssetResponse: Paginated asset list and counts.
         """
         logger.info("Registry.handle_get_assets: Received request for assets.")
 
@@ -741,10 +782,7 @@ class Registry(DatabaseHandler, APIHandler):
 
     # # GET REGISTERED CLASSES
     async def handle_get_classes_summary(self) -> List[ClassSummaryItem]:
-        """
-        API endpoint to get a summary of all registered classes (providers/brokers)
-        and basic statistics like the number of assets associated with them.
-        """
+        """Return summary information for registered providers and brokers."""
         logger.info("Registry.handle_get_classes_summary: Received request for classes summary.")
 
         # Query to get registered classes and a count of their assets
@@ -792,8 +830,13 @@ class Registry(DatabaseHandler, APIHandler):
 
     # # ASSET MAPPINGS
     async def handle_create_asset_mapping(self, mapping: AssetMappingCreate) -> AssetMappingResponse:
-        """
-        API endpoint to create a new mapping between a common symbol and a provider-specific asset symbol.
+        """Create a mapping between a common symbol and provider-specific symbol.
+
+        Args:
+            mapping (AssetMappingCreate): Mapping payload.
+
+        Returns:
+            AssetMappingResponse: Created mapping.
         """
         insert_query = """
             INSERT INTO asset_mapping (common_symbol, class_name, class_type, class_symbol, is_active)
@@ -866,9 +909,17 @@ class Registry(DatabaseHandler, APIHandler):
         class_symbol: Optional[str] = Query(None),
         is_active: Optional[bool] = Query(None)
     ) -> List[AssetMappingResponse]:
-        """
-        API endpoint to get asset mappings.
-        Supports filtering via query parameters.
+        """List asset mappings with optional filters.
+
+        Args:
+            common_symbol (str | None): Common symbol filter.
+            class_name (str | None): Provider/broker name filter.
+            class_type (ClassType | None): Provider or broker filter.
+            class_symbol (str | None): Provider-specific symbol filter.
+            is_active (bool | None): Active flag filter.
+
+        Returns:
+            list[AssetMappingResponse]: Matching mappings.
         """
         logger.info("Registry.handle_get_asset_mappings: Received request for asset mappings.")
 
@@ -922,10 +973,16 @@ class Registry(DatabaseHandler, APIHandler):
         class_symbol: str = Query(..., description="Class-specific symbol"),
         update: AssetMappingUpdate = Body(...)
     ) -> AssetMappingResponse:
-        """
-        API endpoint to update an existing asset mapping.
-        Identified by class_name, class_type, and class_symbol as query parameters.
-        Payload can contain 'common_symbol' and/or 'is_active' to update.
+        """Update an existing asset mapping.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+            class_symbol (str): Provider-specific symbol.
+            update (AssetMappingUpdate): Fields to modify.
+
+        Returns:
+            AssetMappingResponse: Updated mapping.
         """
         logger.info(f"Registry.handle_update_asset_mapping: Received PUT request for "
                     f"{class_type}/{class_name}/{class_symbol}")
@@ -1001,9 +1058,15 @@ class Registry(DatabaseHandler, APIHandler):
         class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'"),
         class_symbol: str = Query(..., description="Class-specific symbol")
     ) -> Response: 
-        """
-        API endpoint to delete an existing asset mapping.
-        Identified by class_name, class_type, and class_symbol as query parameters.
+        """Delete an asset mapping identified by provider/broker and symbol.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+            class_symbol (str): Provider-specific symbol.
+
+        Returns:
+            Response: Empty 204 response on success.
         """
         logger.info(
             f"Registry.handle_delete_asset_mapping: Received DELETE request for "

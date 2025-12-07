@@ -1,3 +1,5 @@
+"""Shared FastAPI handler base with lifecycle helpers."""
+
 from typing import Optional
 from abc import ABC, abstractmethod
 from fastapi import FastAPI
@@ -9,18 +11,26 @@ import os
 import logging
 logger = logging.getLogger(__name__)
 
+
 class APIHandler(ABC):
-    """A class that serves a FastAPI web application and manages it's lifecycle."""
+    """Serve a FastAPI application and manage its lifecycle."""
 
     @property
     @abstractmethod
-    def name(self) -> str:                   # Name of the API handler
+    def name(self) -> str:
+        """Human-friendly service name used for logging and titles."""
         ...
 
     def __init__(
             self,
             api_host: str = '0.0.0.0',
             api_port: int = 8080) -> None: 
+        """Configure and create the FastAPI application.
+
+        Args:
+            api_host (str): Host interface to bind to.
+            api_port (int): Port number to expose the API on.
+        """
 
         # API Server
         self._api_host = api_host
@@ -49,12 +59,7 @@ class APIHandler(ABC):
 
     @abstractmethod
     def _setup_routes(self) -> None:
-        """
-        Subclasses must implement this method to add their routes 
-        to self._api_app.
-        Example: self._api_app.router.add_api_route('/status', self.handle_status, methods=['GET'])
-        Or use APIRouter: router = APIRouter(); router.get('/status')(self.handle_status)
-        """
+        """Register API routes on ``self._api_app``."""
         pass
 
     async def start_api_server(self) -> None:
@@ -73,7 +78,7 @@ class APIHandler(ABC):
         logger.info(f"{self.name} Internal API server started on http://{self._api_host}:{self._api_port}")
 
     async def stop_api_server(self) -> None:
-        """Stop the internal API server."""
+        """Stop the internal API server and await shutdown."""
         if self._server:
             self._server.should_exit = True
             # Wait for server to shutdown

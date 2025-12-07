@@ -1,3 +1,5 @@
+"""Built-in live data provider for Kraken WebSocket OHLC data."""
+
 from quasar.lib.providers.core import LiveDataProvider, Interval, Bar, SymbolInfo
 from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone
@@ -34,7 +36,7 @@ class KrakenProvider(LiveDataProvider):
         self._url = "wss://ws.kraken.com/v2"
 
     async def get_available_symbols(self) -> list[SymbolInfo]:
-        # Get Available Trading Pairs from Kraken
+        """Return supported Kraken trading pairs denominated in USD or USDC."""
         base_url = f"https://api.kraken.com/0/public/AssetPairs"
         params = {
             'country_code': 'US:TX'
@@ -79,16 +81,12 @@ class KrakenProvider(LiveDataProvider):
 
 
     async def _connect(self):
-        """
-        Connect to Kraken WebSocket API
-        """
+        """Connect to the Kraken WebSocket API."""
         print("Connected to Kraken WebSocket API")
         return await websockets.connect(self._url)
 
     async def _subscribe(self, interval: Interval, symbols: list[str]) -> None:
-        """
-        Subscribe to the Kraken WebSocket API for the given symbols
-        """
+        """Return subscription payload for Kraken OHLC channel."""
         interval_map = {
             '1min': 1,
             '5min': 5,
@@ -118,9 +116,7 @@ class KrakenProvider(LiveDataProvider):
         return subscribe_message
 
     async def _unsubscribe(self, symbols: list[str]) -> None:
-        """
-        Unsubscribe from the Kraken WebSocket API for the given symbols
-        """
+        """Return unsubscribe payload for Kraken OHLC channel."""
         unsubscribe_message = {
             "method": "unsubscribe",
             "params": {
@@ -133,9 +129,7 @@ class KrakenProvider(LiveDataProvider):
         return unsubscribe_message
 
     async def _parse_message(self, message: str) -> list[Bar]:
-        """
-        Parse the message received from the Kraken WebSocket API, Return a Bar
-        """
+        """Parse Kraken OHLC websocket message into ``Bar`` objects."""
         data = json.loads(message)
 
         # Check Message Format

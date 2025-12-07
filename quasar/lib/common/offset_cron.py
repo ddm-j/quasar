@@ -1,16 +1,27 @@
+"""Cron trigger variant that applies a positive or negative offset."""
+
 from apscheduler.triggers.cron import CronTrigger
-from datetime import timedelta
+from datetime import timedelta, tzinfo
+from typing import Any
+
 
 class OffsetCronTrigger(CronTrigger):
-    """Subclassed CronTrigger that fires at a specified offset from the original trigger time."""
+    """CronTrigger that fires at a specified offset from the base schedule."""
     
-    def __init__(self, offset_seconds=0, **kwargs):
+    def __init__(self, offset_seconds: int = 0, **kwargs: Any):
+        """Initialize the trigger with an offset.
+
+        Args:
+            offset_seconds (int): Seconds to shift the scheduled time. Negative
+                values schedule before the base trigger.
+            **kwargs: Standard ``CronTrigger`` keyword arguments.
+        """
         self._sign = 1 if offset_seconds >= 0 else -1
         self.offset_seconds = abs(offset_seconds)
         super().__init__(**kwargs)
     
     def get_next_fire_time(self, previous_fire_time, now):
-        """Get the next fire time adjusted by the offset."""
+        """Return the next fire time adjusted by the configured offset."""
         # If we have a previous fire time, artificially advance it by 1 microsecond
         # beyond what it would normally be without our offset
         
@@ -34,18 +45,19 @@ class OffsetCronTrigger(CronTrigger):
         return None
 
     @classmethod
-    def from_crontab(cls, expr, offset_seconds=0, timezone=None):
-        """
-        Create a :class:`~CronTrigger` from a standard crontab expression.
+    def from_crontab(cls, expr: str, offset_seconds: int = 0, timezone: tzinfo | str | None = None) -> "OffsetCronTrigger":
+        """Create an ``OffsetCronTrigger`` from a crontab expression.
 
-        See https://en.wikipedia.org/wiki/Cron for more information on the format accepted here.
+        Args:
+            expr (str): Standard crontab fields ``minute hour day month day_of_week``.
+            offset_seconds (int): Seconds to offset the trigger time; can be negative.
+            timezone: Time zone for calculations; defaults to scheduler timezone.
 
-        :param offset_seconds: seconds to offset the trigger time by (can be negative)
-        :param expr: minute, hour, day of month, month, day of week
-        :param datetime.tzinfo|str timezone: time zone to use for the date/time calculations (
-            defaults to scheduler timezone)
-        :return: a :class:`~CronTrigger` instance
+        Returns:
+            OffsetCronTrigger: Configured trigger instance.
 
+        Raises:
+            ValueError: If the crontab expression does not contain 5 fields.
         """
         values = expr.split()
         if len(values) != 5:

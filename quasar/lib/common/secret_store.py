@@ -1,3 +1,5 @@
+"""Secret store that can read from local files or AWS SSM."""
+
 import json, os, boto3
 from pathlib import Path
 
@@ -8,17 +10,40 @@ _DEFAULT_PATHS = [
     Path('./.secrets/.quasar_secrets.json'),    # dev project dir
 ]
 
+
 class SecretsFileNotFoundError(Exception):
-    pass
+    """Raised when no secrets file can be located in auto mode."""
+
 
 class SecretStore:
+    """Load provider secrets from disk or AWS Parameter Store."""
+
     def __init__(self, mode: str = "auto", aws_region: str | None = None):
+        """Create a secret store.
+
+        Args:
+            mode (str): One of ``auto``, ``local``, or ``aws``.
+            aws_region (str | None): AWS region to use when ``mode='aws'``.
+        """
         self.mode = mode
         self._cache: dict[str, dict] = {}
         if mode == "aws":
             self._ssm = boto3.client("ssm", region_name=aws_region)
 
     def load_cfg_from_file(self, provider: str, file: Path) -> dict:
+        """Read provider config from a JSON secrets file.
+
+        Args:
+            provider (str): Provider key inside the secrets file.
+            file (Path): Path to the JSON file.
+
+        Returns:
+            dict: Provider configuration.
+
+        Raises:
+            FileNotFoundError: If the file is missing.
+            KeyError: If the provider key is not present.
+        """
         if not file.is_file():
             raise FileNotFoundError(f"Secret file: {file} not found.")
 
@@ -30,6 +55,17 @@ class SecretStore:
 
     # ------------------------------------------------------------------
     async def get(self, provider: str) -> dict:
+        """Return provider secrets using local files or AWS depending on mode.
+
+        Args:
+            provider (str): Provider key to load secrets for.
+
+        Returns:
+            dict: Provider secrets payload.
+
+        Raises:
+            SecretsFileNotFoundError: When auto mode cannot locate a secrets file.
+        """
         if provider in self._cache:
             return self._cache[provider]
 

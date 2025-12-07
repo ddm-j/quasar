@@ -1,0 +1,89 @@
+site_name: Quasar Docs
+site_description: Documentation for the Quasar automated trading platform
+site_url: ""
+repo_url: https://github.com/ddm-j/quasar
+repo_name: ddm-j/quasar
+
+docs_dir: .
+site_dir: ../site
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.details
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_root_full_path: false
+            separate_signature: true
+            show_signature_annotations: true
+            merge_init_into_class: true
+  - mike:
+      canonical_version: latest
+      alias_type: symlink
+      version_selector: true
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Services:
+      - DataHub: services/datahub.md
+      - Registry: services/registry.md
+      - Web: services/web.md
+  - API Reference:
+      - Overview: reference/index.md
+      - Core Library:
+          - Common: reference/lib-common.md
+          - Providers: reference/providers.md
+      - Services:
+          - DataHub: reference/datahub.md
+          - Registry: reference/registry.md
+  - Contributing:
+      - Docstrings: contributing/docstrings.md
+      - Docs Style: contributing/docs-style.md
+      - Publishing: contributing/publishing.md
+      - Git Workflow: git-workflow.md
+
