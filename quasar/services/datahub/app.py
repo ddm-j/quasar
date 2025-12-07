@@ -1,3 +1,5 @@
+"""Entrypoint script to start the DataHub service."""
+
 import asyncio, os, logging
 from quasar.services.datahub import DataHub
 from quasar.lib.common.secret_store import SecretStore
@@ -9,6 +11,7 @@ logging.basicConfig(
 )
 
 async def main():
+    """Bootstrap the DataHub service and block until shutdown."""
     # Load Environment
     dsn   = os.environ["DSN"]                      # provided by compose
     mode  = os.getenv("QUASAR_SECRET_MODE", "auto")

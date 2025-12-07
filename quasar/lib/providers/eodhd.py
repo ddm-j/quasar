@@ -1,3 +1,5 @@
+"""Built-in historical data provider for EODHD."""
+
 from quasar.lib.providers.core import HistoricalDataProvider, Interval, Bar, SymbolInfo
 from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone
@@ -13,9 +15,7 @@ class EODHDProvider(HistoricalDataProvider):
     RATE_LIMIT = (1000, 60)
 
     async def get_available_symbols(self) -> list[SymbolInfo]:
-        """
-        Get Available Symbols from EODHD (that we're interested in trading)
-        """ 
+        """Return available symbols from EODHD filtered to supported exchanges."""
         symbols = []
 
         # Pull Data from Exchanges of Interest
@@ -97,9 +97,7 @@ class EODHDProvider(HistoricalDataProvider):
         end: date,
         interval: Interval,
     ):
-        """
-        Symbol Pull Implementation for EODHD
-        """
+        """Yield historical bars from EODHD for the given symbol and range."""
         # Map Interval to EODHD API
         eodhd_interval_map = {
             '1d': '1d',

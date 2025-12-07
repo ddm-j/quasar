@@ -1,3 +1,5 @@
+"""Provider base classes and helpers for historical and live data."""
+
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timezone, timedelta
@@ -65,8 +67,16 @@ class ProviderType(Enum):
 # Asynchronous timeout decorator
 T = TypeVar('T')
 def async_timeout(seconds: int = 60):
-    """
-    Asynchronous timeout decorator.
+    """Return an async decorator that enforces a timeout.
+
+    Args:
+        seconds (int): Default timeout in seconds.
+
+    Returns:
+        Callable: Decorator that wraps a coroutine with ``asyncio.wait_for``.
+
+    Raises:
+        Exception: Propagates any exception from the wrapped coroutine.
     """
     def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         nonlocal seconds
@@ -86,13 +96,16 @@ def async_timeout(seconds: int = 60):
     return decorator
 
 class DataProvider(ABC):
-    """
-    Base class for all data provider types
-    """
+    """Base class for all data provider types."""
     RATE_LIMIT = None      # (calls, seconds), e.g. (1000, 60)
     CONCURRENCY = 5        # open sockets
 
     def __init__(self, context: DerivedContext):
+        """Initialize provider with rate limiting and session.
+
+        Args:
+            context (DerivedContext): Derived context containing provider secrets.
+        """
         calls, seconds = self.RATE_LIMIT or (float("inf"), 1)
         self._limiter = AsyncLimiter(calls, seconds)
         self._session = aiohttp.ClientSession(
@@ -112,20 +125,22 @@ class DataProvider(ABC):
     # Overload for get_history_many method (HISTORICAL)
     @overload
     async def get_data(self, reqs: Iterable[Req]) -> AsyncIterator[Bar]:
-        """
-        Get historical data for the given requests.
-        """
+        """Get historical data for the given requests."""
     
     # Overload for get_live method (REALTIME)
     @overload
     async def get_data(self, interval: Interval, symbols: list[str]) -> list[Bar]:
-        """
-        Get live data for the given request.
-        """
+        """Get live data for the given request."""
 
     async def get_data(self, *args, **kwargs) -> AsyncIterator[Bar]:
-        """
-        Universal method to get data from the provider. Type hints through overloads
+        """Route to historical or live data based on provider type.
+
+        Args:
+            *args: Positional arguments for the concrete provider.
+            **kwargs: Keyword arguments for the concrete provider.
+
+        Yields:
+            Bar: Bars produced by the provider implementation.
         """
         if self.provider_type == ProviderType.HISTORICAL:
             async for bar in self.get_history_many(*args, **kwargs):
@@ -139,16 +154,19 @@ class DataProvider(ABC):
 
     @abstractmethod
     async def get_available_symbols() -> list[SymbolInfo]:
-        """
-        Returns a list[SymbolInfo] of all available symbols for trading on this provider.
-        """
+        """Return all symbols available for trading on this provider."""
 
     async def _api_get(
             self,
             url: str
     ) -> dict:
-        """
-        Built-in rate-limited GET request method.
+        """Perform a rate-limited HTTP GET using the shared session.
+
+        Args:
+            url (str): URL to fetch.
+
+        Returns:
+            dict: Parsed JSON response.
         """
         async with self._limiter:
             async with self._session.get(url) as r:
@@ -156,18 +174,19 @@ class DataProvider(ABC):
 
 
     async def aclose(self):
+        """Close the underlying HTTP session."""
         await self._session.close()
 
     async def __aenter__(self):   
+        """Return ``self`` to support async context manager use."""
         return self
 
     async def __aexit__(self, *exc):
+        """Close the HTTP session on context manager exit."""
         await self.aclose()
 
 class HistoricalDataProvider(DataProvider):
-    """
-    Base class for all historical data provider types
-    """
+    """Base class for all historical data provider types."""
     provider_type = ProviderType.HISTORICAL
     
     def __init__(self, context: DerivedContext):
@@ -177,6 +196,14 @@ class HistoricalDataProvider(DataProvider):
         self,
         reqs: Iterable[Req],
     ) -> AsyncIterator[Bar]:
+        """Yield bars for multiple requests using ``get_history`` by default.
+
+        Args:
+            reqs (Iterable[Req]): Requests to process.
+
+        Yields:
+            Bar: Bars returned from ``get_history``.
+        """
         # default: loop over single‑symbol method
         for r in reqs:
             async for bar in self.get_history(
@@ -192,16 +219,11 @@ class HistoricalDataProvider(DataProvider):
         end: date,
         interval: Interval,
     ) -> AsyncIterator[Bar]:
-        """
-        Return **inclusive** [start, end] bars ordered oldest→newest.
-        Raise ValueError if interval unsupported.
-        """
+        """Return inclusive [start, end] bars ordered oldest→newest."""
 
 
 class LiveDataProvider(DataProvider):
-    """
-    Base class for all live data provider types
-    """
+    """Base class for all live data provider types."""
     provider_type = ProviderType.REALTIME
 
     def __init__(self, context: DerivedContext):
@@ -210,44 +232,27 @@ class LiveDataProvider(DataProvider):
     @property
     @abstractmethod
     def close_buffer_seconds(self) -> int:
-        """
-        Number of seconds to keep listening for message after bar close
-        """
+        """Number of seconds to keep listening for messages after bar close."""
         ...
 
     @abstractmethod
     async def _connect(self) -> websockets.asyncio.client.WebSocketClientConnection:
-        """
-        Establish the websocket connection.
-        Implementers should connect to their websocket API here.
-        """
+        """Establish the websocket connection."""
         pass
         
     @abstractmethod
     async def _subscribe(self, symbols: list[str]) -> dict:
-        """
-        Subscribe to updates for the given symbols.
-        Send the appropriate subscription messages over the websocket.
-        """
+        """Return websocket subscribe payload for the given symbols."""
         pass
         
     @abstractmethod
     async def _unsubscribe(self, symbols: list[str]) -> dict:
-        """
-        Unsubscribe from updates for the given symbols.
-        """
+        """Return websocket unsubscribe payload for the given symbols."""
         pass
         
     @abstractmethod
     async def _parse_message(self, message: str) -> list[Bar]:
-        """
-        Parse an incoming websocket message and extract OHLCV + timestamp data.
-        
-        Returns:
-            tuple: (symbol, open, high, low, close, volume, timestamp)
-        
-        Raise ValueError if the message isn't a price update we care about.
-        """
+        """Parse a websocket message and extract OHLCV + timestamp data."""
         pass
 
     async def subscribe(
@@ -255,8 +260,12 @@ class LiveDataProvider(DataProvider):
             connection: websockets.asyncio.client.WebSocketClientConnection,
             interval: Interval,
             symbols: list[str]):
-        """
-        Subscribe to the given symbols for the specified interval.
+        """Subscribe to the given symbols for the specified interval.
+
+        Args:
+            connection (WebSocketClientConnection): Active websocket connection.
+            interval (Interval): Interval requested.
+            symbols (list[str]): Symbols to subscribe.
         """
         logger.info(f"Subscribing to {symbols.__len__()} on {self.name} WebSocket API")
         try:
@@ -270,9 +279,7 @@ class LiveDataProvider(DataProvider):
             self,
             conn: websockets.asyncio.client.WebSocketClientConnection,
             symbols: list[str]):
-        """
-        Unsubscribe from the given symbols.
-        """
+        """Unsubscribe from the given symbols."""
         logger.info(f"Unsubscribing from {symbols.__len__()} on {self.name} WebSocket API")
         try:
             unsub_msg = await self._unsubscribe(symbols)
@@ -282,9 +289,7 @@ class LiveDataProvider(DataProvider):
 
     @async_timeout()
     async def get_live(self, interval: Interval, symbols: list[str], timeout: int = None) -> list[Bar]:
-        """
-        Get live data for the given symbols.
-        """
+        """Get live bars for the given symbols via websocket stream."""
         # Open Asynchronous WebSocket connection
         connection = await self._connect()
         async with connection as conn:

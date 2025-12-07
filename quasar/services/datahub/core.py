@@ -1,3 +1,5 @@
+"""DataHub service core: scheduler, provider loading, and API handlers."""
+
 import asyncpg
 import importlib.util
 import inspect
@@ -52,9 +54,13 @@ QUERIES = {
 ALLOWED_DYNAMIC_PATH = '/app/dynamic_providers'
 
 def safe_job(default_return=None):
-    """
-    Decorator to catch exceptions in provider jobs and prevent system hangs.
-    Logs the exception and optionally returns a default value.
+    """Decorator to wrap scheduled jobs and swallow exceptions.
+
+    Args:
+        default_return: Value to return if the wrapped coroutine fails.
+
+    Returns:
+        Callable: Wrapped coroutine that logs and returns ``default_return`` on failure.
     """
     def decorator(func):
         @wraps(func)
@@ -69,17 +75,8 @@ def safe_job(default_return=None):
 
 
 class DataHub(DatabaseHandler, APIHandler):
-    """
-    DataHub Class
+    """Coordinate provider jobs, storage, and the DataHub API."""
 
-    Parameters
-    ----------
-    secret_store : SecretStore instance
-    dsn : str
-        Postgres / TimescaleDB DSN, e.g. "postgresql://pg:pg@localhost:5432/pg".
-    pool : asyncpg.Pool, optional
-        If you already created one outside, pass it in and we’ll reuse it.
-    """
     name = "DataHub"
     system_context = SystemContext()
 
@@ -91,6 +88,16 @@ class DataHub(DatabaseHandler, APIHandler):
             refresh_seconds: int = 30,
             api_host: str = '0.0.0.0',
             api_port: int = 8080): 
+        """Create a DataHub instance.
+
+        Args:
+            secret_store (SecretStore): Provider secret loader.
+            dsn (str | None): Database DSN when creating the pool internally.
+            pool (asyncpg.Pool | None): Reusable pool if managed externally.
+            refresh_seconds (int): Interval to refresh provider subscriptions.
+            api_host (str): Host interface for the internal API.
+            api_port (int): Port number for the internal API.
+        """
         
         # Initialize parent class
         DatabaseHandler.__init__(self, dsn=dsn, pool=pool)
@@ -112,6 +119,7 @@ class DataHub(DatabaseHandler, APIHandler):
         self._refresh_seconds = refresh_seconds
     
     def _stop_scheduler(self):
+        """Shut down any running scheduler instance and clear tracked jobs."""
         if self._sched.state == STATE_RUNNING:
             logger.debug("Existing scheduler is running. Shutting it down.")
             self._sched.shutdown(wait=False)
@@ -151,6 +159,7 @@ class DataHub(DatabaseHandler, APIHandler):
     # OBJECT LIFECYCLE
     # ---------------------------------------------------------------------
     async def start(self):
+        """Start database pool, refresh subscriptions, and run the API server."""
         
         # Start Database Pool
         await self.init_pool()
@@ -174,7 +183,7 @@ class DataHub(DatabaseHandler, APIHandler):
 
 
     async def stop(self):
-        """Close pool we own – call on shutdown / tests tear‑down."""
+        """Stop API server, scheduler, and close database pool."""
         logger.info("DataHub shutting down.")
 
         # Stop Internal API Server
@@ -190,8 +199,13 @@ class DataHub(DatabaseHandler, APIHandler):
     # ---------------------------------------------------------------------
     # Provider Loading
     async def load_provider_cls(self, name: str) -> bool:
-        """
-        Load Provider Class
+        """Load a provider class by name from the registry table.
+
+        Args:
+            name (str): Provider class name stored in ``code_registry``.
+
+        Returns:
+            bool: ``True`` when the provider was loaded or already present.
         """
         try:
             # Check if already loaded
@@ -264,13 +278,7 @@ class DataHub(DatabaseHandler, APIHandler):
             return False
 
     async def refresh_subscriptions(self):
-        """
-        Refresh Data Provider Subscriptions.
-        
-        Synchronizes scheduled data-fetching jobs with the current state of
-        the provider_subscription table. Loads new providers, removes obsolete
-        ones, and updates scheduled jobs accordingly.
-        """
+        """Synchronize scheduled jobs with the ``provider_subscription`` table."""
         logger.debug("Refreshing subscriptions.")
         # Fetch Current Subscriptions in the DB
         query = QUERIES['get_subscriptions']
@@ -335,7 +343,16 @@ class DataHub(DatabaseHandler, APIHandler):
             provider: str,
             interval: str,
             symbols: list[str]) -> list[Req]:
-            """Build Req iterable to send to the data provider. """
+            """Build provider requests for historical bars.
+
+            Args:
+                provider (str): Provider class name.
+                interval (str): Interval string (e.g., ``1d``).
+                symbols (list[str]): Symbols to request.
+
+            Returns:
+                list[Req]: Requests grouped by symbol.
+            """
             logger.info(f'Building provider requests for: {provider}, {interval}')
 
             today = datetime.now(timezone.utc).date()
@@ -369,9 +386,12 @@ class DataHub(DatabaseHandler, APIHandler):
             table: str,
             records: list[tuple]
     ):
-        """
-        Insert records using INSERT with ON CONFLICT DO NOTHING.
-        This is slower than COPY but handles duplicates gracefully.
+        """Insert records with ON CONFLICT handling as a fallback path.
+
+        Args:
+            conn (asyncpg.Connection): Database connection.
+            table (str): Target table name.
+            records (list[tuple]): Records to insert.
         """
         insert_query = f"""
             INSERT INTO {table} (ts, sym, provider, provider_class_type, interval, o, h, l, c, v)
@@ -387,7 +407,14 @@ class DataHub(DatabaseHandler, APIHandler):
             interval: str,
             bars: list[Bar]
     ):
-        """Batch Insertion of records into QuasarDB with duplicate key handling"""
+        """Insert bars into the appropriate table with duplicate handling.
+
+        Args:
+            provider_type (ProviderType): Provider category (historical/live).
+            provider (str): Provider class name.
+            interval (str): Interval string.
+            bars (list[Bar]): Bars to persist.
+        """
         dbs = ['historical_data', 'live_data']
         db = dbs[provider_type.value]
         logger.info(f'Inserting {len(bars)} bars into {db}: {provider}, {interval}')
@@ -420,6 +447,17 @@ class DataHub(DatabaseHandler, APIHandler):
         self,
         provider_name: str = Query(..., description="Provider name")
     ) -> list[dict]:
+        """Return available symbols for the requested provider.
+
+        Args:
+            provider_name (str): Provider class name.
+
+        Returns:
+            list[dict]: Provider-specific symbol metadata.
+
+        Raises:
+            HTTPException: When the provider is missing or unimplemented.
+        """
         logger.info(f"API request: Get available symbols for provider '{provider_name}'")
         provider_instance = self._providers.get(provider_name)
         if not provider_instance:
@@ -451,15 +489,16 @@ class DataHub(DatabaseHandler, APIHandler):
     # Helper Methods for Data Explorer API
     # ---------------------------------------------------------------------
     def _parse_timestamp(self, timestamp: str | int | float | None) -> Optional[datetime]:
-        """
-        Parse timestamp from ISO 8601 string or Unix timestamp.
-        Returns datetime object in UTC timezone.
-        
+        """Parse an ISO 8601 string or Unix timestamp to UTC datetime.
+
         Args:
-            timestamp: ISO 8601 string, Unix timestamp (int/float), or None
-            
+            timestamp (str | int | float | None): Input value to parse.
+
         Returns:
-            datetime object in UTC, or None if input is None
+            datetime | None: Parsed datetime in UTC, or ``None`` when input is ``None``.
+
+        Raises:
+            ValueError: When the timestamp cannot be parsed.
         """
         if timestamp is None:
             return None
@@ -498,9 +537,16 @@ class DataHub(DatabaseHandler, APIHandler):
         provider: Annotated[Optional[str], Query(description="Filter by provider class name")] = None,
         limit: Annotated[int, Query(ge=1, le=200, description="Maximum number of results")] = 50
     ) -> SymbolSearchResponse:
-        """
-        Search for symbols by common symbol, provider symbol, or asset name.
-        Returns symbols with their data availability information.
+        """Search symbols by common symbol, provider symbol, or asset name.
+
+        Args:
+            q (str): Search query text.
+            data_type (str | None): Filter to ``historical`` or ``live``.
+            provider (str | None): Provider class name filter.
+            limit (int): Maximum results to return.
+
+        Returns:
+            SymbolSearchResponse: Matched symbols with availability data.
         """
         logger.info(f"API request: Search symbols with query '{q}', data_type={data_type}, provider={provider}, limit={limit}")
         
@@ -645,8 +691,20 @@ class DataHub(DatabaseHandler, APIHandler):
         to_time: Annotated[Optional[str], Query(alias="to", description="End time (ISO 8601 or Unix timestamp)")] = None,
         order: Annotated[str, Query(description="Order: 'asc' or 'desc'")] = "desc"
     ) -> OHLCDataResponse:
-        """
-        Retrieve OHLC data for a specific symbol/provider combination.
+        """Retrieve OHLC data for a specific symbol/provider combination.
+
+        Args:
+            provider (str): Provider class name.
+            symbol (str): Provider-specific symbol.
+            data_type (str): ``historical`` or ``live``.
+            interval (str): Interval string.
+            limit (int): Maximum bars to return.
+            from_time (str | None): Inclusive start time filter.
+            to_time (str | None): Exclusive end time filter.
+            order (str): Sort order, ``asc`` or ``desc``.
+
+        Returns:
+            OHLCDataResponse: Bars and metadata for the request.
         """
         logger.info(f"API request: Get OHLC data for {provider}/{symbol}, type={data_type}, interval={interval}, limit={limit}")
         
@@ -789,8 +847,15 @@ class DataHub(DatabaseHandler, APIHandler):
         symbol: str,
         data_type: Annotated[Optional[str], Query(description="Filter to 'historical' or 'live' (default: both)")] = None
     ) -> SymbolMetadataResponse:
-        """
-        Get detailed metadata for a specific symbol/provider combination.
+        """Get detailed metadata for a specific symbol/provider combination.
+
+        Args:
+            provider (str): Provider class name.
+            symbol (str): Provider-specific symbol.
+            data_type (str | None): Optional filter to ``historical`` or ``live``.
+
+        Returns:
+            SymbolMetadataResponse: Metadata and availability information.
         """
         logger.info(f"API request: Get metadata for {provider}/{symbol}, data_type={data_type}")
         
@@ -943,9 +1008,13 @@ class DataHub(DatabaseHandler, APIHandler):
             raise HTTPException(status_code=500, detail=f"Internal server error while retrieving symbol metadata: {str(e)}")
 
     async def validate_provider(self, request: ProviderValidateRequest) -> ProviderValidateResponse:
-        """
-        Validate Custom Provider Code
-        Service to Service API endpoint
+        """Validate uploaded provider code for class shape and metadata.
+
+        Args:
+            request (ProviderValidateRequest): Validation request payload.
+
+        Returns:
+            ProviderValidateResponse: Validated provider metadata.
         """
         try:
             file_path = request.file_path
@@ -1009,8 +1078,12 @@ class DataHub(DatabaseHandler, APIHandler):
 
     @safe_job(default_return=None)
     async def get_data(self, provider: str, interval: str, symbols: list[str]):
-        """
-        Get Data from the DataHub
+        """Dispatch data pulls for the given provider and symbols.
+
+        Args:
+            provider (str): Provider class name.
+            interval (str): Interval string.
+            symbols (list[str]): Symbols to pull.
         """
         # Load Provider Class
         if provider not in self._providers:
@@ -1050,9 +1123,18 @@ class DataHub(DatabaseHandler, APIHandler):
 
 
 def load_provider_from_file_path(file_path: str, expected_class_name: str) -> type:
-    """
-    Dynamically loads a provider class from a given file path.
-    Optionally checks if the loaded class has the expected_class_name.
+    """Load a provider class from a file path and verify its name.
+
+    Args:
+        file_path (str): Path to the provider implementation.
+        expected_class_name (str): Expected ``name`` attribute of the provider.
+
+    Returns:
+        type: Loaded provider class.
+
+    Raises:
+        FileNotFoundError: If the file is missing.
+        ImportError: When the provider cannot be imported or validated.
     """
     if not Path(file_path).is_file():
         raise FileNotFoundError(f"Provider file not found: {file_path}")

@@ -1,3 +1,5 @@
+"""Entrypoint script to start the Registry service."""
+
 import asyncio, os, logging
 from quasar.services.registry import Registry
 
@@ -8,6 +10,7 @@ logging.basicConfig(
 )
 
 async def main():
+    """Bootstrap the Registry service and block until shutdown."""
     # Load Environment
     dsn   = os.environ["DSN"]                      # provided by compose
 
