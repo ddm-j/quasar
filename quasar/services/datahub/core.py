@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.base import STATE_RUNNING
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Any, Awaitable, Callable
 from datetime import datetime, timezone, timedelta
 from functools import wraps
 from fastapi import HTTPException, Query
@@ -53,7 +53,7 @@ QUERIES = {
 }
 ALLOWED_DYNAMIC_PATH = '/app/dynamic_providers'
 
-def safe_job(default_return=None):
+def safe_job(default_return: Any = None) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
     """Decorator to wrap scheduled jobs and swallow exceptions.
 
     Args:
@@ -62,9 +62,9 @@ def safe_job(default_return=None):
     Returns:
         Callable: Wrapped coroutine that logs and returns ``default_return`` on failure.
     """
-    def decorator(func):
+    def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
                 return await func(*args, **kwargs)
             except Exception as e:

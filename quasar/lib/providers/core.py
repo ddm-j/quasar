@@ -66,7 +66,7 @@ class ProviderType(Enum):
 
 # Asynchronous timeout decorator
 T = TypeVar('T')
-def async_timeout(seconds: int = 60):
+def async_timeout(seconds: int = 60) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
     """Return an async decorator that enforces a timeout.
 
     Args:
@@ -132,7 +132,7 @@ class DataProvider(ABC):
     async def get_data(self, interval: Interval, symbols: list[str]) -> list[Bar]:
         """Get live data for the given request."""
 
-    async def get_data(self, *args, **kwargs) -> AsyncIterator[Bar]:
+    async def get_data(self, *args: Any, **kwargs: Any) -> AsyncIterator[Bar]:
         """Route to historical or live data based on provider type.
 
         Args:

@@ -1,13 +1,14 @@
 """Cron trigger variant that applies a positive or negative offset."""
 
 from apscheduler.triggers.cron import CronTrigger
-from datetime import timedelta
+from datetime import timedelta, tzinfo
+from typing import Any
 
 
 class OffsetCronTrigger(CronTrigger):
     """CronTrigger that fires at a specified offset from the base schedule."""
     
-    def __init__(self, offset_seconds: int = 0, **kwargs):
+    def __init__(self, offset_seconds: int = 0, **kwargs: Any):
         """Initialize the trigger with an offset.
 
         Args:
@@ -44,7 +45,7 @@ class OffsetCronTrigger(CronTrigger):
         return None
 
     @classmethod
-    def from_crontab(cls, expr: str, offset_seconds: int = 0, timezone=None):
+    def from_crontab(cls, expr: str, offset_seconds: int = 0, timezone: tzinfo | str | None = None) -> "OffsetCronTrigger":
         """Create an ``OffsetCronTrigger`` from a crontab expression.
 
         Args:
