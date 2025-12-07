@@ -75,7 +75,7 @@ def safe_job(default_return: Any = None) -> Callable[[Callable[..., Awaitable[An
 
 
 class DataHub(DatabaseHandler, APIHandler):
-    """Coordinate provider jobs, storage, and the DataHub API."""
+    """Schedule data provider jobs, storage, and the DataHub API."""
 
     name = "DataHub"
     system_context = SystemContext()
