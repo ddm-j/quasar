@@ -54,8 +54,8 @@ TimescaleDB (Port 5432)
 
 **Structure**:
 - `core.py`: Base classes for providers
-- `eodhd.py`: Historical data provider example
-- `kraken.py`: Live data provider example
+- `examples/eodhd.py`: Historical data provider example
+- `examples/kraken.py`: Live data provider example
 
 **Key Patterns**:
 - Abstract base classes for provider interface

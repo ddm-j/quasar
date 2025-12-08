@@ -71,7 +71,7 @@
 - API handlers
 
 **Excluded from Coverage**:
-- Template provider examples (eodhd.py, kraken.py)
+- Template provider examples (examples/eodhd.py, examples/kraken.py)
 
 ## 🐛 Known Issues
 

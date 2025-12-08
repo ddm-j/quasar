@@ -8,11 +8,11 @@ Base classes and provider implementations.
 
 ## EODHD provider
 
-::: quasar.lib.providers.eodhd
+::: quasar.lib.providers.examples.eodhd
 
 ## Kraken provider
 
-::: quasar.lib.providers.kraken
+::: quasar.lib.providers.examples.kraken
 
 ## Developer harness
 

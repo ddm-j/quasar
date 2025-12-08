@@ -54,8 +54,8 @@ omit = [
     "*/tests/*",
     "*/__pycache__/*",
     # Template providers - examples uploaded at runtime, not tested directly
-    "quasar/lib/providers/eodhd.py",
-    "quasar/lib/providers/kraken.py",
+    "quasar/lib/providers/examples/eodhd.py",
+    "quasar/lib/providers/examples/kraken.py",
 ]
 
 [tool.coverage.report]

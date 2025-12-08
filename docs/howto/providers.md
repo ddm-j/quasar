@@ -95,8 +95,8 @@ The base `get_live` handles: connect → subscribe → listen until the next int
 - `_parse_message`: return a list of Bars; ignore heartbeat/keepalive messages by returning `None` or `[]`.
 
 ## 7) Learn from the built-ins (short highlights)
-- `quasar.lib.providers.eodhd.EODHDProvider` (historical): maps Quasar intervals to EODHD, filters exchanges, and yields UTC timestamps.
-- `quasar.lib.providers.kraken.KrakenProvider` (live): builds WebSocket subscribe messages with interval mapping, parses OHLC payloads, trims timestamp precision, and returns bars.
+- `quasar.lib.providers.examples.eodhd.EODHDProvider` (historical): maps Quasar intervals to EODHD, filters exchanges, and yields UTC timestamps.
+- `quasar.lib.providers.examples.kraken.KrakenProvider` (live): builds WebSocket subscribe messages with interval mapping, parses OHLC payloads, trims timestamp precision, and returns bars.
 
 ## 8) Test with devtools (fast feedback)
 Devtools validate your output shape. Run the commands from the directory where Python can import your adaptor and where your config lives (for the built-in examples, that’s the repo root).
