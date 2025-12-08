@@ -118,7 +118,7 @@ quasar/
 - **Test Path**: `tests/`
 - **Coverage**: HTML reports in `htmlcov/`
 - **Async Mode**: Auto (pytest-asyncio)
-- **Coverage Exclusions**: Template providers (eodhd.py, kraken.py)
+- **Coverage Exclusions**: Template providers (examples/eodhd.py, examples/kraken.py)
 
 ## 🔐 Security Considerations
 
