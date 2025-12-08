@@ -1,0 +1,13 @@
+{
+  "provider_type": "historical",
+  "provider": "quasar.lib.providers.devtools.stubs:HistoricalStub",
+  "secrets": {},
+  "requests": [
+    {
+      "sym": "TEST.A",
+      "start": "2024-01-01",
+      "end": "2024-01-03",
+      "interval": "1d"
+    }
+  ]
+}

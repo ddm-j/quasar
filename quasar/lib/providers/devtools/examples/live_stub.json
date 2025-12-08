@@ -1,0 +1,10 @@
+{
+  "provider_type": "live",
+  "provider": "quasar.lib.providers.devtools.stubs:LiveStub",
+  "secrets": {},
+  "interval": "1min",
+  "symbols": [
+    "AAA",
+    "BBB"
+  ]
+}
