@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from quasar.lib.providers.devtools import validation, test_symbols as run_test_symbols
+from quasar.lib.providers.devtools import run_symbols, validation
 from quasar.lib.providers.devtools.historical import run_historical
 from quasar.lib.providers.devtools.live import run_live
 from quasar.lib.providers.devtools.stubs import HistoricalStub, LiveStub
@@ -16,6 +16,7 @@ def test_load_provider_class_dotted_path():
 
 def test_run_historical_stub_returns_bars():
     config = {
+        "provider_type": "historical",
         "provider": "quasar.lib.providers.devtools.stubs:HistoricalStub",
         "requests": [
             {"sym": "TEST", "start": "2024-01-01", "end": "2024-01-02", "interval": "1d"}
@@ -30,6 +31,7 @@ def test_run_historical_stub_returns_bars():
 
 def test_run_live_stub_returns_per_symbol():
     config = {
+        "provider_type": "live",
         "provider": "quasar.lib.providers.devtools.stubs:LiveStub",
         "interval": "1min",
         "symbols": ["AAA", "BBB"],
@@ -58,9 +60,10 @@ def test_validation_rejects_negative_volume():
 
 def test_symbols_validation_and_run():
     cfg = {
+        "provider_type": "historical",
         "provider": "quasar.lib.providers.devtools.stubs:HistoricalStub",
         "secrets": {},
     }
-    symbols = run_test_symbols(cfg, strict=True)
+    symbols = run_symbols(cfg, strict=True)
     assert isinstance(symbols, list)
 
