@@ -1,7 +1,15 @@
 from importlib.metadata import entry_points
 from typing import Dict, Type
 
-from .core import HistoricalDataProvider, LiveDataProvider, Req, Bar, Interval, ProviderType               # noqa: F401
+from .core import (
+    HistoricalDataProvider,
+    LiveDataProvider,
+    Req,
+    Bar,
+    Interval,
+    ProviderType,
+    SymbolInfo,
+)  # noqa: F401
 
 # Centralized Provider Registry
 _registry: Dict[str, Type[HistoricalDataProvider]] = {}
@@ -31,4 +39,14 @@ def _autodiscover():
 # Re-Export Built-Ins
 from .eodhd import EODHDProvider
 from .kraken import KrakenProvider
-__all__ = ['HistoricalDataProvider', 'LiveDataProvider', 'EODHDProvider', 'KrakenProvider', 'Bar', 'Req', 'Interval', 'ProviderType']
+__all__ = [
+    'HistoricalDataProvider',
+    'LiveDataProvider',
+    'EODHDProvider',
+    'KrakenProvider',
+    'Bar',
+    'Req',
+    'Interval',
+    'ProviderType',
+    'SymbolInfo',
+]

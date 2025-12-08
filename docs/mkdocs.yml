@@ -69,6 +69,8 @@ plugins:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - How To:
+      - Build Provider Adaptors: howto/providers.md
   - Services:
       - DataHub: services/datahub.md
       - Registry: services/registry.md
