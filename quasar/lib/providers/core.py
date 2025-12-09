@@ -101,16 +101,18 @@ class DataProvider(ABC):
     CONCURRENCY = 5        # open sockets
 
     def __init__(self, context: DerivedContext):
-        """Initialize provider with rate limiting and session.
+        """Initialize provider with rate limiting.
 
         Args:
             context (DerivedContext): Derived context containing provider secrets.
+        
+        Note:
+            The HTTP session is created lazily in __aenter__ to ensure it is
+            initialized within an async context, avoiding aiohttp event loop issues.
         """
         calls, seconds = self.RATE_LIMIT or (float("inf"), 1)
         self._limiter = AsyncLimiter(calls, seconds)
-        self._session = aiohttp.ClientSession(
-            connector=aiohttp.TCPConnector(limit=self.CONCURRENCY)
-        )
+        self._session: aiohttp.ClientSession | None = None
         self.context = context
 
     @property
@@ -174,11 +176,21 @@ class DataProvider(ABC):
 
 
     async def aclose(self):
-        """Close the underlying HTTP session."""
-        await self._session.close()
+        """Close the underlying HTTP session if it exists."""
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
 
     async def __aenter__(self):   
-        """Return ``self`` to support async context manager use."""
+        """Initialize session and return self for async context manager use.
+        
+        Creates the aiohttp ClientSession within the async context to ensure
+        proper event loop attachment.
+        """
+        if self._session is None:
+            self._session = aiohttp.ClientSession(
+                connector=aiohttp.TCPConnector(limit=self.CONCURRENCY)
+            )
         return self
 
     async def __aexit__(self, *exc):

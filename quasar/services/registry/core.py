@@ -601,50 +601,49 @@ class Registry(DatabaseHandler, APIHandler):
         
         async with self.pool.acquire() as conn:
             prepared_upsert = await conn.prepare(upsert_query)
-            async with conn.transaction():
-                for symbol_info in symbol_info_list:
-                    if not isinstance(symbol_info, dict):
-                        logger.warning(f"Invalid symbol info format: {symbol_info}")
-                        stats['failed_symbols'] += 1
-                        continue
+            for symbol_info in symbol_info_list:
+                if not isinstance(symbol_info, dict):
+                    logger.warning(f"Invalid symbol info format: {symbol_info}")
+                    stats['failed_symbols'] += 1
+                    continue
 
-                    symbol = symbol_info.get('symbol')
-                    if not symbol:
-                        logger.warning(f"Symbol is empty: {symbol_info}")
-                        stats['failed_symbols'] += 1
-                        continue
-                    if symbol in processed_symbols:
-                        logger.warning(f"Duplicate symbol found in response: {symbol}")
-                        stats['failed_symbols'] += 1
-                        continue
+                symbol = symbol_info.get('symbol')
+                if not symbol:
+                    logger.warning(f"Symbol is empty: {symbol_info}")
+                    stats['failed_symbols'] += 1
+                    continue
+                if symbol in processed_symbols:
+                    logger.warning(f"Duplicate symbol found in response: {symbol}")
+                    stats['failed_symbols'] += 1
+                    continue
 
-                    record_values = (
-                        class_name,
-                        class_type,
-                        symbol_info.get('provider_id'),
-                        symbol_info.get('isin'),
-                        symbol,
-                        symbol_info.get('name'),
-                        symbol_info.get('exchange'),
-                        symbol_info.get('asset_class'),
-                        symbol_info.get('base_currency'),
-                        symbol_info.get('quote_currency'),
-                        symbol_info.get('country')
-                    )
+                record_values = (
+                    class_name,
+                    class_type,
+                    symbol_info.get('provider_id'),
+                    symbol_info.get('isin'),
+                    symbol,
+                    symbol_info.get('name'),
+                    symbol_info.get('exchange'),
+                    symbol_info.get('asset_class'),
+                    symbol_info.get('base_currency'),
+                    symbol_info.get('quote_currency'),
+                    symbol_info.get('country')
+                )
 
-                    try:
-                        result = await prepared_upsert.fetchrow(*record_values)
-                        if result:
-                            if result['xmax'] == 0:
-                                stats['added_symbols'] += 1
-                            else:
-                                stats['updated_symbols'] += 1
+                try:
+                    result = await prepared_upsert.fetchrow(*record_values)
+                    if result:
+                        if result['xmax'] == 0:
+                            stats['added_symbols'] += 1
                         else:
-                            logger.warning(f"Failed to upsert symbol {symbol} for {class_name}.")
-                            stats['failed_symbols'] += 1
-                    except Exception as e_upsert:
-                        logger.error(f"Registry._update_assets_for_provider: Error upserting symbol {symbol} for {class_name}: {e_upsert}", exc_info=True)
+                            stats['updated_symbols'] += 1
+                    else:
+                        logger.warning(f"Failed to upsert symbol {symbol} for {class_name}.")
                         stats['failed_symbols'] += 1
+                except Exception as e_upsert:
+                    logger.error(f"Registry._update_assets_for_provider: Error upserting symbol {symbol} for {class_name}: {e_upsert}", exc_info=True)
+                    stats['failed_symbols'] += 1
 
         stats['processed_symbols'] = stats['added_symbols'] + \
                                 stats['updated_symbols'] + \
