@@ -270,6 +270,8 @@ class DataHub(DatabaseHandler, APIHandler):
             prov = ProviderCls(
                 context=context
             )
+            # Initialize the provider's async resources (e.g., aiohttp session)
+            await prov.__aenter__()
             self._providers[name] = prov
             logger.info(f"Provider {name} instance created successfully.")
             return True
