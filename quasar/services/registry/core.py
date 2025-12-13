@@ -1249,7 +1249,11 @@ class Registry(DatabaseHandler, APIHandler):
                 cursor_filter = ""
                 if cursor_score is not None:
                     cursor_filter = f"""
-                        AND (score, source_symbol, target_symbol) < (${param_idx}, ${param_idx + 1}, ${param_idx + 2})
+                        AND (
+                            score < ${param_idx}
+                            OR (score = ${param_idx} AND source_symbol > ${param_idx + 1})
+                            OR (score = ${param_idx} AND source_symbol = ${param_idx + 1} AND target_symbol > ${param_idx + 2})
+                        )
                     """
                     params.extend([cursor_score, cursor_src_sym, cursor_tgt_sym])
                     param_idx += 3
