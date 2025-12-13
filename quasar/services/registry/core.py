@@ -1,11 +1,12 @@
 """Registry service core: code uploads, asset catalog, and mappings."""
 
 from typing import Optional, List, Dict, Any
-import os, asyncpg, base64, hashlib
+import os, asyncpg, base64, hashlib, json
 import aiohttp
 from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
 from fastapi.responses import Response
 from urllib.parse import unquote_plus
+from asyncpg.exceptions import UndefinedFunctionError
 
 from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
@@ -13,11 +14,47 @@ from quasar.lib.common.context import SystemContext, DerivedContext
 from quasar.services.registry.schemas import (
     ClassType, FileUploadResponse, UpdateAssetsResponse, ClassSummaryItem,
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
-    AssetMappingCreate, AssetMappingResponse, AssetMappingUpdate
+    AssetMappingCreate, AssetMappingResponse, AssetMappingUpdate,
+    SuggestionsResponse, SuggestionItem
 )
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def _encode_cursor(score: float, src_sym: str, tgt_sym: str) -> str:
+    """Encode pagination cursor as base64 JSON.
+
+    Args:
+        score: The score value of the last item.
+        src_sym: Source symbol of the last item.
+        tgt_sym: Target symbol of the last item.
+
+    Returns:
+        Base64-encoded cursor string.
+    """
+    return base64.urlsafe_b64encode(
+        json.dumps([score, src_sym, tgt_sym]).encode()
+    ).decode()
+
+
+def _decode_cursor(cursor: str) -> tuple[float, str, str]:
+    """Decode pagination cursor from base64 JSON.
+
+    Args:
+        cursor: Base64-encoded cursor string.
+
+    Returns:
+        Tuple of (score, source_symbol, target_symbol).
+
+    Raises:
+        ValueError: If cursor is malformed.
+    """
+    try:
+        data = json.loads(base64.urlsafe_b64decode(cursor))
+        return (float(data[0]), str(data[1]), str(data[2]))
+    except Exception as e:
+        raise ValueError(f"Invalid cursor format: {e}")
 
 
 class Registry(DatabaseHandler, APIHandler):
@@ -116,6 +153,14 @@ class Registry(DatabaseHandler, APIHandler):
             self.handle_delete_asset_mapping,
             methods=['DELETE'],
             status_code=204
+        )
+
+        # Asset Mapping Suggestions (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mapping-suggestions',
+            self.handle_get_asset_mapping_suggestions,
+            methods=['GET'],
+            response_model=SuggestionsResponse
         )
 
     # OBJECT LIFECYCLE
@@ -964,6 +1009,326 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.error(f"Registry.handle_get_asset_mappings: Error fetching asset mappings: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching asset mappings")
+
+    async def handle_get_asset_mapping_suggestions(
+        self,
+        source_class: str = Query(..., description="Provider/broker to suggest mappings for"),
+        source_type: Optional[ClassType] = Query(None, description="Optional source class type"),
+        target_class: Optional[str] = Query(None, description="Optional target provider/broker to match against"),
+        target_type: Optional[ClassType] = Query(None, description="Optional target class type (defaults to provider if omitted)"),
+        search: Optional[str] = Query(None, description="Optional search filter across source/target symbols and names"),
+        min_score: float = Query(30.0, description="Minimum score threshold for suggestions"),
+        limit: int = Query(50, ge=1, le=200, description="Max results to return"),
+        offset: int = Query(0, ge=0, description="Deprecated: use cursor for pagination"),
+        cursor: Optional[str] = Query(None, description="Pagination cursor from previous response"),
+        include_total: bool = Query(False, description="Include total count (slower)")
+    ) -> SuggestionsResponse:
+        """Return suggested asset mappings using optimized DB-side scoring.
+
+        This endpoint uses UNION ALL queries for efficient index utilization and
+        cursor-based pagination for consistent, fast paging through results.
+
+        The query:
+        - Excludes symbols already mapped.
+        - Reuses an existing common_symbol from the target if present.
+        - Matches only within the same asset_class (or both NULL).
+        - Uses pg_trgm similarity if available; falls back if not installed.
+        """
+        logger.info(
+            "Registry.handle_get_asset_mapping_suggestions: source=%s, target=%s, min_score=%s, limit=%s, cursor=%s",
+            source_class, target_class, min_score, limit, cursor[:20] + "..." if cursor else None
+        )
+
+        # Decode cursor if provided
+        cursor_score: Optional[float] = None
+        cursor_src_sym: Optional[str] = None
+        cursor_tgt_sym: Optional[str] = None
+        if cursor:
+            try:
+                cursor_score, cursor_src_sym, cursor_tgt_sym = _decode_cursor(cursor)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+
+        def build_sql(use_similarity: bool, for_count: bool = False) -> tuple[str, list]:
+            """Build the SQL query for suggestions.
+
+            Uses UNION ALL to enable index usage on each join condition separately,
+            then deduplicates with DISTINCT ON.
+            """
+            params: list = []
+            param_idx = 1
+
+            # Source filter
+            src_filters = [f"a.class_name = ${param_idx}"]
+            params.append(source_class)
+            param_idx += 1
+            if source_type:
+                src_filters.append(f"a.class_type = ${param_idx}")
+                params.append(source_type)
+                param_idx += 1
+
+            # Target filter
+            tgt_filters = [f"a.class_name <> $1"]  # reuse source_class param
+            if target_class:
+                tgt_filters.append(f"a.class_name = ${param_idx}")
+                params.append(target_class)
+                param_idx += 1
+            if target_type:
+                tgt_filters.append(f"a.class_type = ${param_idx}")
+                params.append(target_type)
+                param_idx += 1
+
+            # Search clause (applied at the end)
+            search_param_idx = None
+            if search:
+                search_param_idx = param_idx
+                params.append(f"%{search}%")
+                param_idx += 1
+
+            # Similarity expressions
+            name_sim_expr = "COALESCE(similarity(s.name, t.name) * 10, 0)" if use_similarity else "0"
+            name_sim_col = "COALESCE(similarity(s.name, t.name), 0)" if use_similarity else "0"
+            sym_sim_expr = "COALESCE(similarity(s.sym_norm_root, t.sym_norm_root) * 15, 0)" if use_similarity else "0"
+            sym_sim_col = "COALESCE(similarity(s.sym_norm_root, t.sym_norm_root), 0)" if use_similarity else "0"
+
+            # Score expression
+            score_expr = f"""(
+                CASE WHEN t.isin IS NOT NULL AND s.isin = t.isin THEN 70 ELSE 0 END +
+                CASE WHEN t.external_id IS NOT NULL AND s.external_id = t.external_id THEN 50 ELSE 0 END +
+                CASE WHEN (s.sym_norm_full = t.sym_norm_full OR s.sym_norm_root = t.sym_norm_root) THEN 30 ELSE 0 END +
+                CASE WHEN s.base_currency = t.base_currency AND s.quote_currency = t.quote_currency THEN 10 ELSE 0 END +
+                CASE WHEN s.exchange = t.exchange THEN 5 ELSE 0 END +
+                {sym_sim_expr} +
+                {name_sim_expr}
+            )"""
+
+            asset_class_clause = "(s.asset_class = t.asset_class OR (s.asset_class IS NULL AND t.asset_class IS NULL))"
+
+            # Unmapped subquery - reused for src and tgt
+            unmapped_filter = """
+                NOT EXISTS (
+                    SELECT 1 FROM asset_mapping m
+                    WHERE m.class_name = a.class_name
+                      AND m.class_type = a.class_type
+                      AND m.class_symbol = a.symbol
+                )
+            """
+
+            # Build UNION ALL query for indexed joins
+            # Each branch joins on a single indexed condition
+            select_cols = f"""
+                s.class_name AS source_class,
+                s.class_type AS source_type,
+                s.symbol AS source_symbol,
+                s.name AS source_name,
+                t.class_name AS target_class,
+                t.class_type AS target_type,
+                t.symbol AS target_symbol,
+                t.name AS target_name,
+                s.sym_norm_root,
+                s.isin AS s_isin, t.isin AS t_isin,
+                s.external_id AS s_ext_id, t.external_id AS t_ext_id,
+                s.sym_norm_full AS s_sym_full, t.sym_norm_full AS t_sym_full,
+                s.sym_norm_root AS s_sym_root, t.sym_norm_root AS t_sym_root,
+                s.base_currency AS s_base, t.base_currency AS t_base,
+                s.quote_currency AS s_quote, t.quote_currency AS t_quote,
+                s.exchange AS s_exchange, t.exchange AS t_exchange
+            """
+
+            src_cte = f"""
+                SELECT a.* FROM assets a
+                WHERE {' AND '.join(src_filters)}
+                  AND {unmapped_filter}
+            """
+            tgt_cte = f"""
+                SELECT a.* FROM assets a
+                WHERE {' AND '.join(tgt_filters)}
+                  AND {unmapped_filter}
+            """
+
+            union_query = f"""
+                WITH src AS ({src_cte}),
+                     tgt AS ({tgt_cte}),
+                matched AS (
+                    -- ISIN matches (indexed)
+                    SELECT {select_cols}
+                    FROM src s JOIN tgt t ON s.isin = t.isin
+                    WHERE s.isin IS NOT NULL AND {asset_class_clause}
+
+                    UNION ALL
+
+                    -- External ID matches (indexed)
+                    SELECT {select_cols}
+                    FROM src s JOIN tgt t ON s.external_id = t.external_id
+                    WHERE s.external_id IS NOT NULL AND {asset_class_clause}
+
+                    UNION ALL
+
+                    -- Symbol root matches (indexed)
+                    SELECT {select_cols}
+                    FROM src s JOIN tgt t ON s.sym_norm_root = t.sym_norm_root
+                    WHERE {asset_class_clause}
+
+                    UNION ALL
+
+                    -- Symbol full matches (indexed, catches cases where root differs)
+                    SELECT {select_cols}
+                    FROM src s JOIN tgt t ON s.sym_norm_full = t.sym_norm_full
+                    WHERE s.sym_norm_full <> s.sym_norm_root AND {asset_class_clause}
+                ),
+                deduplicated AS (
+                    SELECT DISTINCT ON (source_symbol, target_symbol)
+                        source_class, source_type, source_symbol, source_name,
+                        target_class, target_type, target_symbol, target_name,
+                        sym_norm_root,
+                        (t_isin IS NOT NULL AND s_isin = t_isin) AS isin_match,
+                        (t_ext_id IS NOT NULL AND s_ext_id = t_ext_id) AS external_id_match,
+                        (s_sym_full = t_sym_full OR s_sym_root = t_sym_root) AS norm_match,
+                        (s_base = t_base AND s_quote = t_quote) AS base_quote_match,
+                        (s_exchange = t_exchange) AS exchange_match,
+                        {sym_sim_col} AS sym_root_similarity,
+                        {name_sim_col} AS name_similarity,
+                        {score_expr} AS score
+                    FROM matched
+                    ORDER BY source_symbol, target_symbol, {score_expr} DESC
+                ),
+                scored AS (
+                    SELECT d.*,
+                           COALESCE(tm.common_symbol, d.sym_norm_root) AS proposed_common_symbol,
+                           (tm.common_symbol IS NOT NULL) AS target_already_mapped
+                    FROM deduplicated d
+                    LEFT JOIN asset_mapping tm
+                      ON tm.class_name = d.target_class
+                     AND tm.class_type = d.target_type
+                     AND tm.class_symbol = d.target_symbol
+                    WHERE d.score >= ${param_idx}
+                )
+            """
+            params.append(min_score)
+            param_idx += 1
+
+            # Add search filter if provided
+            search_filter = ""
+            if search_param_idx:
+                search_filter = f"""
+                    AND (source_symbol ILIKE ${search_param_idx}
+                         OR source_name ILIKE ${search_param_idx}
+                         OR target_symbol ILIKE ${search_param_idx}
+                         OR target_name ILIKE ${search_param_idx})
+                """
+
+            if for_count:
+                # Count query - just count the scored results
+                query = f"""
+                    {union_query}
+                    SELECT COUNT(*) AS total FROM scored
+                    WHERE TRUE {search_filter};
+                """
+            else:
+                # Data query with cursor-based pagination
+                cursor_filter = ""
+                if cursor_score is not None:
+                    cursor_filter = f"""
+                        AND (score, source_symbol, target_symbol) < (${param_idx}, ${param_idx + 1}, ${param_idx + 2})
+                    """
+                    params.extend([cursor_score, cursor_src_sym, cursor_tgt_sym])
+                    param_idx += 3
+                elif offset > 0:
+                    # Fallback to offset if no cursor but offset provided (backwards compat)
+                    cursor_filter = f" OFFSET {offset}"
+
+                query = f"""
+                    {union_query}
+                    SELECT
+                        source_class, source_type, source_symbol, source_name,
+                        target_class, target_type, target_symbol, target_name,
+                        proposed_common_symbol, score,
+                        isin_match, external_id_match, norm_match,
+                        base_quote_match, exchange_match,
+                        sym_root_similarity, name_similarity,
+                        target_already_mapped
+                    FROM scored
+                    WHERE TRUE {search_filter} {cursor_filter if cursor_score is not None else ''}
+                    ORDER BY score DESC, source_symbol ASC, target_symbol ASC
+                    LIMIT ${param_idx}{'' if cursor_score is not None else f' OFFSET {offset}' if offset > 0 else ''};
+                """
+                params.append(limit + 1)  # Fetch one extra to check has_more
+
+            return query, params
+
+        try:
+            query, params = build_sql(use_similarity=True)
+            records = await self.pool.fetch(query, *params)
+        except UndefinedFunctionError:
+            logger.warning("Registry.handle_get_asset_mapping_suggestions: similarity() unavailable, retrying without pg_trgm.")
+            query, params = build_sql(use_similarity=False)
+            records = await self.pool.fetch(query, *params)
+        except Exception as e:
+            logger.error(f"Registry.handle_get_asset_mapping_suggestions: Error fetching suggestions: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while fetching asset mapping suggestions")
+
+        # Determine if there are more results
+        has_more = len(records) > limit
+        if has_more:
+            records = records[:limit]
+
+        # Build items
+        items: List[SuggestionItem] = []
+        for record in records:
+            items.append(SuggestionItem(
+                source_class=record["source_class"],
+                source_type=record["source_type"],
+                source_symbol=record["source_symbol"],
+                source_name=record["source_name"],
+                target_class=record["target_class"],
+                target_type=record["target_type"],
+                target_symbol=record["target_symbol"],
+                target_name=record["target_name"],
+                proposed_common_symbol=record["proposed_common_symbol"],
+                score=float(record["score"]),
+                isin_match=record["isin_match"],
+                external_id_match=record["external_id_match"],
+                norm_match=record["norm_match"],
+                base_quote_match=record["base_quote_match"],
+                exchange_match=record["exchange_match"],
+                sym_root_similarity=float(record["sym_root_similarity"]) if record["sym_root_similarity"] else 0.0,
+                name_similarity=float(record["name_similarity"]) if record["name_similarity"] else 0.0,
+                target_already_mapped=record["target_already_mapped"]
+            ))
+
+        # Generate next cursor from last item
+        next_cursor: Optional[str] = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = _encode_cursor(last.score, last.source_symbol, last.target_symbol)
+
+        # Fetch total count only if requested
+        total: Optional[int] = None
+        if include_total:
+            try:
+                count_query, count_params = build_sql(use_similarity=True, for_count=True)
+                count_result = await self.pool.fetchval(count_query, *count_params)
+                total = count_result or 0
+            except UndefinedFunctionError:
+                count_query, count_params = build_sql(use_similarity=False, for_count=True)
+                count_result = await self.pool.fetchval(count_query, *count_params)
+                total = count_result or 0
+            except Exception as e:
+                logger.warning(f"Registry.handle_get_asset_mapping_suggestions: Error fetching count: {e}")
+                total = None
+
+        logger.info(
+            "Registry.handle_get_asset_mapping_suggestions: Returning %s suggestions (has_more=%s, total=%s).",
+            len(items), has_more, total
+        )
+        return SuggestionsResponse(
+            items=items,
+            total=total,
+            limit=limit,
+            offset=offset,
+            next_cursor=next_cursor,
+            has_more=has_more
+        )
 
     async def handle_update_asset_mapping(
         self,

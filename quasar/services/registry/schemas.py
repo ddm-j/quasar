@@ -122,3 +122,44 @@ class AssetMappingUpdate(BaseModel):
     common_symbol: Optional[str] = Field(default=None, description="Common symbol identifier")
     is_active: Optional[bool] = Field(default=None, description="Whether the mapping is active")
 
+
+# Asset Mapping Suggestions
+class SuggestionItem(BaseModel):
+    """Single suggested mapping candidate."""
+
+    source_class: str
+    source_type: str
+    source_symbol: str
+    source_name: Optional[str] = None
+
+    target_class: str
+    target_type: str
+    target_symbol: str
+    target_name: Optional[str] = None
+
+    proposed_common_symbol: str
+    score: float
+    isin_match: bool
+    external_id_match: bool
+    norm_match: bool
+    base_quote_match: bool
+    exchange_match: bool
+    sym_root_similarity: float = 0.0
+    name_similarity: float
+    target_already_mapped: bool
+
+
+class SuggestionsResponse(BaseModel):
+    """Response payload for suggestions endpoint with cursor-based pagination.
+    
+    Cursor pagination provides consistent, efficient paging through large result sets.
+    Use `next_cursor` for subsequent requests instead of incrementing offset.
+    """
+
+    items: List[SuggestionItem]
+    total: Optional[int] = None  # Only returned when include_total=true
+    limit: int
+    offset: int = 0  # Deprecated: kept for backwards compatibility
+    next_cursor: Optional[str] = None  # Opaque cursor for next page
+    has_more: bool = False  # True if more results available
+

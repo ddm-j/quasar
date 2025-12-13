@@ -14,6 +14,14 @@ CREATE TABLE IF NOT EXISTS assets (
     quote_currency TEXT,
     country TEXT,
 
+    -- Normalized symbol columns for efficient matching (computed on INSERT/UPDATE)
+    sym_norm_full TEXT GENERATED ALWAYS AS (
+        regexp_replace(lower(symbol), '[^a-z0-9]', '', 'g')
+    ) STORED,
+    sym_norm_root TEXT GENERATED ALWAYS AS (
+        regexp_replace(lower(split_part(symbol, '.', 1)), '[^a-z0-9]', '', 'g')
+    ) STORED,
+
     UNIQUE (class_name, class_type, symbol),
 
     CONSTRAINT fk_assets_to_code_registry
