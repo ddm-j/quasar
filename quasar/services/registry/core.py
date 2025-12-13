@@ -1285,8 +1285,15 @@ class Registry(DatabaseHandler, APIHandler):
             records = await self.pool.fetch(query, *params)
         except UndefinedFunctionError:
             logger.warning("Registry.handle_get_asset_mapping_suggestions: similarity() unavailable, retrying without pg_trgm.")
-            query, params = build_sql(use_similarity=False)
-            records = await self.pool.fetch(query, *params)
+            try:
+                query, params = build_sql(use_similarity=False)
+                records = await self.pool.fetch(query, *params)
+            except Exception as e:
+                logger.error(
+                    f"Registry.handle_get_asset_mapping_suggestions: Error fetching suggestions (fallback without pg_trgm): {e}",
+                    exc_info=True
+                )
+                raise HTTPException(status_code=500, detail="Database error while fetching asset mapping suggestions")
         except Exception as e:
             logger.error(f"Registry.handle_get_asset_mapping_suggestions: Error fetching suggestions: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching asset mapping suggestions")
@@ -1334,9 +1341,15 @@ class Registry(DatabaseHandler, APIHandler):
                 count_result = await self.pool.fetchval(count_query, *count_params)
                 total = count_result or 0
             except UndefinedFunctionError:
-                count_query, count_params = build_sql(use_similarity=False, for_count=True)
-                count_result = await self.pool.fetchval(count_query, *count_params)
-                total = count_result or 0
+                try:
+                    count_query, count_params = build_sql(use_similarity=False, for_count=True)
+                    count_result = await self.pool.fetchval(count_query, *count_params)
+                    total = count_result or 0
+                except Exception as e:
+                    logger.warning(
+                        f"Registry.handle_get_asset_mapping_suggestions: Error fetching count (fallback without pg_trgm): {e}"
+                    )
+                    total = None
             except Exception as e:
                 logger.warning(f"Registry.handle_get_asset_mapping_suggestions: Error fetching count: {e}")
                 total = None
