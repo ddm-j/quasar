@@ -20,6 +20,8 @@ import {
 import MappingAddModal from './MappingAddModal';
 // Edit Mapping Modal
 import MappingEditModal from './MappingEditModal';
+// Suggest Mappings Modal
+import SuggestMappingsModal from './SuggestMappingsModal';
 
 // API Imports
 import { 
@@ -34,6 +36,7 @@ const Mappings = () => {
   const [error, setError] = useState(null);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isSuggestModalVisible, setIsSuggestModalVisible] = useState(false);
   const [currentMapping, setCurrentMapping] = useState(null);
 
   // Fetch Mappings
@@ -135,9 +138,12 @@ const Mappings = () => {
                 <CCol xs={6} md={8} xl={9} className="text-start">
                     <h5>Mappings</h5>
                 </CCol>
-                <CCol xs={6} md={4} xl={3} className="text-end">
+                <CCol xs={6} md={4} xl={3} className="d-flex justify-content-end gap-2">
                     <CButton color="primary" onClick={handleAdd}>
                     Add Mapping
+                    </CButton>
+                    <CButton color="success" onClick={() => setIsSuggestModalVisible(true)}>
+                    Suggest Mappings
                     </CButton>
                 </CCol>
                 </CRow>
@@ -220,6 +226,11 @@ const Mappings = () => {
             }}
             onSuccess={() => fetchMappings()}
             mapping={currentMapping}
+        />
+        <SuggestMappingsModal
+            visible={isSuggestModalVisible}
+            onClose={() => setIsSuggestModalVisible(false)}
+            onSuccess={() => fetchMappings()}
         />
     </>
   );

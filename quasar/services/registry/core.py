@@ -1085,19 +1085,20 @@ class Registry(DatabaseHandler, APIHandler):
                 params.append(f"%{search}%")
                 param_idx += 1
 
-            # Similarity expressions
-            name_sim_expr = "COALESCE(similarity(s.name, t.name) * 10, 0)" if use_similarity else "0"
-            name_sim_col = "COALESCE(similarity(s.name, t.name), 0)" if use_similarity else "0"
-            sym_sim_expr = "COALESCE(similarity(s.sym_norm_root, t.sym_norm_root) * 15, 0)" if use_similarity else "0"
-            sym_sim_col = "COALESCE(similarity(s.sym_norm_root, t.sym_norm_root), 0)" if use_similarity else "0"
+            # Similarity expressions for use in deduplicated CTE (using column names, not table aliases)
+            # These use the aliased column names from the matched CTE output
+            name_sim_col = "COALESCE(similarity(source_name, target_name), 0)" if use_similarity else "0"
+            sym_sim_col = "COALESCE(similarity(s_sym_root, t_sym_root), 0)" if use_similarity else "0"
+            sym_sim_expr = "COALESCE(similarity(s_sym_root, t_sym_root) * 15, 0)" if use_similarity else "0"
+            name_sim_expr = "COALESCE(similarity(source_name, target_name) * 10, 0)" if use_similarity else "0"
 
-            # Score expression
+            # Score expression for use in deduplicated CTE (using column names from matched output)
             score_expr = f"""(
-                CASE WHEN t.isin IS NOT NULL AND s.isin = t.isin THEN 70 ELSE 0 END +
-                CASE WHEN t.external_id IS NOT NULL AND s.external_id = t.external_id THEN 50 ELSE 0 END +
-                CASE WHEN (s.sym_norm_full = t.sym_norm_full OR s.sym_norm_root = t.sym_norm_root) THEN 30 ELSE 0 END +
-                CASE WHEN s.base_currency = t.base_currency AND s.quote_currency = t.quote_currency THEN 10 ELSE 0 END +
-                CASE WHEN s.exchange = t.exchange THEN 5 ELSE 0 END +
+                CASE WHEN t_isin IS NOT NULL AND s_isin = t_isin THEN 70 ELSE 0 END +
+                CASE WHEN t_ext_id IS NOT NULL AND s_ext_id = t_ext_id THEN 50 ELSE 0 END +
+                CASE WHEN (s_sym_full = t_sym_full OR s_sym_root = t_sym_root) THEN 30 ELSE 0 END +
+                CASE WHEN s_base = t_base AND s_quote = t_quote THEN 10 ELSE 0 END +
+                CASE WHEN s_exchange = t_exchange THEN 5 ELSE 0 END +
                 {sym_sim_expr} +
                 {name_sim_expr}
             )"""
@@ -1181,11 +1182,11 @@ class Registry(DatabaseHandler, APIHandler):
                         source_class, source_type, source_symbol, source_name,
                         target_class, target_type, target_symbol, target_name,
                         sym_norm_root,
-                        (t_isin IS NOT NULL AND s_isin = t_isin) AS isin_match,
-                        (t_ext_id IS NOT NULL AND s_ext_id = t_ext_id) AS external_id_match,
-                        (s_sym_full = t_sym_full OR s_sym_root = t_sym_root) AS norm_match,
-                        (s_base = t_base AND s_quote = t_quote) AS base_quote_match,
-                        (s_exchange = t_exchange) AS exchange_match,
+                        COALESCE(t_isin IS NOT NULL AND s_isin = t_isin, FALSE) AS isin_match,
+                        COALESCE(t_ext_id IS NOT NULL AND s_ext_id = t_ext_id, FALSE) AS external_id_match,
+                        COALESCE(s_sym_full = t_sym_full OR s_sym_root = t_sym_root, FALSE) AS norm_match,
+                        COALESCE(s_base = t_base AND s_quote = t_quote, FALSE) AS base_quote_match,
+                        COALESCE(s_exchange = t_exchange, FALSE) AS exchange_match,
                         {sym_sim_col} AS sym_root_similarity,
                         {name_sim_col} AS name_similarity,
                         {score_expr} AS score

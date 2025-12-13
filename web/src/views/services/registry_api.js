@@ -141,6 +141,49 @@ export const getAssetMappings = async () => {
 }
 
 /**
+ * Fetches asset mapping suggestions from the API.
+ * @param {object} params - Query parameters.
+ * @param {string} params.source_class - (Required) Provider/broker to suggest mappings for.
+ * @param {string} [params.source_type] - Optional: 'provider' or 'broker'.
+ * @param {string} [params.target_class] - Optional target provider/broker.
+ * @param {string} [params.target_type] - Optional: 'provider' or 'broker'.
+ * @param {string} [params.search] - Optional search filter.
+ * @param {number} [params.min_score=30] - Minimum score threshold.
+ * @param {number} [params.limit=50] - Max results (1-200).
+ * @param {string} [params.cursor] - Pagination cursor from previous response.
+ * @param {boolean} [params.include_total=false] - Include total count.
+ * @returns {Promise<object>} - { items, total, limit, offset, next_cursor, has_more }
+ */
+export const getAssetMappingSuggestions = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${API_BASE}asset-mapping-suggestions${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
  * Creates a new asset mapping.
  * @param {object} mappingData - The mapping data.
  * @param {string} mappingData.common_symbol - Common symbol identifier.
