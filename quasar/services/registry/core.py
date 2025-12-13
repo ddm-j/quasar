@@ -1033,6 +1033,25 @@ class Registry(DatabaseHandler, APIHandler):
         - Reuses an existing common_symbol from the target if present.
         - Matches only within the same asset_class (or both NULL).
         - Uses pg_trgm similarity if available; falls back if not installed.
+
+        Args:
+            source_class (str): Provider/broker to suggest mappings for.
+            source_type (ClassType | None): Optional source class type filter.
+            target_class (str | None): Optional target provider/broker to match against.
+            target_type (ClassType | None): Optional target class type (defaults to provider if omitted).
+            search (str | None): Optional search filter across source/target symbols and names.
+            min_score (float): Minimum score threshold for suggestions (default: 30.0).
+            limit (int): Max results to return (1-200, default: 50).
+            offset (int): Deprecated - use cursor for pagination instead.
+            cursor (str | None): Pagination cursor from previous response.
+            include_total (bool): Include total count in response (adds latency, default: False).
+
+        Returns:
+            SuggestionsResponse: Paginated list of suggested mappings with match scores and criteria.
+
+        Raises:
+            HTTPException: 400 if cursor format is invalid.
+            HTTPException: 500 if database error occurs.
         """
         logger.info(
             "Registry.handle_get_asset_mapping_suggestions: source=%s, target=%s, min_score=%s, limit=%s, cursor=%s",
