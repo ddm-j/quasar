@@ -1196,7 +1196,6 @@ class Registry(DatabaseHandler, APIHandler):
             tgt_cte = f"""
                 SELECT a.* FROM assets a
                 WHERE {' AND '.join(tgt_filters)}
-                  AND {unmapped_filter}
             """
 
             union_query = f"""
@@ -1247,7 +1246,8 @@ class Registry(DatabaseHandler, APIHandler):
                 ),
                 scored AS (
                     SELECT d.*,
-                           COALESCE(tm.common_symbol, d.sym_norm_root) AS proposed_common_symbol,
+                           tm.common_symbol AS target_common_symbol,
+                           COALESCE(tm.common_symbol, UPPER(d.sym_norm_root)) AS proposed_common_symbol,
                            (tm.common_symbol IS NOT NULL) AS target_already_mapped
                     FROM deduplicated d
                     LEFT JOIN asset_mapping tm
@@ -1299,7 +1299,7 @@ class Registry(DatabaseHandler, APIHandler):
                     SELECT
                         source_class, source_type, source_symbol, source_name,
                         target_class, target_type, target_symbol, target_name,
-                        proposed_common_symbol, score,
+                        target_common_symbol, proposed_common_symbol, score,
                         isin_match, external_id_match, norm_match,
                         base_quote_match, exchange_match,
                         sym_root_similarity, name_similarity,
@@ -1339,6 +1339,11 @@ class Registry(DatabaseHandler, APIHandler):
         # Build items
         items: List[SuggestionItem] = []
         for record in records:
+            proposed_common_symbol = record["proposed_common_symbol"]
+            target_common_symbol = record.get("target_common_symbol")
+            if not record["target_already_mapped"] and proposed_common_symbol:
+                proposed_common_symbol = proposed_common_symbol.upper()
+
             items.append(SuggestionItem(
                 source_class=record["source_class"],
                 source_type=record["source_type"],
@@ -1348,7 +1353,8 @@ class Registry(DatabaseHandler, APIHandler):
                 target_type=record["target_type"],
                 target_symbol=record["target_symbol"],
                 target_name=record["target_name"],
-                proposed_common_symbol=record["proposed_common_symbol"],
+                target_common_symbol=target_common_symbol,
+                proposed_common_symbol=proposed_common_symbol,
                 score=float(record["score"]),
                 isin_match=record["isin_match"],
                 external_id_match=record["external_id_match"],
