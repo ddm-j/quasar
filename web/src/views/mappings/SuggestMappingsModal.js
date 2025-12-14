@@ -25,7 +25,7 @@ import CIcon from '@coreui/icons-react';
 import { cilArrowRight, cilWarning } from '@coreui/icons';
 import { getRegisteredClasses, getAssetMappingSuggestions, createAssetMapping } from '../services/registry_api';
 
-const SuggestMappingsModal = ({ visible, onClose, onSuccess }) => {
+const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
   // Dropdown selections
   const [sourceClass, setSourceClass] = useState('');
   const [targetClass, setTargetClass] = useState('');
@@ -224,11 +224,17 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess }) => {
   const handleSymbolChange = (index, value) => {
     setEditedSymbols(prev => ({ ...prev, [index]: value }));
     // Clear any existing error for this row
-    if (rowErrors[index]) {
+    if (rowErrors[index] || createdRows[index]) {
       setRowErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[index];
         return newErrors;
+      });
+      // Reset created flag on edit to avoid stale badge
+      setCreatedRows(prev => {
+        const newCreated = { ...prev };
+        delete newCreated[index];
+        return newCreated;
       });
     }
   };
@@ -243,25 +249,26 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess }) => {
     setCreatingRows(prev => ({ ...prev, [index]: true }));
 
     try {
-      // Create source mapping
-      await createAssetMapping({
-        common_symbol: commonSymbol.trim(),
-        class_name: item.source_class,
-        class_type: item.source_type,
-        class_symbol: item.source_symbol,
-        is_active: true,
-      });
+      const payload = [
+        {
+          common_symbol: commonSymbol.trim(),
+          class_name: item.source_class,
+          class_type: item.source_type,
+          class_symbol: item.source_symbol,
+          is_active: true,
+        },
+        {
+          common_symbol: commonSymbol.trim(),
+          class_name: item.target_class,
+          class_type: item.target_type,
+          class_symbol: item.target_symbol,
+          is_active: true,
+        },
+      ];
 
-      // Create target mapping
-      await createAssetMapping({
-        common_symbol: commonSymbol.trim(),
-        class_name: item.target_class,
-        class_type: item.target_type,
-        class_symbol: item.target_symbol,
-        is_active: true,
-      });
+      await createAssetMapping(payload);
 
-      // Mark as created
+      // Mark as created only when both succeed
       setCreatedRows(prev => ({ ...prev, [index]: true }));
 
       // Call onSuccess to refresh parent data if provided
@@ -270,8 +277,14 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess }) => {
       }
     } catch (error) {
       console.error("Error creating mapping:", error);
-      // Show error inline
-      setRowErrors(prev => ({ ...prev, [index]: error.message }));
+      const context = `${item.source_class}/${item.source_symbol} → ${item.target_class}/${item.target_symbol}`;
+      if (pushToast) {
+        pushToast({
+          title: "Create mappings failed",
+          body: `${context}: ${error.message || "Failed to create mappings."}`,
+          color: "danger",
+        });
+      }
     } finally {
       setCreatingRows(prev => ({ ...prev, [index]: false }));
     }
@@ -470,9 +483,6 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess }) => {
                                           'Create'
                                         )}
                                       </CButton>
-                                    )}
-                                    {rowErrors[index] && (
-                                      <div className="text-danger small mt-1">{rowErrors[index]}</div>
                                     )}
                                   </CTableDataCell>
                                 </CTableRow>

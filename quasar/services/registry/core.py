@@ -1,6 +1,6 @@
 """Registry service core: code uploads, asset catalog, and mappings."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 import os, asyncpg, base64, hashlib, json
 import aiohttp
 from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
@@ -14,7 +14,8 @@ from quasar.lib.common.context import SystemContext, DerivedContext
 from quasar.services.registry.schemas import (
     ClassType, FileUploadResponse, UpdateAssetsResponse, ClassSummaryItem,
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
-    AssetMappingCreate, AssetMappingResponse, AssetMappingUpdate,
+    AssetMappingCreate, AssetMappingCreateRequest, AssetMappingCreateResponse,
+    AssetMappingResponse, AssetMappingUpdate,
     SuggestionsResponse, SuggestionItem
 )
 
@@ -133,7 +134,7 @@ class Registry(DatabaseHandler, APIHandler):
             '/api/registry/asset-mappings',
             self.handle_create_asset_mapping,
             methods=['POST'],
-            response_model=AssetMappingResponse,
+            response_model=AssetMappingCreateResponse,
             status_code=201
         )
         self._api_app.router.add_api_route(
@@ -873,76 +874,108 @@ class Registry(DatabaseHandler, APIHandler):
             raise HTTPException(status_code=500, detail="Database error while fetching classes summary")
 
     # # ASSET MAPPINGS
-    async def handle_create_asset_mapping(self, mapping: AssetMappingCreate) -> AssetMappingResponse:
-        """Create a mapping between a common symbol and provider-specific symbol.
+    async def handle_create_asset_mapping(
+        self,
+        mapping: AssetMappingCreateRequest
+    ) -> AssetMappingCreateResponse:
+        """Create one or more asset mappings.
 
         Args:
-            mapping (AssetMappingCreate): Mapping payload.
+            mapping: A single mapping or a list of mappings to create.
 
         Returns:
-            AssetMappingResponse: Created mapping.
+            List[AssetMappingResponse]: The created mappings (always returned as a list).
+
+        Raises:
+            HTTPException: 400 if no mappings are provided.
+            HTTPException: 404 if related entities are missing (foreign key violations).
+            HTTPException: 409 if unique constraints are violated (duplicate mapping).
+            HTTPException: 500 for unexpected errors.
         """
         insert_query = """
             INSERT INTO asset_mapping (common_symbol, class_name, class_type, class_symbol, is_active)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING common_symbol, class_name, class_type, class_symbol, is_active;
         """
+
+        # Normalize payload to a list to support single or batch requests.
+        mappings: List[AssetMappingCreate] = [mapping] if not isinstance(mapping, list) else list(mapping)
+
+        if len(mappings) == 0:
+            raise HTTPException(status_code=400, detail="At least one mapping is required.")
+
+        current_item: AssetMappingCreate | None = None
         try:
-            new_mapping = await self.pool.fetchrow(
-                insert_query,
-                mapping.common_symbol,
-                mapping.class_name,
-                mapping.class_type,
-                mapping.class_symbol,
-                mapping.is_active
+            async with self.pool.acquire() as conn:
+                async with conn.transaction():
+                    created_records: List[AssetMappingResponse] = []
+                    for current_item in mappings:
+                        new_mapping = await conn.fetchrow(
+                            insert_query,
+                            current_item.common_symbol,
+                            current_item.class_name,
+                            current_item.class_type,
+                            current_item.class_symbol,
+                            current_item.is_active
+                        )
+                        if not new_mapping:
+                            logger.error("Registry.handle_create_asset_mapping: Failed to create asset mapping, no record returned.")
+                            raise HTTPException(status_code=500, detail="Failed to create asset mapping")
+
+                        created_records.append(AssetMappingResponse(**dict(new_mapping)))
+
+            logger.info(
+                "Registry.handle_create_asset_mapping: Successfully created %s mapping(s).",
+                len(mappings)
             )
-            if new_mapping:
-                logger.info(f"Registry.handle_create_asset_mapping: Successfully created asset mapping: {dict(new_mapping)}")
-                return AssetMappingResponse(**dict(new_mapping))
-            else:
-                # This case should ideally not be reached if INSERT RETURNING is used and no error occurs
-                logger.error("Registry.handle_create_asset_mapping: Failed to create asset mapping, no record returned.")
-                raise HTTPException(status_code=500, detail="Failed to create asset mapping")
+
+            return created_records
 
         except HTTPException:
+            # HTTPExceptions are intentional; they will propagate with transaction rolled back.
             raise
         except asyncpg.exceptions.ForeignKeyViolationError as fke:
-            # This error means that the (class_name, class_type) does not exist in code_registry
-            # OR (class_name, class_type, class_symbol) does not exist in assets.
             constraint_name = fke.constraint_name
             detail = fke.detail
             logger.warning(
-                f"Registry.handle_create_asset_mapping: Foreign key violation. "
-                f"Constraint: {constraint_name}, Detail: {detail}."
+                "Registry.handle_create_asset_mapping: Foreign key violation. Constraint: %s, Detail: %s.",
+                constraint_name,
+                detail
             )
+            item = current_item or mappings[0]
             error_message = "Failed to create mapping due to missing related entity. "
             if constraint_name == 'fk_asset_mapping_class_name':
-                error_message += f"The class '{mapping.class_name}' ({mapping.class_type}) is not registered."
+                error_message += f"The class '{item.class_name}' ({item.class_type}) is not registered."
             elif constraint_name == 'fk_asset_mapping_to_assets':
-                error_message += f"The asset '{mapping.class_symbol}' for class '{mapping.class_name}' ({mapping.class_type}) does not exist."
+                error_message += f"The asset '{item.class_symbol}' for class '{item.class_name}' ({item.class_type}) does not exist."
             else:
                 error_message += "A referenced entity does not exist."
             
             raise HTTPException(status_code=404, detail=error_message)
         except asyncpg.exceptions.UniqueViolationError as uve:
-            # This error means the mapping would violate a unique constraint.
             constraint_name = uve.constraint_name
             detail = uve.detail
             logger.warning(
-                f"Registry.handle_create_asset_mapping: Unique constraint violation. "
-                f"Constraint: {constraint_name}, Detail: {detail}."
+                "Registry.handle_create_asset_mapping: Unique constraint violation. Constraint: %s, Detail: %s.",
+                constraint_name,
+                detail
             )
+            item = current_item or mappings[0]
             error_message = "Failed to create mapping due to a conflict. "
             if constraint_name == 'asset_mapping_pkey':
-                error_message += f"The provider symbol '{mapping.class_symbol}' for class '{mapping.class_name}' ({mapping.class_type}) is already mapped."
+                error_message += f"The provider symbol '{item.class_symbol}' for class '{item.class_name}' ({item.class_type}) is already mapped."
             elif constraint_name == 'uq_common_per_class':
-                error_message += f"The common symbol '{mapping.common_symbol}' is already mapped for class '{mapping.class_name}' ({mapping.class_type})."
+                error_message += f"The common symbol '{item.common_symbol}' is already mapped for class '{item.class_name}' ({item.class_type})."
             else:
                 error_message += "This mapping would create a duplicate entry."
 
             raise HTTPException(status_code=409, detail=error_message)
         except Exception as e:
-            logger.error(f"Registry.handle_create_asset_mapping: Unexpected error creating asset mapping: {e}", exc_info=True)
+            logger.error(
+                "Registry.handle_create_asset_mapping: Unexpected error creating asset mapping: %s",
+                e,
+                exc_info=True
+            )
             raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
     async def handle_get_asset_mappings(

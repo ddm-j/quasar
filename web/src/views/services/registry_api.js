@@ -1,6 +1,30 @@
 // API base path - uses relative URL for proxy compatibility (dev: Vite proxy, prod: nginx/ALB)
 const API_BASE = '/api/registry/';
 
+// Normalize backend error payloads (objects/arrays) into a readable string
+const formatErrorMessage = (data, status) => {
+  if (!data) {
+    return `HTTP error! status: ${status}`;
+  }
+  const detail = data.detail || data.error || data.message;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item?.msg) return item.msg;
+        if (item?.message) return item.message;
+        return JSON.stringify(item);
+      })
+      .join('; ');
+  }
+  if (typeof detail === 'object') {
+    if (detail?.msg) return detail.msg;
+    if (detail?.message) return detail.message;
+    return JSON.stringify(detail);
+  }
+  return detail || `HTTP error! status: ${status}`;
+};
+
 export const updateAssetsForClass = async (classType, className) => {
     const params = new URLSearchParams({
         class_type: classType,
@@ -184,28 +208,26 @@ export const getAssetMappingSuggestions = async (params = {}) => {
 };
 
 /**
- * Creates a new asset mapping.
- * @param {object} mappingData - The mapping data.
- * @param {string} mappingData.common_symbol - Common symbol identifier.
- * @param {string} mappingData.class_name - Class name (provider/broker name).
- * @param {string} mappingData.class_type - Class type: 'provider' or 'broker'.
- * @param {string} mappingData.class_symbol - Class-specific symbol.
- * @param {boolean} [mappingData.is_active=true] - Whether the mapping is active.
- * @returns {Promise<object>} - The created mapping response.
+ * Creates one or more asset mappings.
+ * Accepts a single mapping object or an array; always returns an array.
+ * @param {object|object[]} mappingData - Mapping object or array of mappings.
+ * @returns {Promise<object[]>} - The created mapping responses.
  */
 export const createAssetMapping = async (mappingData) => {
+  const payload = Array.isArray(mappingData) ? mappingData : [mappingData];
+
   const response = await fetch(`${API_BASE}asset-mappings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(mappingData),
+    body: JSON.stringify(payload),
   });
 
   const data = await response.json();
 
   if (!response.ok) {
-    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    const errorMessage = formatErrorMessage(data, response.status);
     throw new Error(errorMessage);
   }
 
