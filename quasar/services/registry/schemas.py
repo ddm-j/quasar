@@ -143,6 +143,10 @@ class SuggestionItem(BaseModel):
     target_type: str
     target_symbol: str
     target_name: Optional[str] = None
+    target_common_symbol: Optional[str] = Field(
+        default=None,
+        description="Existing common_symbol for target if already mapped"
+    )
 
     proposed_common_symbol: str
     score: float

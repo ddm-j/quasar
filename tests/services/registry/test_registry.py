@@ -59,6 +59,7 @@ def make_suggestion_record(
     target_type="provider",
     target_symbol="AAPL",
     target_name="Apple Inc.",
+    target_common_symbol=None,
     proposed_common_symbol="aapl",
     score=85.0,
     isin_match=True,
@@ -80,6 +81,7 @@ def make_suggestion_record(
         target_type=target_type,
         target_symbol=target_symbol,
         target_name=target_name,
+        target_common_symbol=target_common_symbol,
         proposed_common_symbol=proposed_common_symbol,
         score=score,
         isin_match=isin_match,
@@ -862,6 +864,40 @@ class TestSuggestionsResponse:
         assert item.exchange_match is False
 
     @pytest.mark.asyncio
+    async def test_suggestions_preserves_mapped_common_symbol_casing(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Existing mapped targets keep their stored common_symbol casing."""
+        reg = registry_with_mocks
+        mock_records = [make_suggestion_record(
+            proposed_common_symbol="PlTr",
+            target_already_mapped=True,
+            target_common_symbol="PlTr"
+        )]
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=mock_records)
+
+        response = await call_suggestions(reg, source_class="DATABENTO")
+
+        assert response.items[0].proposed_common_symbol == "PlTr"
+        assert response.items[0].target_common_symbol == "PlTr"
+
+    @pytest.mark.asyncio
+    async def test_suggestions_uppercases_derived_common_symbol(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Unmapped targets should return uppercased proposed_common_symbol."""
+        reg = registry_with_mocks
+        mock_records = [make_suggestion_record(
+            proposed_common_symbol="pltr",
+            target_already_mapped=False
+        )]
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=mock_records)
+
+        response = await call_suggestions(reg, source_class="DATABENTO")
+
+        assert response.items[0].proposed_common_symbol == "PLTR"
+
+    @pytest.mark.asyncio
     async def test_suggestions_total_none_by_default(
         self, registry_with_mocks, mock_asyncpg_pool
     ):
@@ -1055,6 +1091,23 @@ class TestSuggestionsFiltering:
 
         call_args = mock_asyncpg_pool.fetch.call_args
         assert "provider" in call_args[0]
+
+    @pytest.mark.asyncio
+    async def test_suggestions_allows_mapped_targets_in_query(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Ensure the SQL no longer filters out mapped targets."""
+        reg = registry_with_mocks
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+
+        await call_suggestions(
+            reg,
+            source_class="EODHD",
+            target_class="DATABENTO"
+        )
+
+        sql = mock_asyncpg_pool.fetch.call_args[0][0]
+        assert sql.count("NOT EXISTS") == 1  # only source unmapped filter remains
 
 
 class TestSuggestionsFallback:

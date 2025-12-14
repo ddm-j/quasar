@@ -22,7 +22,7 @@ import {
   CBadge,
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react';
-import { cilArrowRight, cilWarning } from '@coreui/icons';
+import { cilArrowRight, cilWarning, cilLink } from '@coreui/icons';
 import { getRegisteredClasses, getAssetMappingSuggestions, createAssetMapping } from '../services/registry_api';
 
 const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
@@ -220,6 +220,18 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
       : item.proposed_common_symbol;
   };
 
+  const isPairCompletion = (item) => {
+    return Boolean(
+      item.target_already_mapped &&
+      item.target_common_symbol &&
+      item.proposed_common_symbol === item.target_common_symbol
+    );
+  };
+
+  const isConflict = (item) => {
+    return Boolean(item.target_already_mapped && !isPairCompletion(item));
+  };
+
   // Handle common symbol editing
   const handleSymbolChange = (index, value) => {
     setEditedSymbols(prev => ({ ...prev, [index]: value }));
@@ -246,6 +258,21 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
       return;
     }
 
+    if (isConflict(item)) {
+      const context = `${item.target_class}/${item.target_symbol}`;
+      const message = `Target already mapped to a different symbol (${item.target_common_symbol || 'unknown'}).`;
+      if (pushToast) {
+        pushToast({
+          title: "Cannot create mapping",
+          body: `${context}: ${message}`,
+          color: "warning",
+        });
+      }
+      return;
+    }
+
+    const pairCompletion = isPairCompletion(item);
+
     setCreatingRows(prev => ({ ...prev, [index]: true }));
 
     try {
@@ -257,14 +284,18 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
           class_symbol: item.source_symbol,
           is_active: true,
         },
-        {
+      ];
+
+      // Only add target mapping when it isn't already mapped to the same common_symbol
+      if (!pairCompletion) {
+        payload.push({
           common_symbol: commonSymbol.trim(),
           class_name: item.target_class,
           class_type: item.target_type,
           class_symbol: item.target_symbol,
           is_active: true,
-        },
-      ];
+        });
+      }
 
       await createAssetMapping(payload);
 
@@ -434,13 +465,23 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                               const isCreating = creatingRows[index];
                               const isCreated = createdRows[index];
                               const commonSymbol = getCommonSymbol(item, index);
+                              const pairCompletion = isPairCompletion(item);
+                              const conflict = isConflict(item);
                               return (
                                 <CTableRow key={`${item.source_symbol}-${item.target_symbol}-${index}`}>
                                   <CTableDataCell>{item.source_symbol}</CTableDataCell>
                                   <CTableDataCell>{item.source_name || '-'}</CTableDataCell>
                                   <CTableDataCell>
                                     {item.target_symbol}
-                                    {item.target_already_mapped && (
+                                    {pairCompletion && (
+                                      <CIcon
+                                        icon={cilLink}
+                                        className="text-info ms-1"
+                                        size="sm"
+                                        title={`Completes existing mapping to ${item.target_common_symbol}`}
+                                      />
+                                    )}
+                                    {conflict && (
                                       <CIcon
                                         icon={cilWarning}
                                         className="text-warning ms-1"
