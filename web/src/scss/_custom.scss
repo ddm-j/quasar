@@ -1,1 +1,24 @@
 // Here you can add other styles
+
+// Suggest Mappings modal: wide but not full-screen on large viewports
+// Keep CoreUI fullscreen behavior on lg and below via the component prop.
+@media (min-width: 992px) { // Bootstrap lg breakpoint
+  .suggest-mappings-modal {
+    .modal-dialog {
+      width: 95vw;
+      max-width: 95vw;
+      height: 92vh;
+      max-height: 95vh;
+      margin: auto;
+    }
+
+    .modal-content {
+      height: 100%;
+      max-height: 95vh;
+    }
+
+    .modal-body {
+      overflow: auto;
+    }
+  }
+}

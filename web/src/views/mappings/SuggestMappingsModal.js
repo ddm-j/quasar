@@ -296,6 +296,8 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
       onClose={onClose} 
       backdrop="static" 
       fullscreen="lg"
+      size="xl"
+      className="suggest-mappings-modal"
       scrollable
     >
       <CModalHeader onClose={onClose}>
