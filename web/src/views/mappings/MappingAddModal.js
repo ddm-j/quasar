@@ -48,7 +48,7 @@ const SingleValue = (props) => {
 };
 
 
-const MappingAddModal = ({ visible, onClose, onSuccess }) => {
+const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
   const [fromClassName, setFromClassName] = useState('');
   // For react-select, the value is an object or null
   const [fromClassSymbol, setFromClassSymbol] = useState(null);
@@ -221,7 +221,11 @@ const MappingAddModal = ({ visible, onClose, onSuccess }) => {
     setSaveError(null);
 
     try {
-      await createAssetMapping(mappingData);
+      const created = await createAssetMapping(mappingData);
+      const createdMapping = Array.isArray(created) ? created[0] : created;
+      if (!createdMapping) {
+        throw new Error("Failed to create mapping");
+      }
       // Success - close modal and refresh parent list
       if (onSuccess) {
         onSuccess();
@@ -229,7 +233,15 @@ const MappingAddModal = ({ visible, onClose, onSuccess }) => {
       onClose();
     } catch (error) {
       console.error("Error creating asset mapping:", error);
-      setSaveError(error.message || "Failed to create mapping. Please try again.");
+      if (pushToast) {
+        pushToast({
+          title: "Create mapping failed",
+          body: error.message || "Failed to create mapping. Please try again.",
+          color: "danger",
+        });
+      } else {
+        setSaveError(error.message || "Failed to create mapping. Please try again.");
+      }
     } finally {
       setIsSaving(false);
     }

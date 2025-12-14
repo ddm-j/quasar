@@ -1,7 +1,7 @@
 """
 Registry-specific Pydantic schemas for API request/response models.
 """
-from typing import Optional, List, Literal, Dict, Any
+from typing import Optional, List, Literal, Dict, Any, Union
 from pydantic import BaseModel, Field
 
 
@@ -114,6 +114,13 @@ class AssetMappingResponse(BaseModel):
     class_type: str
     class_symbol: str
     is_active: bool
+
+
+# Asset Mapping Create/Response (batch-capable)
+# Requests accept a single object or a list for backward compatibility.
+# Responses are always a list for clarity and OpenAPI friendliness.
+AssetMappingCreateRequest = Union[AssetMappingCreate, List[AssetMappingCreate]]
+AssetMappingCreateResponse = List[AssetMappingResponse]
 
 
 # Asset Mapping Update

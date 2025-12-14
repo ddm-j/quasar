@@ -460,18 +460,21 @@ class TestRegistryAssetMappings:
     
     @pytest.mark.asyncio
     async def test_handle_create_asset_mapping_success(
-        self, registry_with_mocks, mock_asyncpg_pool
+        self, registry_with_mocks, mock_asyncpg_pool, mock_asyncpg_conn
     ):
-        """Test that handle_create_asset_mapping successfully creates mapping."""
+        """Single-item create returns list with one element."""
         reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
 
         mock_record = MockRecord(
             common_symbol="BTCUSD", class_name="TestProvider",
             class_type="provider", class_symbol="BTC-USD", is_active=True
         )
-        
-        # handle_create_asset_mapping uses pool.fetchrow() directly
-        mock_asyncpg_pool.fetchrow = AsyncMock(return_value=mock_record)
+
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=mock_record)
         
         mapping = AssetMappingCreate(
             common_symbol="BTCUSD",
@@ -482,8 +485,95 @@ class TestRegistryAssetMappings:
         
         response = await reg.handle_create_asset_mapping(mapping)
         
-        assert response.common_symbol == "BTCUSD"
-        assert response.class_name == "TestProvider"
+        assert isinstance(response, list)
+        assert len(response) == 1
+        assert response[0].common_symbol == "BTCUSD"
+        assert response[0].class_name == "TestProvider"
+
+    @pytest.mark.asyncio
+    async def test_handle_create_asset_mapping_batch_success(
+        self, registry_with_mocks, mock_asyncpg_pool, mock_asyncpg_conn
+    ):
+        """Batch create returns list and stays transactional."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        mock_record_one = MockRecord(
+            common_symbol="BTCUSD", class_name="TestProvider",
+            class_type="provider", class_symbol="BTC-USD", is_active=True
+        )
+        mock_record_two = MockRecord(
+            common_symbol="BTCUSD", class_name="TestBroker",
+            class_type="broker", class_symbol="BTC-USD", is_active=True
+        )
+
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[mock_record_one, mock_record_two])
+
+        mappings = [
+            AssetMappingCreate(
+                common_symbol="BTCUSD",
+                class_name="TestProvider",
+                class_type="provider",
+                class_symbol="BTC-USD"
+            ),
+            AssetMappingCreate(
+                common_symbol="BTCUSD",
+                class_name="TestBroker",
+                class_type="broker",
+                class_symbol="BTC-USD"
+            ),
+        ]
+
+        response = await reg.handle_create_asset_mapping(mappings)
+
+        assert isinstance(response, list)
+        assert len(response) == 2
+        assert response[0].class_name == "TestProvider"
+        assert response[1].class_name == "TestBroker"
+
+    @pytest.mark.asyncio
+    async def test_handle_create_asset_mapping_batch_conflict_rolls_back(
+        self, registry_with_mocks, mock_asyncpg_pool, mock_asyncpg_conn
+    ):
+        """Batch create conflicts raise and do not partially commit."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        mock_record_one = MockRecord(
+            common_symbol="BTCUSD", class_name="TestProvider",
+            class_type="provider", class_symbol="BTC-USD", is_active=True
+        )
+
+        conflict_error = HTTPException(status_code=409, detail="duplicate mapping")
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[mock_record_one, conflict_error])
+
+        mappings = [
+            AssetMappingCreate(
+                common_symbol="BTCUSD",
+                class_name="TestProvider",
+                class_type="provider",
+                class_symbol="BTC-USD"
+            ),
+            AssetMappingCreate(
+                common_symbol="BTCUSD",
+                class_name="TestProvider",
+                class_type="provider",
+                class_symbol="BTC-USD"
+            ),
+        ]
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_create_asset_mapping(mappings)
+
+        assert exc_info.value.status_code == 409
+        assert mock_asyncpg_conn.fetchrow.await_count == 2
+        txn.__aexit__.assert_awaited()
     
     @pytest.mark.asyncio
     async def test_handle_get_asset_mappings_all(

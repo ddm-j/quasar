@@ -1,5 +1,5 @@
 // Basic, empty component for now
-import { React, useState, useEffect } from 'react';
+import { React, useState, useEffect, useRef } from 'react';
 import { 
     CCard, 
     CCardBody, 
@@ -9,6 +9,10 @@ import {
     CSmartTable,
     CButton,
     CBadge,
+    CToaster,
+    CToast,
+    CToastHeader,
+    CToastBody,
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react'
 import { 
@@ -38,6 +42,21 @@ const Mappings = () => {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isSuggestModalVisible, setIsSuggestModalVisible] = useState(false);
   const [currentMapping, setCurrentMapping] = useState(null);
+  const [toastToShow, setToastToShow] = useState(null);
+  const toasterRef = useRef(null);
+
+  const pushToast = ({ title, body, color = 'danger', icon = null }) => {
+    const toast = (
+      <CToast autohide={false} color={color}>
+        <CToastHeader closeButton>
+          {icon && <CIcon icon={icon} className="me-2" />}
+          <strong className="me-auto">{title}</strong>
+        </CToastHeader>
+        <CToastBody>{body}</CToastBody>
+      </CToast>
+    );
+    setToastToShow(toast);
+  };
 
   // Fetch Mappings
   const fetchMappings = async () => {
@@ -130,6 +149,7 @@ const Mappings = () => {
 
   return (
     <>
+        <CToaster ref={toasterRef} push={toastToShow} placement="top-end" />
         <CRow>
         <CCol xs={12}>
             <CCard>
@@ -217,6 +237,7 @@ const Mappings = () => {
             visible={isAddModalVisible}
             onClose={() => setIsAddModalVisible(false)}
             onSuccess={() => fetchMappings()}
+            pushToast={pushToast}
         />
         <MappingEditModal
             visible={isEditModalVisible}
@@ -231,6 +252,7 @@ const Mappings = () => {
             visible={isSuggestModalVisible}
             onClose={() => setIsSuggestModalVisible(false)}
             onSuccess={() => fetchMappings()}
+            pushToast={pushToast}
         />
     </>
   );
