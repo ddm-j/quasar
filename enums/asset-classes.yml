@@ -1,0 +1,39 @@
+# Canonical asset classes and aliases (source of truth for codegen)
+#
+# Structure:
+# canonical: ordered list of canonical class identifiers (lowercase_with_underscores)
+# aliases: mapping of alternative labels -> canonical identifiers
+# labels: optional mapping of canonical -> human-readable labels (optional, can be added later)
+# notes: optional free-form notes per canonical entry (optional)
+canonical:
+  - equity
+  - fund
+  - etf
+  - bond
+  - crypto
+  - currency
+  - future
+  - option
+  - index
+  - commodity
+  - derivative
+  - cfd
+  - warrant
+  - adr
+  - preferred
+  - mutual_fund
+  - money_market
+  - rates
+  - mbs
+  - muni
+  - structured_product
+aliases:
+  stock: equity
+  fx: currency
+  futures: future
+  perp: future
+  perps: future
+  index_option: option
+  bond_etf: etf
+  mmf: money_market
+  adr_pref: preferred

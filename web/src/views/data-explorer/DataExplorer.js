@@ -15,6 +15,7 @@ import OHLCTable from './OHLCTable'
 import DataExplorerToolbar from './DataExplorerToolbar'
 import { searchSymbols } from '../services/datahub_api'
 import { downloadCSV } from '../../utils/csvExport'
+import { INTERVALS } from '../../enums'
 
 const DataExplorer = () => {
   const [activeKey, setActiveKey] = useState(1)
@@ -93,7 +94,10 @@ const DataExplorer = () => {
       setSelectedSymbol(symbol)
       setSelectedProvider(symbol.provider)
       setSelectedSymbolName(symbol.provider_symbol)
-      setAvailableIntervals(symbol.available_intervals || [])
+      const symbolIntervals = symbol.available_intervals || []
+      const canonicalIntervals = symbolIntervals.filter((iv) => INTERVALS.includes(iv))
+      const intervalsToUse = canonicalIntervals.length > 0 ? canonicalIntervals : symbolIntervals
+      setAvailableIntervals(intervalsToUse)
       
       // Auto-select data type if only one is available
       if (symbol.has_historical && !symbol.has_live) {
@@ -106,8 +110,8 @@ const DataExplorer = () => {
       }
       
       // Auto-select first interval if available
-      if (symbol.available_intervals && symbol.available_intervals.length > 0) {
-        setSelectedInterval(symbol.available_intervals[0])
+      if (intervalsToUse && intervalsToUse.length > 0) {
+        setSelectedInterval(intervalsToUse[0])
       } else {
         setSelectedInterval('')
       }
@@ -121,11 +125,12 @@ const DataExplorer = () => {
     
     // Update available intervals based on selected symbol and data type
     if (selectedSymbol) {
-      // For now, use all intervals from the symbol
-      // In a more advanced implementation, we could filter by data type
-      setAvailableIntervals(selectedSymbol.available_intervals || [])
-      if (selectedSymbol.available_intervals && selectedSymbol.available_intervals.length > 0) {
-        setSelectedInterval(selectedSymbol.available_intervals[0])
+      const symbolIntervals = selectedSymbol.available_intervals || []
+      const canonicalIntervals = symbolIntervals.filter((iv) => INTERVALS.includes(iv))
+      const intervalsToUse = canonicalIntervals.length > 0 ? canonicalIntervals : symbolIntervals
+      setAvailableIntervals(intervalsToUse)
+      if (intervalsToUse && intervalsToUse.length > 0) {
+        setSelectedInterval(intervalsToUse[0])
       }
     }
   }

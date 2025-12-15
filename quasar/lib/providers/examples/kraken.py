@@ -1,6 +1,7 @@
 """Built-in live data provider for Kraken WebSocket OHLC data."""
 
-from quasar.lib.providers.core import LiveDataProvider, Interval, Bar, SymbolInfo
+from quasar.lib.enums import AssetClass, Interval
+from quasar.lib.providers.core import LiveDataProvider, Bar, SymbolInfo
 from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
@@ -50,7 +51,7 @@ class KrakenProvider(LiveDataProvider):
             raise ValueError("Error fetching asset pairs from Kraken")
         
         # These Values are the same for all symbols from Kraken
-        asset_class = 'crypto'
+        asset_class = AssetClass.CRYPTO.value
         country = None
         isin = None
         exchange = 'Kraken'
@@ -88,15 +89,15 @@ class KrakenProvider(LiveDataProvider):
     async def _subscribe(self, interval: Interval, symbols: list[str]) -> None:
         """Return subscription payload for Kraken OHLC channel."""
         interval_map = {
-            '1min': 1,
-            '5min': 5,
-            '15min': 15,
-            '30min': 30,
-            '1h': 60,
-            '4h': 240,
-            '1d': 1440,
-            '1w': 10080,
-            '1M': 43200,
+            Interval.I_1MIN: 1,
+            Interval.I_5MIN: 5,
+            Interval.I_15MIN: 15,
+            Interval.I_30MIN: 30,
+            Interval.I_1H: 60,
+            Interval.I_4H: 240,
+            Interval.I_1D: 1440,
+            Interval.I_1W: 10080,
+            Interval.I_1M: 43200,
         }
         kraken_interval = interval_map.get(interval, 1440)
         if kraken_interval is None:

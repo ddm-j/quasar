@@ -32,27 +32,43 @@ This guide shows you how to turn any market data source into a Quasar “provide
 
 Tip: If your source offers both, start with historical to validate symbols and bar shape, then add live.
 
-## 5) Minimal skeletons
+## 5) Minimal skeletons (with enums)
 ### Historical template
 ```python
 from datetime import date, datetime, timezone
-from quasar.lib.providers import HistoricalDataProvider, Interval, Bar, SymbolInfo
+from quasar.lib.providers import HistoricalDataProvider, Bar, SymbolInfo
+from quasar.lib.enums import Interval, AssetClass
 
 class MyHistorical(HistoricalDataProvider):
     name = "MY_HIST"  # must be unique
 
     async def get_available_symbols(self) -> list[SymbolInfo]:
-        return []  # fill with your symbols
+        return [
+            SymbolInfo(
+                provider=self.name,
+                provider_id="AAPL",
+                isin=None,
+                symbol="AAPL",
+                name="Apple Inc",
+                exchange="NASDAQ",
+                asset_class=AssetClass.EQUITY.value,
+                base_currency="USD",
+                quote_currency="USD",
+                country="US",
+            )
+        ]
 
     async def get_history(self, sym: str, start: date, end: date, interval: Interval):
-        # call your HTTP API here, then yield bars oldest → newest
+        if interval not in (Interval.I_1D, Interval.I_1W, Interval.I_1M):
+            raise ValueError(f"Unsupported interval: {interval}")
         yield Bar(ts=start, sym=sym, o=100, h=101, l=99, c=100, v=1000)
 ```
 Optional: override `get_history_many(reqs)` if your API supports batching; otherwise the base class loops `get_history`.
 
 ### Live template
 ```python
-from quasar.lib.providers import LiveDataProvider, Interval, Bar
+from quasar.lib.providers import LiveDataProvider, Bar
+from quasar.lib.enums import Interval
 import websockets, json
 
 class MyLive(LiveDataProvider):
@@ -60,12 +76,14 @@ class MyLive(LiveDataProvider):
     close_buffer_seconds = 2  # keep listening after bar close
 
     async def get_available_symbols(self):
-        return []  # fetch from your REST endpoint if available
+        return []
 
     async def _connect(self):
         return await websockets.connect("wss://example")
 
     async def _subscribe(self, interval: Interval, symbols: list[str]) -> dict:
+        if interval not in (Interval.I_1MIN, Interval.I_5MIN, Interval.I_15MIN):
+            raise ValueError(f\"Unsupported interval: {interval}\")
         return {"op": "subscribe", "symbols": symbols, "interval": interval}
 
     async def _unsubscribe(self, symbols: list[str]) -> dict:
@@ -81,7 +99,7 @@ The base `get_live` handles: connect → subscribe → listen until the next int
 ## 6) Implement the required methods (checklist)
 ### For both types
 - `name`: short, unique identifier (e.g., `EODHD`, `KRAKEN`).
-- `get_available_symbols`: return a list of `SymbolInfo` dicts (provider name, provider_id if any, symbol, name, exchange, asset_class, base_currency, quote_currency). Keep strings non-empty in strict mode.
+- `get_available_symbols`: return a list of `SymbolInfo` dicts (provider name, provider_id if any, symbol, name, exchange, asset_class, base_currency, quote_currency). Keep strings non-empty in strict mode. Use canonical asset classes from `quasar.lib.enums.AssetClass` (or normalize to `.value`).
 
 ### Historical specifics
 - Implement `get_history(sym, start, end, interval)` and yield bars **oldest → newest**, covering the requested range.
@@ -134,6 +152,11 @@ python -m quasar.lib.providers.devtools symbols --config path/to/hist.json
 - `provider_type` in the config decides historical vs live.
 - `--limit` caps collected bars (defaults: 500 hist, 50 live).
 - Strict validation is on by default; add `--no-strict` to relax checks.
+
+## 10) Enums as source of truth
+- Canonical asset classes/intervals live in `enums/*.yml` and generate backend/frontend/DB artifacts via `make enums`.
+- CI re-runs `make enums` and fails on drift; regenerate before committing.
+- Optional runtime guard (`ENUM_GUARD_MODE=warn|strict`) compares generated enums to DB lookup tables on service startup (default `off`). Set to `warn` for fresh deployments; avoid `strict` in mixed or legacy DB states.
 
 ### Python API (same validation)
 ```python

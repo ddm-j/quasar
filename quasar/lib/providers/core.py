@@ -26,14 +26,13 @@ import logging
 import websockets.asyncio
 
 from quasar.lib.common.context import DerivedContext
+from quasar.lib.enums import AssetClass, Interval as IntervalEnum
 
 logger = logging.getLogger(__name__)
 
 # Provider Primitives
-# Data bar inteverval
-Interval = Literal[
-    '1min', '5min', '15min', '30min', '1h', '4h', '1d', '1w', '1M'
-] 
+# Data bar interval (generated enum, subclass of str)
+Interval = IntervalEnum
 
 # Data bar type
 class Bar(TypedDict):
@@ -54,7 +53,7 @@ class SymbolInfo(TypedDict):
     symbol: str
     name: str
     exchange: str
-    asset_class: str
+    asset_class: AssetClass
     base_currency: str
     quote_currency: str
     country: str | None

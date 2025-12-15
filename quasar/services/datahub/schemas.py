@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from quasar.lib.providers.core import SymbolInfo
+from quasar.lib.enums import AssetClass, Interval
 
 
 class ProviderValidateRequest(BaseModel):
@@ -32,7 +33,7 @@ class AssetInfo(BaseModel):
     base_currency: Optional[str] = Field(None, description="Base currency")
     quote_currency: Optional[str] = Field(None, description="Quote currency")
     exchange: Optional[str] = Field(None, description="Exchange name")
-    asset_class: Optional[str] = Field(None, description="Asset class")
+    asset_class: Optional[AssetClass] = Field(None, description="Asset class")
 
 
 class SymbolSearchItem(BaseModel):
@@ -42,7 +43,7 @@ class SymbolSearchItem(BaseModel):
     provider_symbol: str = Field(..., description="Provider-specific symbol")
     has_historical: bool = Field(..., description="Whether historical data is available")
     has_live: bool = Field(..., description="Whether live data is available")
-    available_intervals: List[str] = Field(default_factory=list, description="Available intervals for this symbol")
+    available_intervals: List[Interval] = Field(default_factory=list, description="Available intervals for this symbol")
     last_updated: Optional[datetime] = Field(None, description="Last update timestamp")
     asset_info: Optional[AssetInfo] = Field(None, description="Asset metadata")
 
@@ -70,7 +71,7 @@ class OHLCDataResponse(BaseModel):
     symbol: str = Field(..., description="Provider-specific symbol")
     common_symbol: Optional[str] = Field(None, description="Common symbol identifier")
     data_type: str = Field(..., description="Data type: 'historical' or 'live'")
-    interval: str = Field(..., description="Interval string")
+    interval: Interval = Field(..., description="Interval string")
     bars: List[OHLCBar] = Field(..., description="List of OHLC bars")
     count: int = Field(..., description="Number of bars returned")
     from_time: Optional[datetime] = Field(None, description="Start time of data range")

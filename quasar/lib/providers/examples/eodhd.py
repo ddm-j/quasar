@@ -1,6 +1,7 @@
 """Built-in historical data provider for EODHD."""
 
-from quasar.lib.providers.core import HistoricalDataProvider, Interval, Bar, SymbolInfo
+from quasar.lib.enums import AssetClass, Interval
+from quasar.lib.providers.core import HistoricalDataProvider, Bar, SymbolInfo
 from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone
 from typing import Iterable
@@ -28,11 +29,11 @@ class EODHDProvider(HistoricalDataProvider):
         
 
         class_map = {
-            'common stock': 'equity',
-            'fund': 'fund',
-            'etf': 'etf',
-            'bond': 'bond',
-            'currency': 'currency',
+            'common stock': AssetClass.EQUITY.value,
+            'fund': AssetClass.FUND.value,
+            'etf': AssetClass.ETF.value,
+            'bond': AssetClass.BOND.value,
+            'currency': AssetClass.CURRENCY.value,
         }
 
         symbol_info = []
@@ -41,13 +42,23 @@ class EODHDProvider(HistoricalDataProvider):
             # Crypto and FOREX from EODHD are not exchange specific
             if e['Exchange'] == 'CC':
                 exchange = None
-                asset_class = 'crypto'
+                asset_class = AssetClass.CRYPTO.value
+                # EODHD API uses .CC for crypto symbols
+                api_symbol_suffix = 'CC'
             elif e['Exchange'] == 'FOREX':
                 exchange = None
-                asset_class = 'currency'
+                asset_class = AssetClass.CURRENCY.value
+                # EODHD API uses .FOREX for forex symbols
+                api_symbol_suffix = 'FOREX'
             else:
                 exchange = e['Exchange']
                 asset_class = class_map.get(e['Type'].lower())
+                # EODHD API uses .US for all U.S. exchanges (NASDAQ, NYSE, etc.)
+                if e['Exchange'] in ['NASDAQ', 'NYSE']:
+                    api_symbol_suffix = 'US'
+                else:
+                    # For other exchanges, use the exchange name as-is
+                    api_symbol_suffix = e['Exchange']
             if asset_class is None:
                 continue
 
@@ -55,9 +66,9 @@ class EODHDProvider(HistoricalDataProvider):
             base_currency = 'USD'
             quote_currency = None
             currs = None
-            if asset_class == 'crypto':
+            if asset_class == AssetClass.CRYPTO.value:
                 currs = e['Code'].split('-')
-            elif asset_class == 'currency':
+            elif asset_class == AssetClass.CURRENCY.value:
                 try:
                     currs = [e['Code'][:3], e['Code'][3:]]
                     assert len(currs[0]) == 3
@@ -78,7 +89,8 @@ class EODHDProvider(HistoricalDataProvider):
                 provider=self.name,
                 provider_id=None,
                 isin=e['Isin'],
-                symbol=f"{e['Code']}.{e['Exchange']}",
+                # Use API-compatible symbol format (e.g., AAPL.US for U.S. stocks)
+                symbol=f"{e['Code']}.{api_symbol_suffix}",
                 name=e['Name'],
                 exchange=exchange,
                 asset_class=asset_class,
@@ -98,13 +110,13 @@ class EODHDProvider(HistoricalDataProvider):
         interval: Interval,
     ):
         """Yield historical bars from EODHD for the given symbol and range."""
-        # Map Interval to EODHD API
+        # Map Interval to EODHD API (supported subset: 1d,1w,1M)
         eodhd_interval_map = {
-            '1d': '1d',
-            '1w': '1w',
-            '1M': '1M'
+            Interval.I_1D: '1d',
+            Interval.I_1W: '1w',
+            Interval.I_1M: '1M'
         }
-        eodhd_interval = eodhd_interval_map.get(interval, '1d')
+        eodhd_interval = eodhd_interval_map.get(interval)
         if eodhd_interval is None:
             raise ValueError(f"Unsupported interval: {interval}")
 
@@ -113,7 +125,7 @@ class EODHDProvider(HistoricalDataProvider):
             f"{BASE}/eod/{sym}"
             f"?from={str(start)}"
             f"&to={str(end)}"
-            f"&period={interval}"
+            f"&period={eodhd_interval}"
             f"&api_token={self.context.get('api_token')}&fmt=json"
         )
         

@@ -16,6 +16,7 @@ from functools import wraps
 from fastapi import HTTPException, Query
 import asyncio
 from pathlib import Path
+import os
 
 from quasar.lib.common.secret_store import SecretStore
 from quasar.lib.common.offset_cron import OffsetCronTrigger
@@ -23,6 +24,7 @@ from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
 from quasar.lib.common.context import SystemContext, DerivedContext
 from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider
+from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
     ProviderValidateRequest, ProviderValidateResponse,
     SymbolSearchResponse, SymbolSearchItem, OHLCDataResponse, OHLCBar,
@@ -52,6 +54,7 @@ QUERIES = {
                                   """
 }
 ALLOWED_DYNAMIC_PATH = '/app/dynamic_providers'
+ENUM_GUARD_MODE = os.getenv("ENUM_GUARD_MODE", "off").lower()
 
 def safe_job(default_return: Any = None) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
     """Decorator to wrap scheduled jobs and swallow exceptions.
@@ -163,6 +166,7 @@ class DataHub(DatabaseHandler, APIHandler):
         
         # Start Database Pool
         await self.init_pool()
+        await self._run_enum_guard()
 
         # Stop A Previous Scheduler if it is running
         self._stop_scheduler()
@@ -195,6 +199,14 @@ class DataHub(DatabaseHandler, APIHandler):
 
         # Close Database Pool
         await self.close_pool()
+
+    async def _run_enum_guard(self) -> None:
+        """Optional enum/runtime sanity check against DB lookup tables."""
+        mode = ENUM_GUARD_MODE
+        if mode == "off":
+            return
+        strict = mode == "strict"
+        await validate_enums(self.pool, strict=strict)
 
     # ---------------------------------------------------------------------
     # Provider Loading

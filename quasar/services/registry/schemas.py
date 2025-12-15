@@ -4,6 +4,8 @@ Registry-specific Pydantic schemas for API request/response models.
 from typing import Optional, List, Literal, Dict, Any, Union
 from pydantic import BaseModel, Field
 
+from quasar.lib.enums import AssetClass
+
 
 # Path parameter types
 ClassType = Literal["provider", "broker"]
@@ -59,7 +61,7 @@ class AssetQueryParams(BaseModel):
     sort_order: str = Field(default="asc", description="Sort order ('asc' or 'desc'), comma-separated if multiple sort_by")
     class_name_like: Optional[str] = Field(default=None, description="Partial match for class_name")
     class_type: Optional[str] = Field(default=None, description="Exact match for class_type ('provider' or 'broker')")
-    asset_class: Optional[str] = Field(default=None, description="Exact match for asset_class")
+    asset_class: Optional[AssetClass] = Field(default=None, description="Exact match for asset_class")
     base_currency_like: Optional[str] = Field(default=None, description="Partial match for base_currency")
     quote_currency_like: Optional[str] = Field(default=None, description="Partial match for quote_currency")
     country_like: Optional[str] = Field(default=None, description="Partial match for country")
@@ -79,7 +81,7 @@ class AssetItem(BaseModel):
     symbol: str
     name: Optional[str] = None
     exchange: Optional[str] = None
-    asset_class: Optional[str] = None
+    asset_class: Optional[AssetClass] = None
     base_currency: Optional[str] = None
     quote_currency: Optional[str] = None
     country: Optional[str] = None

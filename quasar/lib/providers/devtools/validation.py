@@ -5,8 +5,19 @@ from __future__ import annotations
 import math
 from datetime import date, datetime
 from typing import Iterable, Sequence
+import logging
 
+from quasar.lib.enums import (
+    ASSET_CLASS_ALIAS_MAP,
+    ASSET_CLASSES,
+    INTERVAL_ALIAS_MAP,
+    INTERVALS,
+    normalize_asset_class,
+    normalize_interval,
+)
 from quasar.lib.providers import Bar
+
+logger = logging.getLogger(__name__)
 
 
 class ValidationError(ValueError):
@@ -104,6 +115,28 @@ def validate_symbols(symbols: Sequence[dict], strict: bool = True) -> None:
                 raise ValidationError(f"Symbol field {key} must be a string or None")
             if strict and val.strip() == "":
                 raise ValidationError(f"Symbol field {key} cannot be empty in strict mode")
+
+        # Normalize and validate asset_class
+        raw_ac = sym.get("asset_class")
+        norm_ac = normalize_asset_class(raw_ac)
+        if norm_ac is not None and norm_ac in ASSET_CLASS_ALIAS_MAP:
+            norm_ac = ASSET_CLASS_ALIAS_MAP[norm_ac]
+        if strict and norm_ac not in ASSET_CLASSES:
+            raise ValidationError(f"Invalid asset_class: {raw_ac!r}")
+        # Update symbol in-place for downstream consumers
+        if norm_ac:
+            sym["asset_class"] = norm_ac
+
+        # Normalize and validate interval if present (optional field in some flows)
+        if "interval" in sym:
+            raw_iv = sym.get("interval")
+            norm_iv = normalize_interval(raw_iv)
+            if norm_iv is not None and norm_iv in INTERVAL_ALIAS_MAP:
+                norm_iv = INTERVAL_ALIAS_MAP[norm_iv]
+            if strict and norm_iv not in INTERVALS:
+                raise ValidationError(f"Invalid interval: {raw_iv!r}")
+            if norm_iv:
+                sym["interval"] = norm_iv
 
 
 async def drain_async_iterable(stream: Iterable[Bar], limit: int | None = None) -> list[Bar]:
