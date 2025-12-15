@@ -32,6 +32,16 @@ INSERT INTO provider_subscription
 (provider, provider_class_type, interval, sym)
 VALUES
 -- historical subscriptions
-('EODHD', 'provider', '1d', 'AAPL.NASDAQ'),
-('EODHD', 'provider', '1d', 'MSFT.NASDAQ'),
-('EODHD', 'provider', '1d', 'PLTR.NASDAQ');
+('EODHD', 'provider', '1d', 'AAPL.US'),
+('EODHD', 'provider', '1d', 'MSFT.US'),
+('EODHD', 'provider', '1d', 'PLTR.US');
+
+
+-- Testing Subscriptions to Initialize System
+INSERT INTO provider_subscription
+(provider, provider_class_type, interval, sym)
+VALUES
+-- historical subscriptions
+('DATABENTO', 'provider', '1d', 'AAPL'),
+('DATABENTO', 'provider', '1d', 'MSFT'),
+('DATABENTO', 'provider', '1d', 'PLTR');

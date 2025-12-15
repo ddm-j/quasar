@@ -43,12 +43,22 @@ class EODHDProvider(HistoricalDataProvider):
             if e['Exchange'] == 'CC':
                 exchange = None
                 asset_class = AssetClass.CRYPTO.value
+                # EODHD API uses .CC for crypto symbols
+                api_symbol_suffix = 'CC'
             elif e['Exchange'] == 'FOREX':
                 exchange = None
                 asset_class = AssetClass.CURRENCY.value
+                # EODHD API uses .FOREX for forex symbols
+                api_symbol_suffix = 'FOREX'
             else:
                 exchange = e['Exchange']
                 asset_class = class_map.get(e['Type'].lower())
+                # EODHD API uses .US for all U.S. exchanges (NASDAQ, NYSE, etc.)
+                if e['Exchange'] in ['NASDAQ', 'NYSE']:
+                    api_symbol_suffix = 'US'
+                else:
+                    # For other exchanges, use the exchange name as-is
+                    api_symbol_suffix = e['Exchange']
             if asset_class is None:
                 continue
 
@@ -79,7 +89,8 @@ class EODHDProvider(HistoricalDataProvider):
                 provider=self.name,
                 provider_id=None,
                 isin=e['Isin'],
-                symbol=f"{e['Code']}.{e['Exchange']}",
+                # Use API-compatible symbol format (e.g., AAPL.US for U.S. stocks)
+                symbol=f"{e['Code']}.{api_symbol_suffix}",
                 name=e['Name'],
                 exchange=exchange,
                 asset_class=asset_class,
