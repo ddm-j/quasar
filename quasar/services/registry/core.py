@@ -11,6 +11,8 @@ from asyncpg.exceptions import UndefinedFunctionError
 from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
 from quasar.lib.common.context import SystemContext, DerivedContext
+from quasar.lib.common.enum_guard import validate_enums
+from quasar.lib.enums import ASSET_CLASSES, normalize_asset_class
 from quasar.services.registry.schemas import (
     ClassType, FileUploadResponse, UpdateAssetsResponse, ClassSummaryItem,
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
@@ -64,6 +66,7 @@ class Registry(DatabaseHandler, APIHandler):
     dynamic_provider = '/app/dynamic_providers'
     dynamic_broker = '/app/dynamic_brokers'
     system_context = SystemContext()
+    enum_guard_mode = os.getenv("ENUM_GUARD_MODE", "off").lower()
 
     def __init__(
             self, 
@@ -175,6 +178,7 @@ class Registry(DatabaseHandler, APIHandler):
 
         # Start Database
         await self.init_pool()
+        await self._run_enum_guard()
 
     async def stop(self) -> None:
         """
@@ -186,6 +190,14 @@ class Registry(DatabaseHandler, APIHandler):
         # Stop API
         await self.stop_api_server()
     # ---------------------------------------------------------------------
+
+    async def _run_enum_guard(self) -> None:
+        """Optional enum/runtime sanity check against DB lookup tables."""
+        mode = self.enum_guard_mode
+        if mode == "off":
+            return
+        strict = mode == "strict"
+        await validate_enums(self.pool, strict=strict)
 
     # API ENDPOINTS
     # ---------------------------------------------------------------------
@@ -663,6 +675,13 @@ class Registry(DatabaseHandler, APIHandler):
                     stats['failed_symbols'] += 1
                     continue
 
+                raw_asset_class = symbol_info.get('asset_class')
+                normalized_asset_class = normalize_asset_class(raw_asset_class)
+                if raw_asset_class and (normalized_asset_class not in ASSET_CLASSES):
+                    logger.warning(f"Skipping symbol {symbol}: invalid asset_class '{raw_asset_class}'")
+                    stats['failed_symbols'] += 1
+                    continue
+
                 record_values = (
                     class_name,
                     class_type,
@@ -671,7 +690,7 @@ class Registry(DatabaseHandler, APIHandler):
                     symbol,
                     symbol_info.get('name'),
                     symbol_info.get('exchange'),
-                    symbol_info.get('asset_class'),
+                    normalized_asset_class,
                     symbol_info.get('base_currency'),
                     symbol_info.get('quote_currency'),
                     symbol_info.get('country')
@@ -767,7 +786,11 @@ class Registry(DatabaseHandler, APIHandler):
             
             add_filter('class_name', params.class_name_like, partial_match=True)
             add_filter('class_type', params.class_type)
-            add_filter('asset_class', params.asset_class) # Exact match for dropdown
+            if params.asset_class is not None:
+                norm_ac = normalize_asset_class(params.asset_class)
+                if norm_ac not in ASSET_CLASSES:
+                    raise HTTPException(status_code=400, detail=f"Invalid asset_class: {params.asset_class}")
+                add_filter('asset_class', norm_ac) # Exact match for dropdown
             add_filter('base_currency', params.base_currency_like, partial_match=True)
             add_filter('quote_currency', params.quote_currency_like, partial_match=True)
             add_filter('country', params.country_like, partial_match=True)

@@ -25,3 +25,13 @@ VALUES
 ('KRAKEN', 'provider', '1h', 'ETH/USD'),
 ('KRAKEN', 'provider', '1h', 'ADA/USD'),
 ('KRAKEN', 'provider', '1h', 'XRP/USD');
+
+
+-- Testing Subscriptions to Initialize System
+INSERT INTO provider_subscription
+(provider, provider_class_type, interval, sym)
+VALUES
+-- historical subscriptions
+('EODHD', 'provider', '1d', 'AAPL.NASDAQ'),
+('EODHD', 'provider', '1d', 'MSFT.NASDAQ'),
+('EODHD', 'provider', '1d', 'PLTR.NASDAQ');

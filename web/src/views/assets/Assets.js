@@ -1,5 +1,5 @@
 // Empty "Assets" view component
-import { React, useState, useEffect } from 'react'; 
+import React, { useState, useEffect } from 'react'; 
 import { 
     CCard, 
     CCardBody, 
@@ -17,6 +17,7 @@ import {
     CAlert,
 } from '@coreui/react-pro';
 import { getAssets } from '../services/registry_api';
+import { ASSET_CLASSES } from '../../enums';
 
 const Assets = () => {
     // State
@@ -113,33 +114,33 @@ const Assets = () => {
         default: return 'light';
         }
     }
-    const getAssetClassBadge = (asset_class) => {
-        switch (asset_class) {
-            case 'equity': return 'success';
-            case 'fund': return 'info';
-            case 'etf': return 'warning';
-            case 'bond': return 'dark';
-            case 'crypto': return 'danger';
-            case 'currency': return 'primary';
-            default: return 'secondary';
-        }
-    }
+    const formatLabel = (value) => {
+        if (!value) return '';
+        const withSpaces = value.replace(/_/g, ' ');
+        return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
+    };
+
+    const assetClassFilterOptions = [
+        { value: '', label: 'All' },
+        ...ASSET_CLASSES.map((ac) => ({ value: ac, label: formatLabel(ac) })),
+    ];
+
+    const assetClassBadgeColor = {
+        equity: 'success',
+        fund: 'info',
+        etf: 'warning',
+        bond: 'dark',
+        crypto: 'danger',
+        currency: 'primary',
+    };
+
+    const getAssetClassBadge = (asset_class) => assetClassBadgeColor[asset_class] || 'secondary';
 
     const classTypeFilterOptions = [
         { value: '', label: 'All' }, 
         { value: 'provider', label: 'Provider' },
         { value: 'broker', label: 'Broker' },
     ]
-    const assetClassFilterOptions = [
-        { value: '', label: 'All' }, 
-        { value: 'equity', label: 'Equity' },
-        { value: 'fund', label: 'Fund' },
-        { value: 'etf', label: 'ETF' },
-        { value: 'bond', label: 'Bond' },
-        { value: 'crypto', label: 'Crypto' },
-        { value: 'currency', label: 'Currency' },
-    ]
-
     const columns = [
         { key: 'symbol', label: "Symbol", _props: { className: 'fw-semibold' } },
         { key: 'name', label: "Name" },
@@ -277,7 +278,7 @@ const Assets = () => {
                             asset_class: (item) => (
                                 <td>
                                     <CBadge color={getAssetClassBadge(item.asset_class)}>
-                                        {item.asset_class ? item.asset_class.charAt(0).toUpperCase() + item.asset_class.slice(1) : ''}
+                                        {item.asset_class ? formatLabel(item.asset_class) : 'Unknown'}
                                     </CBadge>
                                 </td>
                             ),

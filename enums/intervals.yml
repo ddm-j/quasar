@@ -1,0 +1,25 @@
+# Canonical intervals, cron, and aliases (must match DB/backend formatting)
+# Mirrors the database accepted_intervals expectations.
+canonical:
+  - 1min
+  - 5min
+  - 15min
+  - 30min
+  - 1h
+  - 4h
+  - 1d
+  - 1w
+  - 1M
+cron:
+  1min: "* * * * *"
+  5min: "*/5 * * * *"
+  15min: "*/15 * * * *"
+  30min: "*/30 * * * *"
+  1h: "0 * * * *"
+  4h: "0 */4 * * *"
+  1d: "0 0 * * *"
+  1w: "0 0 * * 1"
+  1M: "0 0 1 * *"
+aliases:
+  one_minute: 1min
+  daily: 1d

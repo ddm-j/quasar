@@ -27,5 +27,9 @@ CREATE TABLE IF NOT EXISTS assets (
     CONSTRAINT fk_assets_to_code_registry
         FOREIGN KEY (class_name, class_type)
         REFERENCES code_registry (class_name, class_type)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_assets_asset_class
+        FOREIGN KEY (asset_class)
+        REFERENCES asset_class (code)
 );

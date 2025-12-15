@@ -1,6 +1,7 @@
 """Built-in historical data provider for Databento US Equities."""
 
-from quasar.lib.providers.core import HistoricalDataProvider, Interval, Bar, SymbolInfo, Req
+from quasar.lib.enums import AssetClass, Interval
+from quasar.lib.providers.core import HistoricalDataProvider, Bar, SymbolInfo, Req
 from quasar.lib.providers import register_provider
 from datetime import date, datetime, timezone, timedelta
 from typing import AsyncIterator, Iterable
@@ -175,7 +176,7 @@ class DatabentoProvider(HistoricalDataProvider):
             ValueError: If interval is not supported.
         """
         # Validate interval - only 1d supported initially
-        if interval != '1d':
+        if interval != Interval.I_1D:
             raise ValueError(
                 f"Unsupported interval: {interval}. "
                 f"DatabentoProvider currently only supports '1d' interval."
@@ -325,13 +326,13 @@ class DatabentoProvider(HistoricalDataProvider):
             
             # Map instrument class to asset class
             # Databento instrument classes: 'K' = Stock, 'F' = Future, 'O' = Option
-            asset_class = 'equity'  # Default for EQUS dataset
+            asset_class = AssetClass.EQUITY.value  # Default for EQUS dataset
             if instrument_class == 'F':
-                asset_class = 'future'
+                asset_class = AssetClass.FUTURE.value
             elif instrument_class == 'O':
-                asset_class = 'option'
+                asset_class = AssetClass.OPTION.value
             elif instrument_class == 'B':
-                asset_class = 'bond'
+                asset_class = AssetClass.BOND.value
             
             # Currency from record, default to USD for US equities
             currency = record.get('currency', '') or 'USD'
@@ -369,7 +370,7 @@ class DatabentoProvider(HistoricalDataProvider):
             sym: Symbol to fetch (e.g., 'AAPL', 'MSFT').
             start: Start date (inclusive).
             end: End date (inclusive).
-            interval: Bar interval (only '1d' supported currently).
+        interval: Bar interval (only '1d' supported currently).
 
         Yields:
             Bar: OHLCV bars ordered oldest to newest.
