@@ -42,6 +42,6 @@ INSERT INTO provider_subscription
 (provider, provider_class_type, interval, sym)
 VALUES
 -- historical subscriptions
-('DATABENTO', 'provider', '1d', 'AAPL'),
-('DATABENTO', 'provider', '1d', 'MSFT'),
-('DATABENTO', 'provider', '1d', 'PLTR');
+('DATABENTO', 'provider', '1d', 'AAPL');
+--('DATABENTO', 'provider', '1d', 'MSFT');
+--('DATABENTO', 'provider', '1d', 'PLTR');

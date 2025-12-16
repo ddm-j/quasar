@@ -659,56 +659,71 @@ class Registry(DatabaseHandler, APIHandler):
         
         async with self.pool.acquire() as conn:
             prepared_upsert = await conn.prepare(upsert_query)
-            for symbol_info in symbol_info_list:
-                if not isinstance(symbol_info, dict):
-                    logger.warning(f"Invalid symbol info format: {symbol_info}")
-                    stats['failed_symbols'] += 1
-                    continue
-
-                symbol = symbol_info.get('symbol')
-                if not symbol:
-                    logger.warning(f"Symbol is empty: {symbol_info}")
-                    stats['failed_symbols'] += 1
-                    continue
-                if symbol in processed_symbols:
-                    logger.warning(f"Duplicate symbol found in response: {symbol}")
-                    stats['failed_symbols'] += 1
-                    continue
-
-                raw_asset_class = symbol_info.get('asset_class')
-                normalized_asset_class = normalize_asset_class(raw_asset_class)
-                if raw_asset_class and (normalized_asset_class not in ASSET_CLASSES):
-                    logger.warning(f"Skipping symbol {symbol}: invalid asset_class '{raw_asset_class}'")
-                    stats['failed_symbols'] += 1
-                    continue
-
-                record_values = (
-                    class_name,
-                    class_type,
-                    symbol_info.get('provider_id'),
-                    symbol_info.get('isin'),
-                    symbol,
-                    symbol_info.get('name'),
-                    symbol_info.get('exchange'),
-                    normalized_asset_class,
-                    symbol_info.get('base_currency'),
-                    symbol_info.get('quote_currency'),
-                    symbol_info.get('country')
-                )
-
-                try:
-                    result = await prepared_upsert.fetchrow(*record_values)
-                    if result:
-                        if result['xmax'] == 0:
-                            stats['added_symbols'] += 1
-                        else:
-                            stats['updated_symbols'] += 1
-                    else:
-                        logger.warning(f"Failed to upsert symbol {symbol} for {class_name}.")
+            savepoint_counter = 0
+            async with conn.transaction():
+                async def _exec_savepoint(cmd: str) -> None:
+                    """Execute savepoint-related commands without aborting the transaction."""
+                    try:
+                        await conn.execute(cmd)
+                    except Exception as exc:
+                        logger.warning("Registry._update_assets_for_provider: Savepoint command '%s' failed: %s", cmd, exc, exc_info=True)
+                for symbol_info in symbol_info_list:
+                    if not isinstance(symbol_info, dict):
+                        logger.warning(f"Invalid symbol info format: {symbol_info}")
                         stats['failed_symbols'] += 1
-                except Exception as e_upsert:
-                    logger.error(f"Registry._update_assets_for_provider: Error upserting symbol {symbol} for {class_name}: {e_upsert}", exc_info=True)
-                    stats['failed_symbols'] += 1
+                        continue
+
+                    symbol = symbol_info.get('symbol')
+                    if not symbol:
+                        logger.warning(f"Symbol is empty: {symbol_info}")
+                        stats['failed_symbols'] += 1
+                        continue
+                    if symbol in processed_symbols:
+                        logger.warning(f"Duplicate symbol found in response: {symbol}")
+                        stats['failed_symbols'] += 1
+                        continue
+
+                    raw_asset_class = symbol_info.get('asset_class')
+                    normalized_asset_class = normalize_asset_class(raw_asset_class)
+                    if raw_asset_class and (normalized_asset_class not in ASSET_CLASSES):
+                        logger.warning(f"Skipping symbol {symbol}: invalid asset_class '{raw_asset_class}'")
+                        stats['failed_symbols'] += 1
+                        continue
+
+                    record_values = (
+                        class_name,
+                        class_type,
+                        symbol_info.get('provider_id'),
+                        symbol_info.get('isin'),
+                        symbol,
+                        symbol_info.get('name'),
+                        symbol_info.get('exchange'),
+                        normalized_asset_class,
+                        symbol_info.get('base_currency'),
+                        symbol_info.get('quote_currency'),
+                        symbol_info.get('country')
+                    )
+
+                    savepoint_name = f"symbol_upsert_{savepoint_counter}"
+                    savepoint_counter += 1
+                    await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+                    try:
+                        result = await prepared_upsert.fetchrow(*record_values)
+                        if result:
+                            if result['xmax'] == 0:
+                                stats['added_symbols'] += 1
+                            else:
+                                stats['updated_symbols'] += 1
+                            processed_symbols.add(symbol)
+                        else:
+                            logger.warning(f"Failed to upsert symbol {symbol} for {class_name}.")
+                            stats['failed_symbols'] += 1
+                    except Exception as e_upsert:
+                        logger.error(f"Registry._update_assets_for_provider: Error upserting symbol {symbol} for {class_name}: {e_upsert}", exc_info=True)
+                        stats['failed_symbols'] += 1
+                        await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+                    finally:
+                        await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
 
         stats['processed_symbols'] = stats['added_symbols'] + \
                                 stats['updated_symbols'] + \
