@@ -18,12 +18,11 @@ CREATE TABLE IF NOT EXISTS historical_data (
     CONSTRAINT fk_historical_data_to_code_registry
         FOREIGN KEY (provider, provider_class_type)
         REFERENCES code_registry (class_name, class_type)
-        ON DELETE CASCADE,
-    
-    CONSTRAINT fk_historical_data_to_assets
-        FOREIGN KEY (provider, provider_class_type, sym)
-        REFERENCES assets (class_name, class_type, symbol)
         ON DELETE CASCADE
+    
+    -- NOTE: fk_historical_data_to_assets intentionally omitted to avoid O(assets × chunks) 
+    -- FK overhead on provider deletion. Provider-level integrity is maintained
+    -- via fk_historical_data_to_code_registry.
 );
 -- Hypertable
 SELECT create_hypertable('historical_data', 'ts', if_not_exists => TRUE);

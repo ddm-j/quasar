@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS provider_subscription (
 CREATE INDEX IF NOT EXISTS sub_cron_bucket
     ON provider_subscription (provider, interval, cron);
 
+CREATE INDEX IF NOT EXISTS idx_provider_subscription_asset_fk
+    ON provider_subscription (provider, provider_class_type, sym);
+
 
 -- Trigger function to populate the cron field
 CREATE OR REPLACE FUNCTION set_cron_field()
