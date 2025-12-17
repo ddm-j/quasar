@@ -184,7 +184,9 @@ class DatabentoProvider(HistoricalDataProvider):
         
         # Build API URL with query parameters
         start_ts = f"{start.isoformat()}T00:00:00Z"
-        end_ts = f"{end.isoformat()}T23:59:59Z"
+        # Use 04:59:59Z to stay before Databento's ~05:00 UTC delayed-data cutoff
+        # This avoids 403 errors for users without a live data license
+        end_ts = f"{end.isoformat()}T04:59:59Z"
         
         url = (
             f"{BASE}/timeseries.get_range"
