@@ -23,6 +23,7 @@ from quasar.lib.common.offset_cron import OffsetCronTrigger
 from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
 from quasar.lib.common.context import SystemContext, DerivedContext
+from quasar.lib.common.calendar import TradingCalendar
 from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider
 from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
@@ -39,9 +40,16 @@ DEFAULT_LIVE_OFFSET = 30 # Default number of seconds to offset the subscription 
 DEFAULT_LOOKBACK = 8000 # Default Number of bars to pull if we don't already have data
 BATCH_SIZE = 500 # Number of bars to batch insert into the database 
 QUERIES = {
-          'get_subscriptions': """SELECT provider, interval, cron, array_agg(sym) AS syms
-                                  FROM provider_subscription
-                                  GROUP BY provider, interval, cron
+          'get_subscriptions': """SELECT ps.provider, ps.interval, ps.cron, 
+                                  array_agg(ps.sym ORDER BY ps.sym) AS syms,
+                                  array_agg(a.exchange ORDER BY ps.sym) AS exchanges
+                                  FROM provider_subscription ps
+                                  JOIN assets a ON (
+                                      ps.provider = a.class_name 
+                                      AND ps.provider_class_type = a.class_type 
+                                      AND ps.sym = a.symbol
+                                  )
+                                  GROUP BY ps.provider, ps.interval, ps.cron
                                   """,
            'get_last_updated': """SELECT sym, last_updated::date AS d
                                   FROM   historical_symbol_state
@@ -331,18 +339,18 @@ class DataHub(DatabaseHandler, APIHandler):
                 self._sched.add_job(
                     func=self.get_data,
                     trigger=OffsetCronTrigger.from_crontab(r["cron"], offset_seconds=offset_seconds),
-                    args=[r["provider"], r["interval"], r["syms"]],
+                    args=[r["provider"], r["interval"], r["syms"], r["exchanges"]],
                     id=key,
                 )
                 # Immediate Data Pull (development purposes)
                 if IMMEDIATE_PULL and prov_type == ProviderType.HISTORICAL:
                     logger.info(f"Immediate data pull for new subscription: {r['provider']}, {r['interval']}, {r['syms']}")
-                    asyncio.create_task(self.get_data(r["provider"], r["interval"], r["syms"]))
+                    asyncio.create_task(self.get_data(r["provider"], r["interval"], r["syms"], r["exchanges"]))
             else:
                 # Update Scheduled Job (symbol subscription may have changed)
                 logger.debug(f"Updating scheduled job: {key}")
                 self._sched.get_job(key).modify(
-                    args=[r["provider"], r["interval"], r["syms"]]
+                    args=[r["provider"], r["interval"], r["syms"], r["exchanges"]]
                 )
 
         # Remove Jobs if no longer subscribed
@@ -356,13 +364,15 @@ class DataHub(DatabaseHandler, APIHandler):
             self,
             provider: str,
             interval: str,
-            symbols: list[str]) -> list[Req]:
+            symbols: list[str],
+            exchanges: list[str]) -> list[Req]:
             """Build provider requests for historical bars.
 
             Args:
                 provider (str): Provider class name.
                 interval (str): Interval string (e.g., ``1d``).
                 symbols (list[str]): Symbols to request.
+                exchanges (list[str]): Corresponding exchange MICs.
 
             Returns:
                 list[Req]: Requests grouped by symbol.
@@ -382,15 +392,32 @@ class DataHub(DatabaseHandler, APIHandler):
             
             reqs: list[Req] = []
             default_start = yday - timedelta(days=DEFAULT_LOOKBACK)
-            for sym in symbols:
-                start = last_map.get(sym, default_start) + timedelta(days=1)
-                if start <= yday:
-                    reqs.append(Req(
-                        sym=sym,
-                        start=start,
-                        end=yday,
-                        interval=interval
-                    ))
+            for sym, mic in zip(symbols, exchanges):
+                last_updated = last_map.get(sym)
+                
+                if last_updated is None:
+                    # New Subscription: Bypass calendar check and pull 8000 bars
+                    start = default_start + timedelta(days=1)
+                    logger.info(f"New subscription for {sym} ({mic}). Requesting full backfill from {start}.")
+                else:
+                    # Incremental Update: Apply Smart Gap detection
+                    start = last_updated + timedelta(days=1)
+                    
+                    if start > yday:
+                        continue # Already caught up to yesterday
+                        
+                    # Check if any actual trading sessions occurred in the gap
+                    if not TradingCalendar.has_sessions_in_range(mic, start, yday):
+                        logger.info(f"Skipping {sym} ({mic}) - no trading sessions between {start} and {yday}.")
+                        continue
+
+                # Add valid request
+                reqs.append(Req(
+                    sym=sym,
+                    start=start,
+                    end=yday,
+                    interval=interval
+                ))
 
             return reqs
 
@@ -1091,13 +1118,14 @@ class DataHub(DatabaseHandler, APIHandler):
             raise HTTPException(status_code=500, detail=f'Internal API Error: {e}')
 
     @safe_job(default_return=None)
-    async def get_data(self, provider: str, interval: str, symbols: list[str]):
+    async def get_data(self, provider: str, interval: str, symbols: list[str], exchanges: list[str]):
         """Dispatch data pulls for the given provider and symbols.
 
         Args:
             provider (str): Provider class name.
             interval (str): Interval string.
             symbols (list[str]): Symbols to pull.
+            exchanges (list[str]): Corresponding exchange MICs.
         """
         # Load Provider Class
         if provider not in self._providers:
@@ -1107,16 +1135,27 @@ class DataHub(DatabaseHandler, APIHandler):
 
         if prov.provider_type == ProviderType.HISTORICAL:
             # Build Requests For Historical Data Provider
-            reqs = await self._build_reqs_historical(provider, interval, symbols)
+            reqs = await self._build_reqs_historical(provider, interval, symbols, exchanges)
             if not reqs:
-                logger.warning(f"{provider} has no valid requests to make.")
-                warnings.warn(f"{provider} has no valid requests to make.")
+                logger.info(f"{provider} has no valid sessions to pull at this time.")
                 return
             args = [reqs]
             kwargs = {}
         elif prov.provider_type == ProviderType.REALTIME:
+            # Filter symbols by current market status
+            open_symbols = []
+            for sym, mic in zip(symbols, exchanges):
+                if TradingCalendar.is_open_now(mic):
+                    open_symbols.append(sym)
+                else:
+                    logger.info(f"Skipping {sym} ({mic}) - market is currently closed.")
+            
+            if not open_symbols:
+                logger.info(f"No markets are open for {provider} realtime session. Skipping.")
+                return
+
             # Create Request for Live Data Provider
-            args = [interval, symbols]
+            args = [interval, open_symbols]
             # Add Timeout to prevent hung jobs
             kwargs = {'timeout': DEFAULT_LIVE_OFFSET+prov.close_buffer_seconds+30}
         else:

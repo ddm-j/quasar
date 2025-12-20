@@ -15,6 +15,16 @@ class EODHDProvider(HistoricalDataProvider):
     name = 'EODHD'
     RATE_LIMIT = (1000, 60)
 
+    EXCHANGE_MAP = {
+        "NASDAQ": "XNAS",
+        "NYSE": "XNYS",
+        "NYSE ARCA": "ARCX",
+        "NYSE MKT": "XASE",
+        "CC": "CRYPTO",
+        "cc": "CRYPTO",
+        "FOREX": "XFX"
+    }
+
     async def get_available_symbols(self) -> list[SymbolInfo]:
         """Return available symbols from EODHD filtered to supported exchanges."""
         symbols = []
@@ -38,27 +48,28 @@ class EODHDProvider(HistoricalDataProvider):
 
         symbol_info = []
         for e in symbols:
-            # Asset Class / Exchange Information
-            # Crypto and FOREX from EODHD are not exchange specific
-            if e['Exchange'] == 'CC':
-                exchange = None
+            # Normalize Exchange Name to MIC (with graceful fallback)
+            eodhd_exchange = e.get('Exchange', '')
+            exchange = self.EXCHANGE_MAP.get(eodhd_exchange, eodhd_exchange)
+
+            # Asset Class / API Suffix Information
+            if eodhd_exchange.lower() == 'cc':
                 asset_class = AssetClass.CRYPTO.value
                 # EODHD API uses .CC for crypto symbols
                 api_symbol_suffix = 'CC'
-            elif e['Exchange'] == 'FOREX':
-                exchange = None
+            elif eodhd_exchange.upper() == 'FOREX':
                 asset_class = AssetClass.CURRENCY.value
                 # EODHD API uses .FOREX for forex symbols
                 api_symbol_suffix = 'FOREX'
             else:
-                exchange = e['Exchange']
                 asset_class = class_map.get(e['Type'].lower())
                 # EODHD API uses .US for all U.S. exchanges (NASDAQ, NYSE, etc.)
-                if e['Exchange'] in ['NASDAQ', 'NYSE']:
+                if eodhd_exchange in ['NASDAQ', 'NYSE']:
                     api_symbol_suffix = 'US'
                 else:
                     # For other exchanges, use the exchange name as-is
-                    api_symbol_suffix = e['Exchange']
+                    api_symbol_suffix = eodhd_exchange
+
             if asset_class is None:
                 continue
 
