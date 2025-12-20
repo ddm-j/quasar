@@ -1,13 +1,24 @@
 # σ₄: Active Context
-*v1.0 | Created: 2025-01-27 | Updated: 2025-01-27*
-*Π: DEVELOPMENT | Ω: PLAN*
+*v1.0 | Created: 2025-01-27 | Updated: 2025-12-18*
+*Π: DEVELOPMENT | Ω: RESEARCH*
 
 ## 🔮 Current Focus
 
 **Phase**: DEVELOPMENT (Π₃)
-**Mode**: PLAN (Ω₃)
+**Mode**: RESEARCH (Ω₁)
 
-Implementation plan created for adding volume indicator to OHLCV candlestick chart. Plan includes minimal code changes to add volume histogram series using lightweight-charts library. Volume data is already available in API response, so only frontend changes are needed. Plan covers 3 phases: infrastructure setup, data transformation, and cleanup.
+Familiarizing with GitHub Issue #33: Trading Calendar Integration for DataHub Service. The goal is to prevent unnecessary API calls when markets are closed (weekends, holidays). This requires exchange-aware status checks before data pulling in `DataHub.get_data()`.
+
+## 🔄 Recent Changes
+
+### Phase 5: DataHub Integration
+- **Status**: ✅ Completed
+- **Changes**:
+  - Enhanced `TradingCalendar` with `has_sessions_in_range` and full `pandas` type normalization.
+  - Updated `DataHub` to fetch exchange metadata via an optimized SQL join.
+  - Implemented "Smart Gap" logic in `_build_reqs_historical` with an exemption for new subscriptions.
+  - Implemented real-time market status filtering in `get_data`.
+  - Added transparent logging for skipped operations.
 
 ## 🔄 Recent Changes
 

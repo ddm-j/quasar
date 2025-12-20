@@ -54,7 +54,7 @@ class KrakenProvider(LiveDataProvider):
         asset_class = AssetClass.CRYPTO.value
         country = None
         isin = None
-        exchange = 'Kraken'
+        exchange = 'CRYPTO'
         symbols = []
         for sym, e in result.items():
             if e['quote'] not in ['ZUSD', 'USDC']:

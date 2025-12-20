@@ -10,3 +10,4 @@ python-multipart>=0.0.9
 Requests==2.32.3
 uvicorn[standard]>=0.30.0
 websockets==15.0.1
+exchange_calendars==4.5.6
