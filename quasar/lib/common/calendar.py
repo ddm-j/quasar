@@ -112,6 +112,8 @@ class TradingCalendar:
         Returns:
             Optional[ExchangeCalendar]: The loaded calendar instance, or None if not found.
         """
+        if mic is None:
+            return None
         mic = mic.upper()
         if mic not in cls._cache:
             try:
