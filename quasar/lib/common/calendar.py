@@ -23,32 +23,56 @@ class CryptoCalendar(ExchangeCalendar):
 
     @property
     def name(self) -> str:
-        """Return the calendar name."""
+        """Return the calendar name.
+
+        Returns:
+            str: The calendar name ("CRYPTO").
+        """
         return "CRYPTO"
 
     @property
     def tz(self):
-        """Return the timezone for the calendar."""
+        """Return the timezone for the calendar.
+
+        Returns:
+            datetime.tzinfo: The UTC timezone.
+        """
         return pytz.utc
 
     @property
     def open_times(self):
-        """Return the daily open times."""
+        """Return the daily open times.
+
+        Returns:
+            tuple: Tuple containing the open time (00:00).
+        """
         return ((None, time(0, 0)),)
 
     @property
     def close_times(self):
-        """Return the daily close times."""
+        """Return the daily close times.
+
+        Returns:
+            tuple: Tuple containing the close time (23:59).
+        """
         return ((None, time(23, 59)),)
 
     @property
     def regular_holidays(self):
-        """Return the list of regular holidays."""
+        """Return the list of regular holidays.
+
+        Returns:
+            None: Crypto markets have no holidays.
+        """
         return None
 
     @property
     def weekmask(self) -> str:
-        """Return the weekmask defining active days (all 7 days)."""
+        """Return the weekmask defining active days (all 7 days).
+
+        Returns:
+            str: The weekmask "1111111".
+        """
         return "1111111"
 
 class ForexCalendar(ExchangeCalendar):
@@ -56,17 +80,29 @@ class ForexCalendar(ExchangeCalendar):
 
     @property
     def name(self) -> str:
-        """Return the calendar name."""
+        """Return the calendar name.
+
+        Returns:
+            str: The calendar name ("XFX").
+        """
         return "XFX"
 
     @property
     def tz(self):
-        """Return the timezone for the calendar."""
+        """Return the timezone for the calendar.
+
+        Returns:
+            datetime.tzinfo: The America/New_York timezone.
+        """
         return pytz.timezone("America/New_York")
 
     @property
     def open_times(self):
-        """Return the daily open times."""
+        """Return the daily open times.
+
+        Returns:
+            tuple: Tuple containing the daily open time.
+        """
         # Mon-Fri: 00:00, Sun: 17:00
         # This is tricky in xcals. Let's stick to full days for now to keep it "not overly complex"
         # but include Sunday so we don't miss the open.
@@ -74,17 +110,29 @@ class ForexCalendar(ExchangeCalendar):
 
     @property
     def close_times(self):
-        """Return the daily close times."""
+        """Return the daily close times.
+
+        Returns:
+            tuple: Tuple containing the daily close time.
+        """
         return ((None, time(23, 59)),)
 
     @property
     def regular_holidays(self):
-        """Return the list of regular holidays."""
+        """Return the list of regular holidays.
+
+        Returns:
+            None: Forex markets handled via weekmask for now.
+        """
         return None
 
     @property
     def weekmask(self) -> str:
-        """Return the weekmask defining active days (Mon-Fri + Sun)."""
+        """Return the weekmask defining active days (Mon-Fri + Sun).
+
+        Returns:
+            str: The weekmask "1111101".
+        """
         return "1111101"
 
 # Register custom calendars with the library
