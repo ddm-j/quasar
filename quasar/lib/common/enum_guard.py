@@ -11,7 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 async def _fetch_codes(pool: Pool, table: str, column: str) -> set[str] | None:
-    """Fetch a set of codes from a table; return None if table missing."""
+    """Fetch a set of codes from a table; return None if table missing.
+
+    Args:
+        pool (Pool): The asyncpg connection pool.
+        table (str): The name of the table to query.
+        column (str): The name of the column to fetch.
+
+    Returns:
+        set[str] | None: A set of unique codes from the specified column, 
+            or None if the table does not exist or an error occurs.
+    """
     query = f"SELECT {column} FROM {table}"
     try:
         async with pool.acquire() as conn:
@@ -26,7 +36,16 @@ async def _fetch_codes(pool: Pool, table: str, column: str) -> set[str] | None:
 
 
 async def validate_enums(pool: Pool, strict: bool = False) -> None:
-    """Compare generated enums with DB lookup tables."""
+    """Compare generated enums with DB lookup tables.
+
+    Args:
+        pool (Pool): The asyncpg connection pool to use for DB checks.
+        strict (bool): If True, raise a RuntimeError if mismatches are found. 
+            If False, only log warnings. Defaults to False.
+
+    Raises:
+        RuntimeError: If ``strict`` is True and enums do not match the database.
+    """
     db_assets = await _fetch_codes(pool, "asset_class", "code")
     db_intervals = await _fetch_codes(pool, "accepted_intervals", "interval")
 

@@ -22,3 +22,11 @@ Utilities shared across services.
 
 ::: quasar.lib.common.offset_cron
 
+## Trading calendar
+
+::: quasar.lib.common.calendar
+
+## Enum guard
+
+::: quasar.lib.common.enum_guard
+
