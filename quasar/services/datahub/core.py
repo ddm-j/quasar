@@ -331,9 +331,9 @@ class DataHub(DatabaseHandler, APIHandler):
 
             key = f"{r['provider']}|{r['interval']}|{r['cron']}"
             new_keys.add(key)
+            prov_type = self._providers[r["provider"]].provider_type
             if key not in self.job_keys:
                 # Subscription Schedule Detected
-                prov_type = self._providers[r["provider"]].provider_type
                 offset_seconds = 0 if prov_type == ProviderType.HISTORICAL else -1*DEFAULT_LIVE_OFFSET
                 logger.debug(f"Scheduling new job: {key}, with offset: {offset_seconds}, from specified cron: {r['cron']}")
                 self._sched.add_job(
@@ -349,6 +349,27 @@ class DataHub(DatabaseHandler, APIHandler):
             else:
                 # Update Scheduled Job (symbol subscription may have changed)
                 logger.debug(f"Updating scheduled job: {key}")
+                
+                job = self._sched.get_job(key)
+                if job and IMMEDIATE_PULL and prov_type == ProviderType.HISTORICAL:
+                    # Identify symbols currently in the scheduled job (stored in args[2])
+                    old_syms = set(job.args[2])
+                    new_syms = set(r['syms'])
+                    
+                    # Find the symbols that were just added
+                    added_syms = list(new_syms - old_syms)
+                    
+                    if added_syms:
+                        # Extract the correct exchange MICs for the added symbols
+                        # (r['syms'] and r['exchanges'] are already aligned by the SQL query)
+                        added_exchanges = [
+                            exc for sym, exc in zip(r['syms'], r['exchanges']) 
+                            if sym in added_syms
+                        ]
+                        
+                        logger.info(f"Symbols added to existing subscription {key}. Triggering immediate pull for: {added_syms}")
+                        asyncio.create_task(self.get_data(r["provider"], r["interval"], added_syms, added_exchanges))
+
                 self._sched.get_job(key).modify(
                     args=[r["provider"], r["interval"], r["syms"], r["exchanges"]]
                 )
