@@ -11,6 +11,10 @@ This document lists out common commands used during development.
 - `docker compose logs -f container_name`
 ### Restarts
 - `docker compose restart container_name`
+### From Scratch Rebuild
+- `docker compose down -v`
+- `docker compose build --no-cache`
+- `docker compose up -d`
 
 ## Testing
 ### Backend

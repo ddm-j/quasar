@@ -1,0 +1,6136 @@
+- isin: XT4V541JG149
+  symbol: '00'
+  name: 00 Token
+  exchange: null
+- isin: XT512GST3N65
+  symbol: 1DAI
+  name: Dai Stablecoin
+  exchange: null
+- isin: XT81HVG84RM6
+  symbol: 1ETH
+  name: ETH
+  exchange: null
+- isin: XTZQM556PH54
+  symbol: 1GBP
+  name: poundtoken
+  exchange: null
+- isin: XTSVRFHQRZN7
+  symbol: 1INCH
+  name: 1INCH Token
+  exchange: null
+- isin: XTLZQ6CQS3W2
+  symbol: 1ORBS
+  name: Orbs
+  exchange: null
+- isin: XT6RSGD0V2H1
+  symbol: 1TRB
+  name: Tellor Tributes
+  exchange: null
+- isin: XTJTT98KKWS2
+  symbol: 1USDC
+  name: USD Coin
+  exchange: null
+- isin: XT3PF73G68M1
+  symbol: 1USDT
+  name: Tether USD
+  exchange: null
+- isin: XTL0JKDWQ606
+  symbol: 1WBTC
+  name: Wrapped BTC
+  exchange: null
+- isin: XTB6SMW20CQ8
+  symbol: 2Z
+  name: DoubleZero
+  exchange: null
+- isin: XTD9D9M48K28
+  symbol: A
+  name: Vaulta
+  exchange: null
+- isin: XTH5DBGF2BJ9
+  symbol: A8
+  name: Ancient8
+  exchange: null
+- isin: XTX3WZ1HNWL2
+  symbol: AAED
+  name: AFREUM AED
+  exchange: null
+- isin: XTS6417D49W4
+  symbol: AAFN
+  name: AFREUM AFN
+  exchange: null
+- isin: XTXXZ8F4PZ97
+  symbol: AALL
+  name: AFREUM ALL
+  exchange: null
+- isin: XT1TNPG7XFV1
+  symbol: AAMD
+  name: AFREUM AMD
+  exchange: null
+- isin: XTW0ST1CR4M0
+  symbol: AANG
+  name: AFREUM ANG
+  exchange: null
+- isin: XTZRK64SV4Z4
+  symbol: AAOA
+  name: AFREUM AOA
+  exchange: null
+- isin: XTWKSG60NF09
+  symbol: AARS
+  name: AFREUM ARS
+  exchange: null
+- isin: XTVVLGRQGPN5
+  symbol: AAUD
+  name: AFREUM AUD
+  exchange: null
+- isin: XTH618RN5777
+  symbol: AAVE
+  name: Aave Token
+  exchange: null
+- isin: XTGJL86QG2M3
+  symbol: AAWG
+  name: AFREUM AWG
+  exchange: null
+- isin: XT65JZ3C66Z4
+  symbol: AAX
+  name: Academic Labs
+  exchange: null
+- isin: XT6RM2Z1LLQ4
+  symbol: AAZN
+  name: AFREUM AZN
+  exchange: null
+- isin: XTDTLFMQT4L7
+  symbol: AB
+  name: AB
+  exchange: null
+- isin: XT3KR7N45CX0
+  symbol: ABAM
+  name: AFREUM BAM
+  exchange: null
+- isin: XTXQS4QMSX22
+  symbol: ABBC
+  name: ABBC Coin
+  exchange: null
+- isin: XT7KCS2LQ2B3
+  symbol: ABBD
+  name: AFREUM BBD
+  exchange: null
+- isin: XTZQS79D91H2
+  symbol: ABDT
+  name: AFREUM BDT
+  exchange: null
+- isin: XTP8ZFVG2QN9
+  symbol: ABGN
+  name: AFREUM BGN
+  exchange: null
+- isin: XT2D5NPCQWH8
+  symbol: ABHD
+  name: AFREUM BHD
+  exchange: null
+- isin: XT82R0T9D1L7
+  symbol: ABIF
+  name: AFREUM BIF
+  exchange: null
+- isin: XTKFFC4DFJQ4
+  symbol: ABMD
+  name: AFREUM BMD
+  exchange: null
+- isin: XTLVL8S0CLF6
+  symbol: ABND
+  name: AFREUM BND
+  exchange: null
+- isin: XTCVL3C2H7V0
+  symbol: ABOB
+  name: AFREUM BOB
+  exchange: null
+- isin: XT6KSW0B5BT9
+  symbol: ABRL
+  name: AFREUM BRL
+  exchange: null
+- isin: XT7RCX5JV2Z1
+  symbol: ABSD
+  name: AFREUM BSD
+  exchange: null
+- isin: XT2M64LT88L0
+  symbol: ABT
+  name: ArcBlock
+  exchange: null
+- isin: XTKXKLCR28H6
+  symbol: ABTN
+  name: AFREUM BTN
+  exchange: null
+- isin: XTJWKHXCRPG7
+  symbol: ABWP
+  name: AFREUM BWP
+  exchange: null
+- isin: XTZV5BJVZ7V4
+  symbol: ABYN
+  name: AFREUM BYN
+  exchange: null
+- isin: XTWWNNG0G8X2
+  symbol: ABZD
+  name: AFREUM BZD
+  exchange: null
+- isin: XTSJ2DGCXR77
+  symbol: ACA
+  name: Acala
+  exchange: null
+- isin: XT695D5R5W38
+  symbol: ACAD
+  name: AFREUM CAD
+  exchange: null
+- isin: XTR3J0T2KBT8
+  symbol: ACDF
+  name: AFREUM CDF
+  exchange: null
+- isin: XTZXSKLRGHR8
+  symbol: ACE
+  name: ACEToken
+  exchange: null
+- isin: XTMBKSZCVQM5
+  symbol: ACH
+  name: Alchemy
+  exchange: null
+- isin: XTMZ2XSFTHB7
+  symbol: ACHF
+  name: AFREUM CHF
+  exchange: null
+- isin: XT4XD2H2TV18
+  symbol: ACLP
+  name: AFREUM CLP
+  exchange: null
+- isin: XTP6F55ZSN16
+  symbol: ACM
+  name: AC Milan
+  exchange: null
+- isin: XT9L9PQ2JW40
+  symbol: ACNY
+  name: AFREUM CNY
+  exchange: null
+- isin: XTFBPQ8L0F01
+  symbol: ACOP
+  name: AFREUM COP
+  exchange: null
+- isin: XTK305TJ1J95
+  symbol: ACORNS
+  name: Adderrels
+  exchange: null
+- isin: XTHT83D2BVX0
+  symbol: ACRC
+  name: AFREUM CRC
+  exchange: null
+- isin: XTN173NQNWW1
+  symbol: ACS
+  name: Access Protocol
+  exchange: null
+- isin: XTH4JMWRVR63
+  symbol: ACT
+  name: Act I The AI Prophecy
+  exchange: null
+- isin: XTD3RBVMB482
+  symbol: ACUP
+  name: AFREUM CUP
+  exchange: null
+- isin: XTB26ZXFT3P6
+  symbol: ACVE
+  name: AFREUM CVE
+  exchange: null
+- isin: XT1J4GM86GD8
+  symbol: ACX
+  name: Across Protocol Token
+  exchange: null
+- isin: XTKMHKLSS242
+  symbol: ACZK
+  name: AFREUM CZK
+  exchange: null
+- isin: XT76QS7QCXB8
+  symbol: ADA
+  name: Cardano ADA
+  exchange: null
+- isin: XTHSD3P23LK9
+  symbol: ADJF
+  name: AFREUM DJF
+  exchange: null
+- isin: XT236ZSBS7L9
+  symbol: ADKK
+  name: AFREUM DKK
+  exchange: null
+- isin: XTXQLMZPZH32
+  symbol: ADOP
+  name: AFREUM DOP
+  exchange: null
+- isin: XT54CWD3QSG2
+  symbol: ADS
+  name: Alkimi
+  exchange: null
+- isin: XTXJMBNL7QD0
+  symbol: ADZD
+  name: AFREUM DZD
+  exchange: null
+- isin: XTBPJS816721
+  symbol: AE
+  name: Aeternity
+  exchange: null
+- isin: XTF2MHG0VSR2
+  symbol: AEGP
+  name: AFREUM EGP
+  exchange: null
+- isin: XTBL2RCZBPD7
+  symbol: AERGO
+  name: Aergo
+  exchange: null
+- isin: XT9882DTQ934
+  symbol: AERN
+  name: AFREUM ERN
+  exchange: null
+- isin: XTN26VFQW6M0
+  symbol: AERO
+  name: Aerodrome
+  exchange: null
+- isin: XTP4SQS6JNQ3
+  symbol: AETB
+  name: AFREUM ETB
+  exchange: null
+- isin: XT86G8M23M08
+  symbol: AEUR
+  name: AFREUM EUR
+  exchange: null
+- isin: XTGXXVVRJW16
+  symbol: AEVO
+  name: Aevo
+  exchange: null
+- isin: XTLZ54V3QDL8
+  symbol: AFJD
+  name: AFREUM FJD
+  exchange: null
+- isin: XTNLWNHXXZN7
+  symbol: AFKP
+  name: AFREUM FKP
+  exchange: null
+- isin: XT2WGVC3MFP4
+  symbol: AFR
+  name: AFREUM
+  exchange: null
+- isin: XTTKLTBHBFR1
+  symbol: AFRX
+  name: AFREUM X
+  exchange: null
+- isin: XTBSXJZWQ8L3
+  symbol: AGBP
+  name: AFREUM GBP
+  exchange: null
+- isin: XTSQK4RG5B88
+  symbol: AGEL
+  name: AFREUM GEL
+  exchange: null
+- isin: XTCFTJDH3QQ3
+  symbol: AGENTFUN
+  name: AgentFun AI
+  exchange: null
+- isin: XTNRT3JBXPB3
+  symbol: AGHS
+  name: AFREUM GHS
+  exchange: null
+- isin: XTZFM2Q53S83
+  symbol: AGI
+  name: SingularityNET Token
+  exchange: null
+- isin: XTCH627V7J44
+  symbol: AGIP
+  name: AFREUM GIP
+  exchange: null
+- isin: XT2DQCCFTSS1
+  symbol: AGIX
+  name: SingularityNET Token
+  exchange: null
+- isin: XT2QNVF4SDM7
+  symbol: AGLD
+  name: Adventure Gold
+  exchange: null
+- isin: XTL92TM93J34
+  symbol: AGMD
+  name: AFREUM GMD
+  exchange: null
+- isin: XTPJLJXWHM83
+  symbol: AGNF
+  name: AFREUM GNF
+  exchange: null
+- isin: XTJNWZKHTLX9
+  symbol: AGRI
+  name: AgriDex Token
+  exchange: null
+- isin: XTWQ2JRZDT21
+  symbol: AGTQ
+  name: AFREUM GTQ
+  exchange: null
+- isin: XTZHH71TV710
+  symbol: AGYD
+  name: AFREUM GYD
+  exchange: null
+- isin: XT1KNKTQBLT0
+  symbol: AHKD
+  name: AFREUM HKD
+  exchange: null
+- isin: XTF1DX8C2N51
+  symbol: AHNL
+  name: AFREUM HNL
+  exchange: null
+- isin: XTKBVXWMM945
+  symbol: AHRK
+  name: AFREUM HRK
+  exchange: null
+- isin: XT61Q71V74V3
+  symbol: AHTG
+  name: AFREUM HTG
+  exchange: null
+- isin: XTNMNC5078N6
+  symbol: AHUF
+  name: AFREUM HUF
+  exchange: null
+- isin: XT1BQV4WDGD6
+  symbol: AI
+  name: Any Inu
+  exchange: null
+- isin: XT8SQN5VKWH2
+  symbol: AI16Z
+  name: ai16z
+  exchange: null
+- isin: XT1LZW7HGZV1
+  symbol: AIDOGE
+  name: ArbDoge AI
+  exchange: null
+- isin: XTTVH0VCP378
+  symbol: AIDR
+  name: AFREUM IDR
+  exchange: null
+- isin: XT3T10LV2CL7
+  symbol: AILS
+  name: AFREUM ILS
+  exchange: null
+- isin: XTQJBV8L1M74
+  symbol: AIN
+  name: Infinity Ground AI
+  exchange: null
+- isin: XT6VLXNCTDZ2
+  symbol: AINR
+  name: AFREUM INR
+  exchange: null
+- isin: XT1CBZ0VTZD4
+  symbol: AION
+  name: Aion
+  exchange: null
+- isin: XTBRPL13L580
+  symbol: AIOZ
+  name: AIOZ Network
+  exchange: null
+- isin: XTZF44K20D88
+  symbol: AIQD
+  name: AFREUM IQD
+  exchange: null
+- isin: XT1P979T69J9
+  symbol: AIRR
+  name: AFREUM IRR
+  exchange: null
+- isin: XT2FRM3RH0W9
+  symbol: AISK
+  name: AFREUM ISK
+  exchange: null
+- isin: XT8762TQWQ65
+  symbol: AIXBT
+  name: aixbt by Virtuals
+  exchange: null
+- isin: XTG42FMFMTB8
+  symbol: AJMD
+  name: AFREUM JMD
+  exchange: null
+- isin: XTT7PV7VQD78
+  symbol: AJOD
+  name: AFREUM JOD
+  exchange: null
+- isin: XTVG8CF7D5V1
+  symbol: AJPY
+  name: AFREUM JPY
+  exchange: null
+- isin: XTN48QNF54W6
+  symbol: AKES
+  name: AFREUM KES
+  exchange: null
+- isin: XTG5078PPV27
+  symbol: AKGS
+  name: AFREUM KGS
+  exchange: null
+- isin: XT693SVJBDX7
+  symbol: AKHR
+  name: AFREUM KHR
+  exchange: null
+- isin: XT2DWBZD5TT3
+  symbol: AKMF
+  name: AFREUM KMF
+  exchange: null
+- isin: XT1C1W9704N6
+  symbol: AKN
+  name: Akoin
+  exchange: null
+- isin: XTJP9QZXJ7C7
+  symbol: AKPW
+  name: AFREUM KPW
+  exchange: null
+- isin: XTKSN52SPW03
+  symbol: AKRO
+  name: Akropolis
+  exchange: null
+- isin: XT934X9KRGH4
+  symbol: AKRW
+  name: AFREUM KRW
+  exchange: null
+- isin: XTLK4B4JZJ50
+  symbol: AKT
+  name: AKT
+  exchange: null
+- isin: XTZPPHP2NMZ9
+  symbol: AKWD
+  name: AFREUM KWD
+  exchange: null
+- isin: XT1XGG1416H0
+  symbol: AKYD
+  name: AFREUM KYD
+  exchange: null
+- isin: XTDFJXD1RF55
+  symbol: AKZT
+  name: AFREUM KZT
+  exchange: null
+- isin: XT9DWZKVW8K9
+  symbol: ALAK
+  name: AFREUM LAK
+  exchange: null
+- isin: XTSNR7FB5529
+  symbol: ALBP
+  name: AFREUM LBP
+  exchange: null
+- isin: XTP487ZZRG16
+  symbol: ALBT
+  name: AllianceBlock Token
+  exchange: null
+- isin: XTWJCRD5LVT8
+  symbol: ALCX
+  name: Alchemix
+  exchange: null
+- isin: XTFW6DMFBNZ0
+  symbol: ALEO
+  name: Aleo
+  exchange: null
+- isin: XT56T1L5XRX9
+  symbol: ALEPH
+  name: Aleph Cloud
+  exchange: null
+- isin: XTRVPRJLP647
+  symbol: ALEX
+  name: ALEX Lab
+  exchange: null
+- isin: XTK8S6W74KS2
+  symbol: ALGO
+  name: Algorand
+  exchange: null
+- isin: XTSVLH387V44
+  symbol: ALI
+  name: Artificial Liquid Intelligence Token
+  exchange: null
+- isin: XT3XR1CGF5M9
+  symbol: ALICE
+  name: ALICE
+  exchange: null
+- isin: XT5M3D1FGC48
+  symbol: ALKR
+  name: AFREUM LKR
+  exchange: null
+- isin: XT6V2VLBJV96
+  symbol: ALLO
+  name: Allora
+  exchange: null
+- isin: XTJGRKW0RKC2
+  symbol: ALPHA
+  name: AlphaToken
+  exchange: null
+- isin: XTV29TD6S321
+  symbol: ALPINE
+  name: ALPINE Fan Token
+  exchange: null
+- isin: XT29H1VHC883
+  symbol: ALRD
+  name: AFREUM LRD
+  exchange: null
+- isin: XTZ8QV0ZPP19
+  symbol: ALSL
+  name: AFREUM LSL
+  exchange: null
+- isin: XT99KH25LZ44
+  symbol: ALT
+  name: Archloot
+  exchange: null
+- isin: XT86SFHSL3S5
+  symbol: ALYD
+  name: AFREUM LYD
+  exchange: null
+- isin: XTNX509W3Q10
+  symbol: AMAD
+  name: AFREUM MAD
+  exchange: null
+- isin: XT4HTPHX7D37
+  symbol: AMB
+  name: Apple
+  exchange: null
+- isin: XTBHD99QCL46
+  symbol: AMDL
+  name: AFREUM MDL
+  exchange: null
+- isin: XTR55C19JT69
+  symbol: AMGA
+  name: AFREUM MGA
+  exchange: null
+- isin: XTG2FTXV3028
+  symbol: AMKD
+  name: AFREUM MKD
+  exchange: null
+- isin: XTD0SL0SJH65
+  symbol: AMMK
+  name: AFREUM MMK
+  exchange: null
+- isin: XTXZRST73D58
+  symbol: AMNT
+  name: AFREUM MNT
+  exchange: null
+- isin: XTDQ9L7GGS05
+  symbol: AMO
+  name: AMO Coin
+  exchange: null
+- isin: XTRJQDB6P044
+  symbol: AMOP
+  name: AFREUM MOP
+  exchange: null
+- isin: XTBCR85DWDR8
+  symbol: AMP
+  name: Amp
+  exchange: null
+- isin: XT3NVWK91173
+  symbol: AMRU
+  name: AFREUM MRU
+  exchange: null
+- isin: XTCGNCZZF479
+  symbol: AMUR
+  name: AFREUM MUR
+  exchange: null
+- isin: XTZT0FD3CBC4
+  symbol: AMVR
+  name: AFREUM MVR
+  exchange: null
+- isin: XTFHP7KM83R9
+  symbol: AMWK
+  name: AFREUM MWK
+  exchange: null
+- isin: XTBG9NWPFQV8
+  symbol: AMXN
+  name: AFREUM MXN
+  exchange: null
+- isin: XTLFCBQ5FWR2
+  symbol: AMYR
+  name: AFREUM MYR
+  exchange: null
+- isin: XTRB6XS0WTS6
+  symbol: AMZN
+  name: AFREUM MZN
+  exchange: null
+- isin: XTF0749MLDN5
+  symbol: ANAD
+  name: AFREUM NAD
+  exchange: null
+- isin: XT2SCZXH55V0
+  symbol: ANC
+  name: Anchor Token
+  exchange: null
+- isin: XTF9MGC29NF6
+  symbol: ANGN
+  name: AFREUM NGN
+  exchange: null
+- isin: XT7WD8SJ6W67
+  symbol: ANIME
+  name: Animecoin
+  exchange: null
+- isin: XT7FXS4WKMZ8
+  symbol: ANIO
+  name: AFREUM NIO
+  exchange: null
+- isin: XTBL90MVXW43
+  symbol: ANKR
+  name: Ankr
+  exchange: null
+- isin: XTSK4500VGM9
+  symbol: ANML
+  name: Animal Concerts Token
+  exchange: null
+- isin: XT75K81C1DW6
+  symbol: ANOK
+  name: AFREUM NOK
+  exchange: null
+- isin: XTMN1DD5GWG9
+  symbol: ANPR
+  name: AFREUM NPR
+  exchange: null
+- isin: XTSWJZ97J006
+  symbol: ANT
+  name: Aragon Network Token
+  exchange: null
+- isin: XTTCS02NXX69
+  symbol: ANZD
+  name: AFREUM NZD
+  exchange: null
+- isin: XTBDWQSDC1H3
+  symbol: AOA
+  name: Aurora
+  exchange: null
+- isin: XT7RFJ0VD3Z2
+  symbol: AOMR
+  name: AFREUM OMR
+  exchange: null
+- isin: XTNX06MMTBX5
+  symbol: APAB
+  name: AFREUM PAB
+  exchange: null
+- isin: XT7WKVRWPNR7
+  symbol: APE
+  name: ApeCoin
+  exchange: null
+- isin: XTKS3V10KP87
+  symbol: APEN
+  name: AFREUM PEN
+  exchange: null
+- isin: XTSHV8KFQSK3
+  symbol: APEX
+  name: APEX Token
+  exchange: null
+- isin: XTRBJ2J7S6F5
+  symbol: APGK
+  name: AFREUM PGK
+  exchange: null
+- isin: XT972QS4SBF0
+  symbol: APHP
+  name: AFREUM PHP
+  exchange: null
+- isin: XT9PJW29SF76
+  symbol: API3
+  name: API3
+  exchange: null
+- isin: XT7N3CRCFVJ6
+  symbol: APKR
+  name: AFREUM PKR
+  exchange: null
+- isin: XTTCSXF7BWG4
+  symbol: APLN
+  name: AFREUM PLN
+  exchange: null
+- isin: XTC4CQCGLH27
+  symbol: APT
+  name: Aptos Coin
+  exchange: null
+- isin: XT980MRN40Q1
+  symbol: APYG
+  name: AFREUM PYG
+  exchange: null
+- isin: XT36D2JV8W06
+  symbol: AQAR
+  name: AFREUM QAR
+  exchange: null
+- isin: XTCPX6BGPR06
+  symbol: AR
+  name: Arweave
+  exchange: null
+- isin: XTQ4XQQSVWM4
+  symbol: ARAW
+  name: ARAW
+  exchange: null
+- isin: XT44TP35HF98
+  symbol: ARB
+  name: Arbitrum
+  exchange: null
+- isin: XT7P5C8SF441
+  symbol: ARC
+  name: CryptoARC
+  exchange: null
+- isin: XT6TN9WDRMS9
+  symbol: ARCH
+  name: Archway
+  exchange: null
+- isin: XTSK2SWMDRV7
+  symbol: ARDR
+  name: Ardor
+  exchange: null
+- isin: XTTJSGTGL973
+  symbol: ARIX
+  name: Arix
+  exchange: null
+- isin: XTC23C4MD1D8
+  symbol: ARK
+  name: Ark
+  exchange: null
+- isin: XT327V1DQ8H1
+  symbol: ARKM
+  name: Arkham
+  exchange: null
+- isin: XT1X8XCPLBS0
+  symbol: ARON
+  name: AFREUM RON
+  exchange: null
+- isin: XTXM59GZ0012
+  symbol: ARPA
+  name: ARPA Token
+  exchange: null
+- isin: XTGRDDRPKSJ4
+  symbol: ARSD
+  name: AFREUM RSD
+  exchange: null
+- isin: XTL727QCL3R6
+  symbol: ARUB
+  name: AFREUM RUB
+  exchange: null
+- isin: XT7DRLKL3B11
+  symbol: ARWF
+  name: AFREUM RWF
+  exchange: null
+- isin: XT5R0VK2WM19
+  symbol: ASAR
+  name: AFREUM SAR
+  exchange: null
+- isin: XTHD2H6P55B1
+  symbol: ASBD
+  name: AFREUM SBD
+  exchange: null
+- isin: XTNZ37FV34Q7
+  symbol: ASCR
+  name: AFREUM SCR
+  exchange: null
+- isin: XT6ZT32PKX18
+  symbol: ASDG
+  name: AFREUM SDG
+  exchange: null
+- isin: XTCJWQM53D59
+  symbol: ASEK
+  name: AFREUM SEK
+  exchange: null
+- isin: XT8PHG04RQ50
+  symbol: ASGD
+  name: AFREUM SGD
+  exchange: null
+- isin: XT7ZT7SQ6VL7
+  symbol: ASHP
+  name: AFREUM SHP
+  exchange: null
+- isin: XTXDMP5FSV04
+  symbol: ASI;FET
+  name: Artificial Superintelligence Alliance (FET)
+  exchange: null
+- isin: XTQD03KJ60C9
+  symbol: ASLL
+  name: AFREUM SLL
+  exchange: null
+- isin: XTXB10B8VN77
+  symbol: ASM
+  name: ASSEMBLE
+  exchange: null
+- isin: XTZXGS4KL590
+  symbol: ASOS
+  name: AFREUM SOS
+  exchange: null
+- isin: XT5KWTV929S4
+  symbol: ASR
+  name: AS Roma
+  exchange: null
+- isin: XT9LRQK71BL5
+  symbol: ASRD
+  name: AFREUM SRD
+  exchange: null
+- isin: XTQ19R771077
+  symbol: ASRR
+  name: Assisterr Token
+  exchange: null
+- isin: XTX5GWJD8239
+  symbol: ASSP
+  name: AFREUM SSP
+  exchange: null
+- isin: XTDSLBF93WG9
+  symbol: AST
+  name: AirSwap
+  exchange: null
+- isin: XTH8BH7VR5W0
+  symbol: ASTER
+  name: Aster
+  exchange: null
+- isin: XTTM1RD9V4D2
+  symbol: ASTN
+  name: AFREUM STN
+  exchange: null
+- isin: XT87L5SX99N4
+  symbol: ASTR
+  name: Astar
+  exchange: null
+- isin: XT603PV46KQ7
+  symbol: ASVC
+  name: AFREUM SVC
+  exchange: null
+- isin: XT5QHMKJ2VH0
+  symbol: ASYP
+  name: AFREUM SYP
+  exchange: null
+- isin: XTZF754WN5S7
+  symbol: ASZL
+  name: AFREUM SZL
+  exchange: null
+- isin: XTN66M8Q49R4
+  symbol: ATA
+  name: Automata
+  exchange: null
+- isin: XT1SL20Z9P17
+  symbol: ATH
+  name: Aethir Token
+  exchange: null
+- isin: XTHQ2QKFQNN5
+  symbol: ATHB
+  name: AFREUM THB
+  exchange: null
+- isin: XTFG7JZCQFL8
+  symbol: ATJS
+  name: AFREUM TJS
+  exchange: null
+- isin: XT8JL997QQG9
+  symbol: ATM
+  name: Atletico De Madrid
+  exchange: null
+- isin: XT9MWT54TP49
+  symbol: ATMT
+  name: AFREUM TMT
+  exchange: null
+- isin: XTH5920M3458
+  symbol: ATND
+  name: AFREUM TND
+  exchange: null
+- isin: XT6C7F2WVZH0
+  symbol: ATOM
+  name: Cosmos ATOM
+  exchange: null
+- isin: XTLJFVWGPWW1
+  symbol: ATOP
+  name: AFREUM TOP
+  exchange: null
+- isin: XTRWV0M79372
+  symbol: ATRY
+  name: AFREUM TRY
+  exchange: null
+- isin: XT4VL190H585
+  symbol: ATTD
+  name: AFREUM TTD
+  exchange: null
+- isin: XTB89R03SZ10
+  symbol: ATTO
+  name: Atto
+  exchange: null
+- isin: XTBFM2STRJL7
+  symbol: ATUST
+  name: UST Terra
+  exchange: null
+- isin: XT2SKZ3B10W4
+  symbol: ATWD
+  name: AFREUM TWD
+  exchange: null
+- isin: XTLVWZZKF1F1
+  symbol: ATZS
+  name: AFREUM TZS
+  exchange: null
+- isin: XTC4ZJMRL5X7
+  symbol: AUAH
+  name: AFREUM UAH
+  exchange: null
+- isin: XTCX8MCQ9R02
+  symbol: AUCTION
+  name: Bounce Token
+  exchange: null
+- isin: XTQZMN0FP413
+  symbol: AUDIO
+  name: Audius
+  exchange: null
+- isin: XTKPBRF4GS41
+  symbol: AUGX
+  name: AFREUM UGX
+  exchange: null
+- isin: XTJS2NV8SRL8
+  symbol: AURORA
+  name: Aurora
+  exchange: null
+- isin: XT10XCDRGS80
+  symbol: AUSD
+  name: AFREUM USD
+  exchange: null
+- isin: XTQFL1M1TV72
+  symbol: AUSDT
+  name: aUSDT
+  exchange: null
+- isin: XT9FKP06ZPB9
+  symbol: AUYU
+  name: AFREUM UYU
+  exchange: null
+- isin: XTNZFG6V8739
+  symbol: AUZS
+  name: AFREUM UZS
+  exchange: null
+- isin: XTCC6CCR7SG7
+  symbol: AVA
+  name: Travala com Token
+  exchange: null
+- isin: XTS6JCBF70N8
+  symbol: AVAX;WAVAX
+  name: Avalanche AVAX
+  exchange: null
+- isin: XTN9N9CJWTH8
+  symbol: AVES
+  name: AFREUM VES
+  exchange: null
+- isin: XTTC8LLKP9V9
+  symbol: AVND
+  name: AFREUM VND
+  exchange: null
+- isin: XTDGJJGJJPB9
+  symbol: AVNT
+  name: Avantis
+  exchange: null
+- isin: XTWDSRWS0CT6
+  symbol: AVT
+  name: Aventus
+  exchange: null
+- isin: XT6HDHHTKX55
+  symbol: AVUV
+  name: AFREUM VUV
+  exchange: null
+- isin: XTL305TXRS86
+  symbol: AWE
+  name: AWE Network
+  exchange: null
+- isin: XTQTTXHLC8S9
+  symbol: AWST
+  name: AFREUM WST
+  exchange: null
+- isin: XT3QTPDT8DR6
+  symbol: AXAF
+  name: AFREUM XAF
+  exchange: null
+- isin: XTQHMP1JRTV9
+  symbol: AXCD
+  name: AFREUM XCD
+  exchange: null
+- isin: XTZN1MJGVLX0
+  symbol: AXL
+  name: Axelar
+  exchange: null
+- isin: XTX4T8FB0W79
+  symbol: AXLDAI
+  name: axlDAI
+  exchange: null
+- isin: XTCR0R1VH3K1
+  symbol: AXLDOT
+  name: axlDOT
+  exchange: null
+- isin: XT89Z4J9ZHS6
+  symbol: AXLWBNB
+  name: axlWBNB
+  exchange: null
+- isin: XT21338H6XX9
+  symbol: AXLWBTC
+  name: axlWBTC
+  exchange: null
+- isin: XT5N96RDRR54
+  symbol: AXLWMATIC
+  name: Wrapped Matic
+  exchange: null
+- isin: XTCVKLRZWNG4
+  symbol: AXOF
+  name: AFREUM XOF
+  exchange: null
+- isin: XT5V3BH8R367
+  symbol: AXPF
+  name: AFREUM XPF
+  exchange: null
+- isin: XTRTTDS5MHT0
+  symbol: AXS
+  name: Axie Infinity Shard
+  exchange: null
+- isin: XTWBDPCKNW42
+  symbol: AYER
+  name: AFREUM YER
+  exchange: null
+- isin: XTF76TQXQXQ4
+  symbol: AZAR
+  name: AFREUM ZAR
+  exchange: null
+- isin: XTT2FT0J92W7
+  symbol: AZERO
+  name: Aleph Zero
+  exchange: null
+- isin: XTW8F577D958
+  symbol: AZMW
+  name: AFREUM ZMW
+  exchange: null
+- isin: XT2KRKD7DSJ3
+  symbol: AZWL
+  name: AFREUM ZWL
+  exchange: null
+- isin: XT1R9JFC50Z3
+  symbol: B2
+  name: BSquared Network
+  exchange: null
+- isin: XT791C7F8W55
+  symbol: B2M
+  name: 2Chain B2M
+  exchange: null
+- isin: XTBPLSKNPD95
+  symbol: B3
+  name: B3
+  exchange: null
+- isin: XTWQPS2HG2M7
+  symbol: B3TR
+  name: B3TR
+  exchange: null
+- isin: XT4GZZFJMVV0
+  symbol: BADGER
+  name: Badger
+  exchange: null
+- isin: XT7XDH0NNG58
+  symbol: BAKE
+  name: BakeryToken
+  exchange: null
+- isin: XTQ8QDMDD7D4
+  symbol: BAL
+  name: Balancer
+  exchange: null
+- isin: XTZQ5D3PGT30
+  symbol: BALLZ
+  name: Ballz of Steel
+  exchange: null
+- isin: XT5WZXL33SN7
+  symbol: BANANA
+  name: Banana
+  exchange: null
+- isin: XT1QM2QZQ5N3
+  symbol: BAND
+  name: BandToken
+  exchange: null
+- isin: XTJZL9NK5DL0
+  symbol: BAR
+  name: FC Barcelona
+  exchange: null
+- isin: XTH47JTR43K5
+  symbol: BARA
+  name: Capybara Nation
+  exchange: null
+- isin: XTXZKT5FBVP7
+  symbol: BARD
+  name: Lombard
+  exchange: null
+- isin: XT51F8M277P8
+  symbol: BAT;BATE
+  name: Basic Attention Token
+  exchange: null
+- isin: XT263CLS6040
+  symbol: BBAUSDC
+  name: Balancer Aave Boosted Pool USDC
+  exchange: null
+- isin: XTRQD0JD2WN6
+  symbol: BBAUSDT
+  name: Balancer Aave Boosted Pool USDT
+  exchange: null
+- isin: XT919BF3W7L4
+  symbol: BCC;BCH;XBC
+  name: Bitcoin Cash
+  exchange: null
+- isin: XTL8NZT7MCJ1
+  symbol: BCD
+  name: Bitcoin Diamond
+  exchange: null
+- isin: XTTHBKRMR966
+  symbol: BCN
+  name: Bytecoin
+  exchange: null
+- isin: XT75GPN4NG08
+  symbol: BCUSDC
+  name: BlockNG Peg USDC Token
+  exchange: null
+- isin: XTBP4T64CV82
+  symbol: BCUSDT
+  name: BlockNG Peg USDT Token
+  exchange: null
+- isin: XT46NJD6NHX5
+  symbol: BCUT
+  name: bitsCrunch Token
+  exchange: null
+- isin: XTX70FVW3GT1
+  symbol: BEAM
+  name: Beam
+  exchange: null
+- isin: XTB040W302T0
+  symbol: BEAT
+  name: Metabeat
+  exchange: null
+- isin: XTNJVGV88649
+  symbol: BEL
+  name: Bella
+  exchange: null
+- isin: XTL7XQXLN441
+  symbol: BERA
+  name: Berachain BERA
+  exchange: null
+- isin: XT8K8X2THTP7
+  symbol: BETA
+  name: Beta Token
+  exchange: null
+- isin: XT3GZPFML546
+  symbol: BETH
+  name: Beacon ETH
+  exchange: null
+- isin: XTP913J143J0
+  symbol: BEUR
+  name: BBVA Euro
+  exchange: null
+- isin: XT6C8D688HQ8
+  symbol: BGB
+  name: Bitget Token
+  exchange: null
+- isin: XTZ2JL201QX8
+  symbol: BICO
+  name: Biconomy Token
+  exchange: null
+- isin: XTSHVVD5JG53
+  symbol: BIFI
+  name: beefy finance
+  exchange: null
+- isin: XT734CLH4MN3
+  symbol: BINK
+  name: Big Dog Fink
+  exchange: null
+- isin: XTTBR0XDRN80
+  symbol: BIO
+  name: BIO
+  exchange: null
+- isin: XT12NWNXVVR6
+  symbol: BIT
+  name: BitDAO
+  exchange: null
+- isin: XT708GDXC3C8
+  symbol: BITBEL
+  name: TRINCI
+  exchange: null
+- isin: XTRQPCRN3VN7
+  symbol: BITCOIN
+  name: MAGIC INTERNET MONEY
+  exchange: null
+- isin: XT5F9L8ZNTQ6
+  symbol: BIX
+  name: BIXToken
+  exchange: null
+- isin: XT4ZQGRG6CC5
+  symbol: BKS
+  name: Backstage
+  exchange: null
+- isin: XTWB5DJHNS92
+  symbol: BLAST
+  name: Blast
+  exchange: null
+- isin: XT200STZX6D3
+  symbol: BLD
+  name: Agoric
+  exchange: null
+- isin: XTRJK993JQG9
+  symbol: BLOK
+  name: BLOK
+  exchange: null
+- isin: XTCSVDS945S5
+  symbol: BLUAI
+  name: Bluwhale AI
+  exchange: null
+- isin: XTR91SVKW991
+  symbol: BLUR
+  name: Blur
+  exchange: null
+- isin: XT2NFJBNQWN3
+  symbol: BLZ
+  name: Bluzelle Token
+  exchange: null
+- isin: XTFJ8LK1Z369
+  symbol: BMT
+  name: Bubblemaps
+  exchange: null
+- isin: XT8N2VXJKB15
+  symbol: BNB
+  name: Binance Coin
+  exchange: null
+- isin: XTTD1B353BK6
+  symbol: BNB-BSC
+  name: Binance Coin
+  exchange: null
+- isin: XTC5ST16RTB8
+  symbol: BNBS
+  name: BNBs
+  exchange: null
+- isin: XT6XSPZJJTX0
+  symbol: BNKR
+  name: BankrCoin
+  exchange: null
+- isin: XTVNTRFRP5Q7
+  symbol: BNOX
+  name: BlockNoteX
+  exchange: null
+- isin: XTHXXRZB3CB2
+  symbol: BNT
+  name: Bancor
+  exchange: null
+- isin: XT75KT2MP743
+  symbol: BNX
+  name: BinaryX
+  exchange: null
+- isin: XTL7CKSKP8K7
+  symbol: BOBA
+  name: Boba Token
+  exchange: null
+- isin: XTJQCH4ZRFB0
+  symbol: BOME
+  name: BOOK OF MEME
+  exchange: null
+- isin: XTXVVR6FX588
+  symbol: BOND
+  name: BarnBridge
+  exchange: null
+- isin: XTCM0S5GH840
+  symbol: BONE
+  name: Bone ShibaSwap
+  exchange: null
+- isin: XTH6KJTT0CP9
+  symbol: BONK
+  name: Bonk
+  exchange: null
+- isin: XTF8BGX5PJ86
+  symbol: BORA
+  name: BORA
+  exchange: null
+- isin: XTPMFTZRJ3G0
+  symbol: BORG;CHSB
+  name: SwissBorg Token
+  exchange: null
+- isin: XTDG9PPWNZL7
+  symbol: BOSON
+  name: Boson Token
+  exchange: null
+- isin: XT3CS7XTW793
+  symbol: BOT
+  name: BOT Token
+  exchange: null
+- isin: XTQMQKJ4VSV0
+  symbol: BPD
+  name: Beautiful Princess Disorder
+  exchange: null
+- isin: XTW12PW22KN2
+  symbol: BPTC
+  name: Business Platform Tomato Coin
+  exchange: null
+- isin: XTZK1ZVS3684
+  symbol: BRICK
+  name: Bricks
+  exchange: null
+- isin: XTSSJDH0R5F5
+  symbol: BRISE
+  name: Bitgert BRISE
+  exchange: null
+- isin: XTDS32ZF66F0
+  symbol: BRZ
+  name: BRZ Token
+  exchange: null
+- isin: XTHB6XGJ1F28
+  symbol: BSO
+  name: Natrix BlockStock
+  exchange: null
+- isin: XT1N29VFZ097
+  symbol: BSOL
+  name: BlazeStake Staked SOL
+  exchange: null
+- isin: XTCCCWM2C2N4
+  symbol: BSV
+  name: Bitcoin SV
+  exchange: null
+- isin: XTV15WLZJMF0
+  symbol: BTC;XBT
+  name: Bitcoin
+  exchange: null
+- isin: XTXQ6CLPNPJ3
+  symbol: BTCB
+  name: BTCB Token
+  exchange: null
+- isin: XTF2MDRCW0L8
+  symbol: BTCK
+  name: KCC Peg BTCK Token
+  exchange: null
+- isin: XTNLD036CX97
+  symbol: BTCM
+  name: BTC moonriver
+  exchange: null
+- isin: XT85GGP13458
+  symbol: BTG
+  name: Bitcoin Gold
+  exchange: null
+- isin: XTP9Z884ZPS8
+  symbol: BTM
+  name: Bytom
+  exchange: null
+- isin: XTCHJ92ZGWC6
+  symbol: BTRST
+  name: Braintrust
+  exchange: null
+- isin: XTFBR5FC0SL9
+  symbol: BTS
+  name: BitShares
+  exchange: null
+- isin: XTPLR7HW9LB6
+  symbol: BTSG
+  name: BitSong
+  exchange: null
+- isin: XT2MTMX7RJR5
+  symbol: BTT
+  name: BitTorrent New
+  exchange: null
+- isin: XTSHJRG8P2P0
+  symbol: BTTOLD
+  name: BitTorrent Old
+  exchange: null
+- isin: XTFW1ZJWNQV2
+  symbol: BURGER
+  name: Burger Swap
+  exchange: null
+- isin: XTBSF74H7GR2
+  symbol: BUSD
+  name: Binance USD
+  exchange: null
+- isin: XTFFS6FD7657
+  symbol: BUSDET
+  name: Binance USD
+  exchange: null
+- isin: XTFW11L1F9Z3
+  symbol: BZX
+  name: Bitcoin Zero
+  exchange: null
+- isin: XTHP7M2N1QF1
+  symbol: C98
+  name: Coin98
+  exchange: null
+- isin: XTLZ3V3Z6FD5
+  symbol: CAKE
+  name: PancakeSwap
+  exchange: null
+- isin: XTH226WMPQR2
+  symbol: CANTO
+  name: Canto
+  exchange: null
+- isin: XTMFR19R16P1
+  symbol: CATI
+  name: Catizen
+  exchange: null
+- isin: XT2991LS0529
+  symbol: CAW
+  name: crow with knife
+  exchange: null
+- isin: XT8XX0BR6DC4
+  symbol: CBETH
+  name: Coinbase Wrapped Staked ETH
+  exchange: null
+- isin: XTZBF05NGN75
+  symbol: CCD
+  name: Concordium
+  exchange: null
+- isin: XTV8RWPWKG41
+  symbol: CDAI
+  name: Compound Dai
+  exchange: null
+- isin: XTGGN66GJ1N7
+  symbol: CDCBTC
+  name: Crypto com Wrapped BTC
+  exchange: null
+- isin: XTQ6ZFM12VM7
+  symbol: CDCETH
+  name: Crypto.com Wrapped Staked ETH
+  exchange: null
+- isin: XTD9LGRP9G90
+  symbol: CDCSOL
+  name: Crypto com Staked SOL
+  exchange: null
+- isin: XTKV1W7C94F5
+  symbol: CEL
+  name: Celsius
+  exchange: null
+- isin: XTVWWMVDM0J1
+  symbol: CELO
+  name: Celo
+  exchange: null
+- isin: XT3W8JZTFR61
+  symbol: CELR
+  name: CelerToken
+  exchange: null
+- isin: XTMHNZBBQTL0
+  symbol: CETH
+  name: Compound Ether
+  exchange: null
+- isin: XTWMW834RP93
+  symbol: CETUS
+  name: Cetus Protocol
+  exchange: null
+- isin: XTP3LJLHQCK7
+  symbol: CEUSDC
+  name: USD Coin Celer
+  exchange: null
+- isin: XTJ8HB3QFM54
+  symbol: CFG
+  name: Centrifuge
+  exchange: null
+- isin: XT2K9VS42WV1
+  symbol: CFX
+  name: Conflux
+  exchange: null
+- isin: XTD3J4ZQGZ45
+  symbol: CGPT
+  name: ChainGPT
+  exchange: null
+- isin: XT51BTHH2701
+  symbol: CHESS
+  name: Chess
+  exchange: null
+- isin: XT6DVXK76XC8
+  symbol: CHILLGUY
+  name: CHILLGUY
+  exchange: null
+- isin: XT7KPRQHX6P5
+  symbol: CHR
+  name: Chromia
+  exchange: null
+- isin: XTKNS06KRXQ5
+  symbol: CHZ
+  name: Chiliz
+  exchange: null
+- isin: XT1MWPNW8KL8
+  symbol: CKB
+  name: Nervos Network
+  exchange: null
+- isin: XTB9BF88ZXP0
+  symbol: CLANKER
+  name: tokenbot
+  exchange: null
+- isin: XTTP1T71J954
+  symbol: CLOUD
+  name: Cloud
+  exchange: null
+- isin: XTTHR3ML1F19
+  symbol: CLV
+  name: Clover
+  exchange: null
+- isin: XTQSK6JZ9PN6
+  symbol: CNNC
+  name: Cannation
+  exchange: null
+- isin: XTBPC6QBBD02
+  symbol: CNTC
+  name: Terra Classic CNY
+  exchange: null
+- isin: XTKHKFPQZLX3
+  symbol: COCOS
+  name: CocosTokenV2
+  exchange: null
+- isin: XTTGRFVPP559
+  symbol: COIIN
+  name: Coiin
+  exchange: null
+- isin: XTKCHF60NW71
+  symbol: COMP
+  name: Compound
+  exchange: null
+- isin: XTDBRTW3FF81
+  symbol: COOKIE
+  name: Cookie DAO
+  exchange: null
+- isin: XT6KJB18HSF5
+  symbol: COQ
+  name: Coq Inu
+  exchange: null
+- isin: XT5JRWC5LZQ7
+  symbol: CORE
+  name: Core
+  exchange: null
+- isin: XT3WW6H8PFK9
+  symbol: CORGIAI
+  name: CorgiAI
+  exchange: null
+- isin: XTV2FD2L8W80
+  symbol: COS
+  name: Cats Of Sol
+  exchange: null
+- isin: XT4LMM6WFBW7
+  symbol: COTI
+  name: COTI Token
+  exchange: null
+- isin: XTXJM1XCF640
+  symbol: COVAL
+  name: CircuitsOfValue
+  exchange: null
+- isin: XTSF0HRQBH72
+  symbol: COW
+  name: CoW Protocol Token
+  exchange: null
+- isin: XTV1M7B0W8V0
+  symbol: CPC
+  name: CryptoPerformance Coin
+  exchange: null
+- isin: XTJ2N57NP8S1
+  symbol: CPOOL
+  name: Clearpool
+  exchange: null
+- isin: XT8ZH41MQ9N0
+  symbol: CQT
+  name: Covalent Query Token
+  exchange: null
+- isin: XT7LJG0LT9H2
+  symbol: CRE
+  name: CarryToken
+  exchange: null
+- isin: XTN4BZ7K5KJ2
+  symbol: CREAM
+  name: IceCream Finance
+  exchange: null
+- isin: XTGWM30MLW35
+  symbol: CRO
+  name: Cronos
+  exchange: null
+- isin: XTBSV0P66335
+  symbol: CROB
+  name: CROB
+  exchange: null
+- isin: XTWBFP5TF3W7
+  symbol: CROID
+  name: Cronos ID Token
+  exchange: null
+- isin: XTJWF0FJR334
+  symbol: CRPT
+  name: Crypterium
+  exchange: null
+- isin: XTP8DXFQ5LD6
+  symbol: CRV
+  name: Curve DAO Token
+  exchange: null
+- isin: XTJ6893Z8QM5
+  symbol: CRVUSD
+  name: crvUSD
+  exchange: null
+- isin: XTK508S2JCD7
+  symbol: CSPR
+  name: Casper
+  exchange: null
+- isin: XTC33WV11QW9
+  symbol: CTC
+  name: CALLTOCOMBAT
+  exchange: null
+- isin: XTBL44WHVKM5
+  symbol: CTSI
+  name: Cartesi Token
+  exchange: null
+- isin: XTDC96V82H90
+  symbol: CTX
+  name: Cryptex
+  exchange: null
+- isin: XTGN9WTMQHR2
+  symbol: CTXC
+  name: Cortex Coin
+  exchange: null
+- isin: XT2VCKPZXC75
+  symbol: CUBE
+  name: Cube Network
+  exchange: null
+- isin: XTR29VHK3JH2
+  symbol: CUDOS
+  name: CudosToken
+  exchange: null
+- isin: XTR17VBWQ6C2
+  symbol: CUSDC
+  name: Compound USD Coin
+  exchange: null
+- isin: XT95LV3DCWZ3
+  symbol: CVC
+  name: Civic
+  exchange: null
+- isin: XTKNZ5BB1H25
+  symbol: CVP
+  name: PowerPool
+  exchange: null
+- isin: XT7HZ2CZKBZ1
+  symbol: CVT
+  name: CyberVeinToken
+  exchange: null
+- isin: XTMDLR8VGRS9
+  symbol: CVX
+  name: Convex Token
+  exchange: null
+- isin: XTPPFFC2XZM9
+  symbol: CXT
+  name: Covalent X Token
+  exchange: null
+- isin: XTC2ZZZP3633
+  symbol: CYBER
+  name: CyberConnect
+  exchange: null
+- isin: XTBCTMK5CFN2
+  symbol: D
+  name: DAR Open Network
+  exchange: null
+- isin: XT5H92KTP259
+  symbol: D1A
+  name: ARTup Coin
+  exchange: null
+- isin: XT6TGX63J3Z7
+  symbol: DAG
+  name: Constellation
+  exchange: null
+- isin: XTR5GCQW24K3
+  symbol: DAI
+  name: Dai Token
+  exchange: null
+- isin: XTXQH1Q7FFF8
+  symbol: DAI.E
+  name: Dai Stablecoin
+  exchange: null
+- isin: XTNM3V4WGW97
+  symbol: DAR
+  name: Dalarnia
+  exchange: null
+- isin: XTPPDH6B2735
+  symbol: DASH
+  name: Dash
+  exchange: null
+- isin: XTKF6QVVDWF3
+  symbol: DATA
+  name: Streamr
+  exchange: null
+- isin: XTPZ5FP1FBJ5
+  symbol: DAWN
+  name: Dawn Protocol
+  exchange: null
+- isin: XTNT91TJWNC9
+  symbol: DBR
+  name: deBridge
+  exchange: null
+- isin: XT74MF5M4L91
+  symbol: DBTK
+  name: DigiBank DBTK Token
+  exchange: null
+- isin: XT3W6KF6C463
+  symbol: DC
+  name: Dogechain Token
+  exchange: null
+- isin: XTF9SZWWB895
+  symbol: DCR
+  name: Decred
+  exchange: null
+- isin: XTLSWXZG6DK3
+  symbol: DDX
+  name: DerivaDAO
+  exchange: null
+- isin: XTB41HCBXWK9
+  symbol: DEEP
+  name: DeepBook Token
+  exchange: null
+- isin: XT253CXJJ4H5
+  symbol: DEGEN
+  name: Degen
+  exchange: null
+- isin: XTFPR66Q65Z3
+  symbol: DEGOV2
+  name: dego finance
+  exchange: null
+- isin: XTF6K1J7XFG4
+  symbol: DERC
+  name: DeRace Token
+  exchange: null
+- isin: XT4GBLZP9HK3
+  symbol: DESO
+  name: Decentralized Social
+  exchange: null
+- isin: XTTZRK30R6L5
+  symbol: DEXE
+  name: Dexe
+  exchange: null
+- isin: XTFX3M7PZ693
+  symbol: DEXT
+  name: DEXTools
+  exchange: null
+- isin: XTZB4ZSQCKN3
+  symbol: DF
+  name: dForce
+  exchange: null
+- isin: XT1W8QQ9KW60
+  symbol: DFI
+  name: DeFiChain Token
+  exchange: null
+- isin: XTJ47SW260D5
+  symbol: DFX
+  name: DFX Finance
+  exchange: null
+- isin: XT9TSBBQ5PH0
+  symbol: DGB
+  name: DigiByte
+  exchange: null
+- isin: XTKTMZ4H48X0
+  symbol: DGTX
+  name: DigitexFutures
+  exchange: null
+- isin: XTCKK5TVMWR9
+  symbol: DIA
+  name: DIAToken
+  exchange: null
+- isin: XT12NR8GSF96
+  symbol: DIMO
+  name: Dimo
+  exchange: null
+- isin: XT91F508LJT8
+  symbol: DINC
+  name: Dinarcoin
+  exchange: null
+- isin: XT3NCTMS0JJ5
+  symbol: DIP
+  name: Buy the Dip
+  exchange: null
+- isin: XT17FW0QR2X1
+  symbol: DIS;ETF
+  name: DisChain
+  exchange: null
+- isin: XTM9LLZJKM37
+  symbol: DKA
+  name: dKargo
+  exchange: null
+- isin: XTL02L1JP4M3
+  symbol: DNT
+  name: district0x Network Token
+  exchange: null
+- isin: XTSPRN0WLRS2
+  symbol: DODO
+  name: DODO bird
+  exchange: null
+- isin: XT35PLJP6J74
+  symbol: DOGE
+  name: Dogecoin
+  exchange: null
+- isin: XTCVSL6QHBD6
+  symbol: DOGINME
+  name: doginme
+  exchange: null
+- isin: XTJTT6RNXDG3
+  symbol: DOGS
+  name: DOGS
+  exchange: null
+- isin: XTG6QFN3Z7F1
+  symbol: DOLO
+  name: Dolomite
+  exchange: null
+- isin: XTKF6RX3LR17
+  symbol: DOOD
+  name: Doodles
+  exchange: null
+- isin: XTSGD9NLTRG0
+  symbol: DOT
+  name: Polkadot DOT
+  exchange: null
+- isin: XT71VXLDZD34
+  symbol: DREP
+  name: Drep (new)
+  exchange: null
+- isin: XTC71Z0MVKP1
+  symbol: DRGN
+  name: Dragonchain
+  exchange: null
+- isin: XT6RVP9P5TB7
+  symbol: DRIFT
+  name: Drift
+  exchange: null
+- isin: XT91C5G6GWN9
+  symbol: DUCK
+  name: DuckChain Token
+  exchange: null
+- isin: XTM8L5FQ8DV0
+  symbol: DUK
+  name: Dukascoin
+  exchange: null
+- isin: XTL1C7S7ZFT5
+  symbol: DVGK
+  name: DaVinci Gold Ingot
+  exchange: null
+- isin: XTS8MZH6KCH1
+  symbol: DVGO
+  name: DaVinci Gold Coin
+  exchange: null
+- isin: XTK8XRF7MFZ6
+  symbol: DYDX
+  name: dYdX
+  exchange: null
+- isin: XTP3TV4Z6NQ6
+  symbol: DYM
+  name: Dymension
+  exchange: null
+- isin: XTR081FFSDD0
+  symbol: DYP
+  name: Dypius (New)
+  exchange: null
+- isin: XT158VXH4N29
+  symbol: EAUD
+  name: Telcoin AUD
+  exchange: null
+- isin: XTG4J8LKXQK2
+  symbol: ECAD
+  name: Telcoin CAD
+  exchange: null
+- isin: XTZHDJSXK0J7
+  symbol: ECFA
+  name: Telcoin CFA
+  exchange: null
+- isin: XTT9D3WPTCS4
+  symbol: ECOX
+  name: ECOx
+  exchange: null
+- isin: XTJG63F041Q5
+  symbol: EDGE
+  name: Edge
+  exchange: null
+- isin: XT4FPJTK1N46
+  symbol: EDGT
+  name: Edgecoin
+  exchange: null
+- isin: XTRZ2VMHM330
+  symbol: EDU
+  name: Open Campus
+  exchange: null
+- isin: XTB4W26FV743
+  symbol: EFI
+  name: Efinity Token
+  exchange: null
+- isin: XTGXSSZGGWD3
+  symbol: EGBP
+  name: Telcoin GBP
+  exchange: null
+- isin: XTH1V5PHW7P3
+  symbol: EGLD
+  name: MultiversX EGLD
+  exchange: null
+- isin: XT7MTP7RJP05
+  symbol: EHKD
+  name: Telcoin HKD
+  exchange: null
+- isin: XTQRLFSB8003
+  symbol: EIGEN
+  name: Eigen
+  exchange: null
+- isin: XTX5VDK28849
+  symbol: EJPY
+  name: Telcoin JPY
+  exchange: null
+- isin: XTB5QZXSD9N8
+  symbol: ELA
+  name: Elastos
+  exchange: null
+- isin: XTPKCG83B6G3
+  symbol: ELF
+  name: Aelf
+  exchange: null
+- isin: XTK1S7NRV323
+  symbol: ELON
+  name: Dogelon Mars
+  exchange: null
+- isin: XTS34Q99F2D0
+  symbol: EMXN
+  name: Telcoin MXN
+  exchange: null
+- isin: XTSPRSCSVSW7
+  symbol: ENA
+  name: ENA
+  exchange: null
+- isin: XTNV47M8PQG4
+  symbol: ENG
+  name: Enigma
+  exchange: null
+- isin: XTM9LNQXMNV8
+  symbol: ENJ
+  name: Enjin
+  exchange: null
+- isin: XTB70SMJ5DQ8
+  symbol: ENS
+  name: Ethereum Name Service
+  exchange: null
+- isin: XT7GDTQ5VW89
+  symbol: ENTC
+  name: ENTERBUTTON
+  exchange: null
+- isin: XTFVQ65MJKL9
+  symbol: ENZD
+  name: Telcoin NZD
+  exchange: null
+- isin: XT8FWQPDTGZ8
+  symbol: EOS
+  name: EOS
+  exchange: null
+- isin: XTKTXFZ5R071
+  symbol: EPIC
+  name: Epic Chain
+  exchange: null
+- isin: XTZ5WTMBRD39
+  symbol: EPX
+  name: Ellipsis X
+  exchange: null
+- isin: XTFBJ51GPW26
+  symbol: ERA
+  name: Caldera
+  exchange: null
+- isin: XTVPFK7SRKQ3
+  symbol: ERN
+  name: EthernityChain ERN Token
+  exchange: null
+- isin: XTFT4T5XMN85
+  symbol: ES
+  name: Eclipse
+  exchange: null
+- isin: XTHS4FKH6PW8
+  symbol: ESCE
+  name: Escroco Emerald
+  exchange: null
+- isin: XT9XSWC8MZ38
+  symbol: ESDR
+  name: Telcoin SDR
+  exchange: null
+- isin: XT9B3MH0QK55
+  symbol: ESGD
+  name: Telcoin SGD
+  exchange: null
+- isin: XT7JVP2ZPLV6
+  symbol: ETC
+  name: Ethereum Classic
+  exchange: null
+- isin: XTD5RG2FHH04
+  symbol: ETH
+  name: Ethereum Eth
+  exchange: null
+- isin: XTRJTJR45MC9
+  symbol: ETHFI
+  name: ether.fi governance token
+  exchange: null
+- isin: XT8Z0LQ99N64
+  symbol: ETHS
+  name: ETHs
+  exchange: null
+- isin: XTZL34C689B5
+  symbol: ETHTZ
+  name: ETHtez
+  exchange: null
+- isin: XTKW8QK0BWT8
+  symbol: ETHUSDC
+  name: USD Coin on Elastos
+  exchange: null
+- isin: XTN1NLFX5KR3
+  symbol: ETHW;WETHW
+  name: EthereumPOW
+  exchange: null
+- isin: XT9W0JKJL0S2
+  symbol: ETN
+  name: Electroneum
+  exchange: null
+- isin: XTBJSLLNX425
+  symbol: EUL
+  name: Euler
+  exchange: null
+- isin: XTGN1ZD1CSN7
+  symbol: EURA
+  name: Euro Electronic Money Token
+  exchange: null
+- isin: XTM28PVPG349
+  symbol: EURAU
+  name: AllUnity EUR
+  exchange: null
+- isin: XT13XTMPZT36
+  symbol: EURC
+  name: EURC
+  exchange: null
+- isin: XT9W5C49FJV7
+  symbol: EURCV
+  name: EUR CoinVertible
+  exchange: null
+- isin: XT4B21NMVM28
+  symbol: EURD
+  name: Quantoz EURD
+  exchange: null
+- isin: XTN7B1L2FBK6
+  symbol: EURE
+  name: Monerium EUR emoney
+  exchange: null
+- isin: XTLGPZM7PJ93
+  symbol: EURI
+  name: Eurite
+  exchange: null
+- isin: XTWJV6THJ2D8
+  symbol: EUROD
+  name: EUROD
+  exchange: null
+- isin: XT9W93HL6PH5
+  symbol: EUROE
+  name: EUROe Stablecoin
+  exchange: null
+- isin: XT2BKLSP3D62
+  symbol: EUROP
+  name: EUROP
+  exchange: null
+- isin: XTR3QQ9C02D5
+  symbol: EURR
+  name: StablR Euro
+  exchange: null
+- isin: XTB9MHWQX7F9
+  symbol: EURS
+  name: STASIS EURS Token
+  exchange: null
+- isin: XTHG6GXKJ9X4
+  symbol: EURSM
+  name: EURSM
+  exchange: null
+- isin: XTTPSKF9T9S3
+  symbol: EURX
+  name: Euro Cash Electronic Money Token
+  exchange: null
+- isin: XT6K7SNJ1202
+  symbol: EUSD
+  name: USD e money
+  exchange: null
+- isin: XTSJ696NL7H7
+  symbol: EUTC
+  name: Terra Classic EUR
+  exchange: null
+- isin: XTVPBXB15757
+  symbol: EVER
+  name: Wrapped Ever
+  exchange: null
+- isin: XTJKS104DGK8
+  symbol: EVMOS
+  name: EVMOS
+  exchange: null
+- isin: XTVW0Z4C80S7
+  symbol: EWT
+  name: Energy Web Token
+  exchange: null
+- isin: XTJTS2423BB6
+  symbol: EXFI
+  name: Experimental Finance Token
+  exchange: null
+- isin: XTRCH0L5FS30
+  symbol: EZAR
+  name: Telcoin ZAR
+  exchange: null
+- isin: XT71ZS4MW479
+  symbol: FAI
+  name: FAI
+  exchange: null
+- isin: XT1RQFJT6CD2
+  symbol: FARM
+  name: FARM Reward Token
+  exchange: null
+- isin: XTZ673VT5886
+  symbol: FARTCOIN
+  name: Fartcoin
+  exchange: null
+- isin: XTF2C6V18K13
+  symbol: FCT
+  name: FCT FirmaChain Token
+  exchange: null
+- isin: XT99LTL84825
+  symbol: FDUSD
+  name: First Digital USD
+  exchange: null
+- isin: XTGPMPV1B129
+  symbol: FEI
+  name: Fei USD
+  exchange: null
+- isin: XT4MZSW36V18
+  symbol: FER
+  name: FerroToken
+  exchange: null
+- isin: XT2RQN7KF936
+  symbol: FGC
+  name: FantasyGold
+  exchange: null
+- isin: XTK7TKSGGHC8
+  symbol: FIDA
+  name: Bonfida
+  exchange: null
+- isin: XTS6702SWRZ9
+  symbol: FIL
+  name: Filecoin
+  exchange: null
+- isin: XT82BQ1D0FL8
+  symbol: FIRO
+  name: Firo
+  exchange: null
+- isin: XT3HNH358VV4
+  symbol: FIS
+  name: StaFi
+  exchange: null
+- isin: XTSF4VGPPTS6
+  symbol: FITFI
+  name: Step
+  exchange: null
+- isin: XTXWF1FWZVR7
+  symbol: FLEX
+  name: FLEX Coin
+  exchange: null
+- isin: XTFLHWQFNL34
+  symbol: FLIP
+  name: Chainflip
+  exchange: null
+- isin: XTSP8T899K82
+  symbol: FLOCK
+  name: FLock.io
+  exchange: null
+- isin: XTR1XC4HQT54
+  symbol: FLOKI
+  name: FLOKI
+  exchange: null
+- isin: XT6T49BCSXZ1
+  symbol: FLOW
+  name: Flow
+  exchange: null
+- isin: XTDVRV6HSK54
+  symbol: FLR
+  name: Flare
+  exchange: null
+- isin: XTRKQWM0VRQ2
+  symbol: FLUID
+  name: Fluid
+  exchange: null
+- isin: XT4DF5G5HFZ5
+  symbol: FLUX
+  name: Flux
+  exchange: null
+- isin: XT70T62M9MK2
+  symbol: FLX
+  name: Flux Token
+  exchange: null
+- isin: XT5C29DD38N9
+  symbol: FLZ
+  name: Fellaz
+  exchange: null
+- isin: XTB4TMQXHZC1
+  symbol: FM
+  name: Full Moon
+  exchange: null
+- isin: XTN6XNN848L1
+  symbol: FOBXX
+  name: Franklin Money Fund
+  exchange: null
+- isin: XT50Q0WLZNS5
+  symbol: FORT
+  name: Forta
+  exchange: null
+- isin: XT62SV6Q4QP4
+  symbol: FORTH
+  name: Ampleforth Governance
+  exchange: null
+- isin: XT4XGV1NLRS2
+  symbol: FOX
+  name: FOX
+  exchange: null
+- isin: XTJ57GH1B8J9
+  symbol: FOXY
+  name: Foxy
+  exchange: null
+- isin: XTZ8FX50JFL8
+  symbol: FPS
+  name: Frankencoin Pool Share
+  exchange: null
+- isin: XTSR8M476WL1
+  symbol: FRAX
+  name: Frax
+  exchange: null
+- isin: XT5N77FRK337
+  symbol: FRGX
+  name: FRGX
+  exchange: null
+- isin: XT5BSPPQWGB0
+  symbol: FRONT
+  name: Frontier
+  exchange: null
+- isin: XTZRX71S2RK6
+  symbol: FRP
+  name: FAME REWARD PLUS
+  exchange: null
+- isin: XTXJG917XPQ8
+  symbol: FSN
+  name: Fusion
+  exchange: null
+- isin: XTGRLPK02K70
+  symbol: FTM
+  name: Fantom
+  exchange: null
+- isin: XTTMKPNZC9H9
+  symbol: FTMET
+  name: Fantom Token
+  exchange: null
+- isin: XTV3L4FW2T54
+  symbol: FTN
+  name: Fasttoken
+  exchange: null
+- isin: XTN8KZCV8BC3
+  symbol: FTT
+  name: FTX Token
+  exchange: null
+- isin: XTF9G2SNFJK6
+  symbol: FUL
+  name: Fulcrom
+  exchange: null
+- isin: XT61R7N7ZRH9
+  symbol: FUN
+  name: FunFair
+  exchange: null
+- isin: XT4M0KZ65163
+  symbol: FUSE
+  name: Fuse
+  exchange: null
+- isin: XTZLJGJG83S1
+  symbol: FWOG
+  name: FWOG
+  exchange: null
+- isin: XTXR6VN8C390
+  symbol: FX
+  name: Function X
+  exchange: null
+- isin: XTDMNVMN0SS2
+  symbol: FXF
+  name: Finxflo
+  exchange: null
+- isin: XTBWNWXP3R17
+  symbol: FXS
+  name: Frax Share
+  exchange: null
+- isin: XTJQGMWFSXV3
+  symbol: G
+  name: Gravity
+  exchange: null
+- isin: XTNB7P3330P5
+  symbol: GAL
+  name: Project Galaxy
+  exchange: null
+- isin: XTXS363HTZB5
+  symbol: GALA
+  name: Gala
+  exchange: null
+- isin: XT8RL4W6N7Q8
+  symbol: GAME
+  name: GameBuild
+  exchange: null
+- isin: XTV5GR0JNZ42
+  symbol: GARA
+  name: GarageCoin
+  exchange: null
+- isin: XT3F283FQ8S5
+  symbol: GARI
+  name: Gari
+  exchange: null
+- isin: XTH8NP4QLFK9
+  symbol: GAS
+  name: GasToken
+  exchange: null
+- isin: XTD03PJX9CS8
+  symbol: GBTC
+  name: Terra Classic GBP
+  exchange: null
+- isin: XTF6VWN6KWN0
+  symbol: GCN
+  name: Gascoin
+  exchange: null
+- isin: XTLZ2L72HLJ3
+  symbol: GCR
+  name: GlobalCurrencyReserve
+  exchange: null
+- isin: XTCJSC8G9C37
+  symbol: GCRE
+  name: Gluwa Creditcoin Vesting Token
+  exchange: null
+- isin: XT90CLSFQBJ3
+  symbol: GEAR
+  name: Gearbox Protocol
+  exchange: null
+- isin: XTWSVMG07GB7
+  symbol: GEKKO
+  name: Gekko
+  exchange: null
+- isin: XTKM4XJWNGZ8
+  symbol: GEL
+  name: Gelato Network Token
+  exchange: null
+- isin: XTGZ9DCRF6K1
+  symbol: GEMS
+  name: AlgoGems
+  exchange: null
+- isin: XTCKL6S2F6B8
+  symbol: GFI
+  name: Goldfinch
+  exchange: null
+- isin: XTJQX4F2ZM66
+  symbol: GGP
+  name: Geegoopuzzle
+  exchange: null
+- isin: XTJCMPCVD082
+  symbol: GHST
+  name: Aavegotchi GHST Token
+  exchange: null
+- isin: XTW1GC0WX1K8
+  symbol: GIGA
+  name: GIGACHAD
+  exchange: null
+- isin: XTXRWVBJL682
+  symbol: GLM
+  name: Golem Network Token
+  exchange: null
+- isin: XTK4HV4GN5K3
+  symbol: GLMR
+  name: Moonbeam
+  exchange: null
+- isin: XTMH65CS9LN8
+  symbol: GME
+  name: GME
+  exchange: null
+- isin: XTFKZ8K4CP00
+  symbol: GMT
+  name: GoMining Token
+  exchange: null
+- isin: XTRBR43JPK57
+  symbol: GMX
+  name: GMX
+  exchange: null
+- isin: XTVXDLZ59FC0
+  symbol: GNO
+  name: Gnosis Token
+  exchange: null
+- isin: XTXLGLF5LZ71
+  symbol: GNS
+  name: Gains Network
+  exchange: null
+- isin: XT7FS1WX5VK6
+  symbol: GOAT
+  name: Goatseus Maximus
+  exchange: null
+- isin: XTS1NP9MHTB9
+  symbol: GOATED
+  name: GOAT Network Token
+  exchange: null
+- isin: XT56SF1DNGQ6
+  symbol: GODS
+  name: Gods Unchained
+  exchange: null
+- isin: XT3395N83579
+  symbol: GOL
+  name: Gogolcoin
+  exchange: null
+- isin: XTCF06QLS4X7
+  symbol: GPT
+  name: QnA3 AI Token
+  exchange: null
+- isin: XTNGP9Q7N6K1
+  symbol: GRAIL
+  name: Camelot Token
+  exchange: null
+- isin: XTMNCR2MKHP9
+  symbol: GRASS
+  name: Grass
+  exchange: null
+- isin: XTQXN32WLR26
+  symbol: GRIFFAIN
+  name: test griffain com
+  exchange: null
+- isin: XT1830S10603
+  symbol: GROW
+  name: ValleyDAO
+  exchange: null
+- isin: XTVMQPVH41W7
+  symbol: GRT
+  name: Graph Token
+  exchange: null
+- isin: XTP26W9NTCV3
+  symbol: GSFF
+  name: 2407061710000GSFTOKEN
+  exchange: null
+- isin: XTPBSSTVTM03
+  symbol: GST
+  name: GreenSatoshiToken
+  exchange: null
+- isin: XTLFRNRXPB55
+  symbol: GT
+  name: GateChainToken
+  exchange: null
+- isin: XTRDM7J9ZR00
+  symbol: GTC
+  name: Game com
+  exchange: null
+- isin: XT36176WRNG8
+  symbol: GTU
+  name: Global Trade Unit
+  exchange: null
+- isin: XTF6T7GPGTH6
+  symbol: GUN
+  name: GUN Token
+  exchange: null
+- isin: XTDCPQ78PR56
+  symbol: GUSD
+  name: Gemini dollar
+  exchange: null
+- isin: XTTD8843D828
+  symbol: GYEN
+  name: GMO JPY
+  exchange: null
+- isin: XT1CZ5XS8889
+  symbol: H2
+  name: H2Token
+  exchange: null
+- isin: XTB6PSH8C6R2
+  symbol: HAEDAL
+  name: Haedal Protocol
+  exchange: null
+- isin: XTJZGCSJD7H5
+  symbol: HAI
+  name: Hacken Token
+  exchange: null
+- isin: XTZL0B2FGZL1
+  symbol: HAPI
+  name: HAPI
+  exchange: null
+- isin: XTTXFJ91WW69
+  symbol: HAPPYCAT
+  name: happycat
+  exchange: null
+- isin: XT2WWB8QS479
+  symbol: HBAR
+  name: Hedera HBAR
+  exchange: null
+- isin: XTKRB1FDCHQ3
+  symbol: HBCH
+  name: Heco Peg HBCH Token
+  exchange: null
+- isin: XT1WNGQQD471
+  symbol: HBD
+  name: Hive Dollar
+  exchange: null
+- isin: XTXCTFPJJBH1
+  symbol: HBSV
+  name: Huobi BSV
+  exchange: null
+- isin: XTJJMZ5BRRK9
+  symbol: HDL
+  name: HEADLINE
+  exchange: null
+- isin: XTX7GHZ35BR6
+  symbol: HDOT
+  name: Heco-Peg HDOT Token
+  exchange: null
+- isin: XTXMCX36T6N4
+  symbol: HEHE
+  name: hehe
+  exchange: null
+- isin: XT2Q6SRP1GT4
+  symbol: HEI
+  name: Heima
+  exchange: null
+- isin: XT4DMTB6VPR1
+  symbol: HEMI
+  name: Hemi
+  exchange: null
+- isin: XTN3K1P14QN8
+  symbol: HFT
+  name: Hashflow
+  exchange: null
+- isin: XTQSGKCDVW18
+  symbol: HIB
+  name: SHIBA INU
+  exchange: null
+- isin: XTHVNVHWNC18
+  symbol: HIFI
+  name: Hifi Finance
+  exchange: null
+- isin: XTPM8GC6X1K8
+  symbol: HIGH
+  name: Highstreet Token
+  exchange: null
+- isin: XTTBJRP1QWJ7
+  symbol: HIVE
+  name: Hive
+  exchange: null
+- isin: XTS770D4DST9
+  symbol: HMSTR
+  name: Hamster Kombat
+  exchange: null
+- isin: XT4GX02L80B8
+  symbol: HNT
+  name: Helium
+  exchange: null
+- isin: XTPF0CVGQ3Q5
+  symbol: HOD
+  name: Hodooi com Token
+  exchange: null
+- isin: XTJ7NK1FQ5N5
+  symbol: HOLD
+  name: Holdstation
+  exchange: null
+- isin: XT9R78FGDX08
+  symbol: HOME
+  name: Home
+  exchange: null
+- isin: XTL4T4M570J6
+  symbol: HONEY
+  name: HONEY
+  exchange: null
+- isin: XT5WC3ZHNC84
+  symbol: HOOK
+  name: Hooked Protocol
+  exchange: null
+- isin: XTMS8TW0GNX5
+  symbol: HOP
+  name: Hop
+  exchange: null
+- isin: XTVQQBWR72V2
+  symbol: HOPR
+  name: HOPR Token
+  exchange: null
+- isin: XTPZHXZVGJB2
+  symbol: HOT
+  name: HoloToken
+  exchange: null
+- isin: XT2HLT11X019
+  symbol: HSK
+  name: HashKey Platform Token
+  exchange: null
+- isin: XT8342SCN683
+  symbol: HT
+  name: Huobi Token
+  exchange: null
+- isin: XTQDHC3HZB68
+  symbol: HTX
+  name: HTX
+  exchange: null
+- isin: XTPPPSTQ5M96
+  symbol: HUMA
+  name: Huma Finance
+  exchange: null
+- isin: XTVM5STJWTR9
+  symbol: HUNT
+  name: HuntToken
+  exchange: null
+- isin: XTP1KT9T86M2
+  symbol: HUSD
+  name: HUSD
+  exchange: null
+- isin: XTHLTPNVXN02
+  symbol: HYPE
+  name: Hyperliquid
+  exchange: null
+- isin: XT8VJ8TXW4B7
+  symbol: HYPER
+  name: Hyperlane
+  exchange: null
+- isin: XT4DHTM5D7P2
+  symbol: ICP
+  name: Internet Computer Token
+  exchange: null
+- isin: XTP3JS307D25
+  symbol: ICX
+  name: ICON
+  exchange: null
+- isin: XTC1D0QW5642
+  symbol: ID
+  name: SPACE ID
+  exchange: null
+- isin: XT1PC14K39T4
+  symbol: IDEX
+  name: IDEX Token
+  exchange: null
+- isin: XTVR4ZXW1Q35
+  symbol: IKA
+  name: IKA
+  exchange: null
+- isin: XT1J74CCB0S9
+  symbol: ILV
+  name: Illuvium
+  exchange: null
+- isin: XT9LJ0XLJBT8
+  symbol: IMX
+  name: Immutable X
+  exchange: null
+- isin: XTD7NVP078W2
+  symbol: INDEX
+  name: Index
+  exchange: null
+- isin: XT5H84WFH8T3
+  symbol: INIT
+  name: initia
+  exchange: null
+- isin: XT92M9B0DZ78
+  symbol: INJ
+  name: Injective Token
+  exchange: null
+- isin: XTSQSXQZWPN1
+  symbol: INV
+  name: Inverse DAO
+  exchange: null
+- isin: XTMQ81KWDCP5
+  symbol: IO
+  name: IO
+  exchange: null
+- isin: XT647W1RXFC6
+  symbol: IOETH
+  name: Wrapped Ether
+  exchange: null
+- isin: XTN156HCF297
+  symbol: IOST
+  name: IOST
+  exchange: null
+- isin: XTHNJD61GD17
+  symbol: IOTA
+  name: IOTA
+  exchange: null
+- isin: XTJFSNCX3SR6
+  symbol: IOTX
+  name: IoTeX
+  exchange: null
+- isin: XT8L64KXJQ22
+  symbol: IOUSDC
+  name: USD Coin
+  exchange: null
+- isin: XT1L4JKGP2H6
+  symbol: IOUSDT
+  name: Tether USD
+  exchange: null
+- isin: XTGH8X7F7V85
+  symbol: IOWBTC
+  name: Wrapped Bitcoin
+  exchange: null
+- isin: XT71LV3DB012
+  symbol: IPX
+  name: InpulseX
+  exchange: null
+- isin: XTV7LB71X8M2
+  symbol: IQ
+  name: Everipedia IQ
+  exchange: null
+- isin: XT5TS6950QM6
+  symbol: IRIS
+  name: IRISnet
+  exchange: null
+- isin: XTSNMPV46HC1
+  symbol: J
+  name: Jambo
+  exchange: null
+- isin: XTK76W4K1XQ7
+  symbol: JAM
+  name: Geojam
+  exchange: null
+- isin: XTCTLCNFBZW1
+  symbol: JASMY
+  name: JasmyCoin
+  exchange: null
+- isin: XTT12S3LM2L3
+  symbol: JBL
+  name: JuniorBaseballLeague
+  exchange: null
+- isin: XTPJN7058ZN8
+  symbol: JDAI
+  name: Dai
+  exchange: null
+- isin: XTL32Z9GR3G7
+  symbol: JELLYJELLY
+  name: jelly-my-jelly
+  exchange: null
+- isin: XTVC28C135Q0
+  symbol: JEWEL
+  name: DFK Subnet JEWEL
+  exchange: null
+- isin: XTQF1G0XXMM4
+  symbol: JITOSOL
+  name: Jito Staked SOL
+  exchange: null
+- isin: XTMV10RXC247
+  symbol: JLP
+  name: Jupiter Perps LP
+  exchange: null
+- isin: XTVV204Q4J44
+  symbol: JOE
+  name: JoeToken
+  exchange: null
+- isin: XT16HXFRN103
+  symbol: JPTC
+  name: Terra Classic JPY
+  exchange: null
+- isin: XTDFGV0P5MN8
+  symbol: JST
+  name: JUST
+  exchange: null
+- isin: XTD3XB6KZ009
+  symbol: JTO
+  name: Jito
+  exchange: null
+- isin: XTVDPRP0FHT8
+  symbol: JUNO
+  name: JUNO
+  exchange: null
+- isin: XTLKWXN892M9
+  symbol: JUP
+  name: Jupiter
+  exchange: null
+- isin: XTH2H1L6G626
+  symbol: JUSDC
+  name: USD Coin
+  exchange: null
+- isin: XTCWL3HLS378
+  symbol: JUSDT
+  name: Tether USD
+  exchange: null
+- isin: XTTLBHSHXVZ3
+  symbol: JUV
+  name: Juventus
+  exchange: null
+- isin: XTHSPP1J5402
+  symbol: JWBTC
+  name: Wrapped BTC
+  exchange: null
+- isin: XTRW7GP3S5G7
+  symbol: K
+  name: Sidekick
+  exchange: null
+- isin: XTBJSS8NQTW2
+  symbol: KAI
+  name: Kardia Chain
+  exchange: null
+- isin: XT3CX0N40CT6
+  symbol: KAIA
+  name: Kaia
+  exchange: null
+- isin: XTZ3JGDP6288
+  symbol: KAITO
+  name: KAITO
+  exchange: null
+- isin: XTQFRL8JCLD2
+  symbol: KARRAT
+  name: KarratCoin
+  exchange: null
+- isin: XTN2LWX5WS02
+  symbol: KAS
+  name: Kaspa
+  exchange: null
+- isin: XT2HZXZQLKX1
+  symbol: KAVA
+  name: KAVA
+  exchange: null
+- isin: XTD7QMN2V6L3
+  symbol: KBTC
+  name: Kraken Wrapped Bitcoin
+  exchange: null
+- isin: XTDDTRRN0F48
+  symbol: KCC
+  name: KCC
+  exchange: null
+- isin: XTJMSF5CVPT7
+  symbol: KCH
+  name: Kaching
+  exchange: null
+- isin: XTWV6T0BB227
+  symbol: KCS
+  name: KuCoin Token
+  exchange: null
+- isin: XTL5C1L4H5B4
+  symbol: KDA
+  name: Kadena
+  exchange: null
+- isin: XT8QMD878QV0
+  symbol: KEEP
+  name: KEEP Token
+  exchange: null
+- isin: XTL6N3VM7CM0
+  symbol: KERNEL
+  name: KERNEL
+  exchange: null
+- isin: XT5GHXJSGXK4
+  symbol: KEY
+  name: SelfKey
+  exchange: null
+- isin: XTNFTD780QF6
+  symbol: KEYCAT
+  name: Keyboard Cat
+  exchange: null
+- isin: XT8CJXL9L2F3
+  symbol: KIP
+  name: KIP Protocol
+  exchange: null
+- isin: XTC3MGLM0262
+  symbol: KISHIMOTO
+  name: Kishimoto
+  exchange: null
+- isin: XTLKZZJ19TD8
+  symbol: KMD
+  name: Komodo
+  exchange: null
+- isin: XTLLRPNCLLK9
+  symbol: KMNO
+  name: Kamino Finance
+  exchange: null
+- isin: XTL0DZSBLVZ7
+  symbol: KNC
+  name: Kyber Network Crystal v2
+  exchange: null
+- isin: XTNZQBG39SR8
+  symbol: KOK
+  name: KOK Coin
+  exchange: null
+- isin: XTKDFPP8K070
+  symbol: KP3R
+  name: Keep3rV1
+  exchange: null
+- isin: XT73GDDKLJM7
+  symbol: KRL
+  name: Kryll
+  exchange: null
+- isin: XTZN08749RK5
+  symbol: KRTC
+  name: Terra Classic KRW
+  exchange: null
+- isin: XT8XNL7G3CW7
+  symbol: KRW
+  name: KingDeFi
+  exchange: null
+- isin: XTPX4GCX5B55
+  symbol: KSM
+  name: Kusama
+  exchange: null
+- isin: XTF2RB3TCSQ6
+  symbol: KTA
+  name: Keeta
+  exchange: null
+- isin: XT202FPFLVD7
+  symbol: KYVE
+  name: KYVE NETWORK
+  exchange: null
+- isin: XTGCG7S59XF9
+  symbol: L3
+  name: Layer3
+  exchange: null
+- isin: XTZRH17CF3V6
+  symbol: LA
+  name: Lagrange
+  exchange: null
+- isin: XTDVC32NKQC6
+  symbol: LADYS
+  name: Milady
+  exchange: null
+- isin: XTPWG559QJQ8
+  symbol: LAYER
+  name: Solayer
+  exchange: null
+- isin: XTHVX5KKP5J7
+  symbol: LAYR
+  name: Composable Finance
+  exchange: null
+- isin: XTW78WR9G6C0
+  symbol: LAZIO
+  name: FC Lazio Fan Token
+  exchange: null
+- isin: XTZWGQ3HV8R7
+  symbol: LBA
+  name: LibraToken
+  exchange: null
+- isin: XT6DHV3616X8
+  symbol: LBR
+  name: LBR
+  exchange: null
+- isin: XTM3NCNSV6B8
+  symbol: LBTC
+  name: Bitcoin Liquid
+  exchange: null
+- isin: XTJ8JQDLQP10
+  symbol: LCRO
+  name: Liquid CRO
+  exchange: null
+- isin: XTLDWJPG9441
+  symbol: LCX
+  name: LCX
+  exchange: null
+- isin: XT8W8GLGL654
+  symbol: LDO
+  name: Lido DAO Token
+  exchange: null
+- isin: XTVZ8VW6SC41
+  symbol: LEASH
+  name: DOGE KILLER
+  exchange: null
+- isin: XTSSSD54KJ56
+  symbol: LEND
+  name: EthLend Token
+  exchange: null
+- isin: XT50BFQMHW38
+  symbol: LEO
+  name: Bitfinex LEO Token
+  exchange: null
+- isin: XTPBVTW87G48
+  symbol: LEVER
+  name: LeverFi
+  exchange: null
+- isin: XTZT39Q67MZ7
+  symbol: LIBRA
+  name: LIBRA
+  exchange: null
+- isin: XTZ29GHSCW78
+  symbol: LIGHT
+  name: Light
+  exchange: null
+- isin: XTNWDMW8DGQ1
+  symbol: LINA
+  name: Linear Finance
+  exchange: null
+- isin: XTDW1NCGR645
+  symbol: LINEA
+  name: Linea
+  exchange: null
+- isin: XT3R3J70FDR7
+  symbol: LINK
+  name: ChainLink Token
+  exchange: null
+- isin: XTQW6T8C2WG9
+  symbol: LION
+  name: Loaded Lions
+  exchange: null
+- isin: XTQ819WJTBB7
+  symbol: LISUSD
+  name: Lista USD
+  exchange: null
+- isin: XTNPSKM29CP3
+  symbol: LIT
+  name: Lition
+  exchange: null
+- isin: XTPTHCGHXQK9
+  symbol: LITKEY
+  name: Lit Protocol
+  exchange: null
+- isin: XT9M6SF3F3F3
+  symbol: LM
+  name: LeisureMeta
+  exchange: null
+- isin: XTJ4380LJ4N7
+  symbol: LMWR
+  name: LimeWire Token
+  exchange: null
+- isin: XTK29F4WMSW7
+  symbol: LOAF
+  name: LOAF
+  exchange: null
+- isin: XT22NPQNT1H8
+  symbol: LOKA
+  name: League of Kingdoms Arena
+  exchange: null
+- isin: XT50J32NDVJ8
+  symbol: LOOKS
+  name: LooksRare Token
+  exchange: null
+- isin: XT685977QVS2
+  symbol: LOOM
+  name: Loom Token
+  exchange: null
+- isin: XTJ80JRP8VM1
+  symbol: LPT
+  name: Livepeer
+  exchange: null
+- isin: XTC5D1WG11D2
+  symbol: LQTY
+  name: Liquity
+  exchange: null
+- isin: XTNZCPF6J825
+  symbol: LRC
+  name: LoopringCoin V2
+  exchange: null
+- isin: XTT5TPKBSCQ6
+  symbol: LRDS
+  name: BLOCKLORDS
+  exchange: null
+- isin: XTQZ6CDJ6028
+  symbol: LSETH
+  name: Liquid Staked ETH
+  exchange: null
+- isin: XT7J6VRX7JZ1
+  symbol: LSK
+  name: Lisk
+  exchange: null
+- isin: XTD74JZ1VRD1
+  symbol: LTC
+  name: Litecoin
+  exchange: null
+- isin: XTG93K15F955
+  symbol: LTO
+  name: LTO Network
+  exchange: null
+- isin: XTRQL7XD5C77
+  symbol: LTX
+  name: Lattice Token
+  exchange: null
+- isin: XT32M2GB9QN2
+  symbol: LUK
+  name: Luniverse
+  exchange: null
+- isin: XT4BHJZMQHT9
+  symbol: LUMIA
+  name: LUMIA
+  exchange: null
+- isin: XTQ751ZP2BZ5
+  symbol: LUNA
+  name: Wrapped LUNA Token
+  exchange: null
+- isin: XTD444MB2WJ7
+  symbol: LUNC
+  name: Terra Classic
+  exchange: null
+- isin: XTPLM2L6D2D8
+  symbol: LUSD
+  name: LUSD Stablecoin
+  exchange: null
+- isin: XT7WRFHGC6N5
+  symbol: LVVA
+  name: Levva Protocol Token
+  exchange: null
+- isin: XT2ZZGTD8RW9
+  symbol: LYX
+  name: Lukso
+  exchange: null
+- isin: XT94TXRXN4Q3
+  symbol: LYXE
+  name: LUKSO Token
+  exchange: null
+- isin: XT41PM903FS8
+  symbol: MADA
+  name: Milkomeda C1
+  exchange: null
+- isin: XTF41439TS40
+  symbol: MAGIC
+  name: MAGIC
+  exchange: null
+- isin: XTMW4RKJ60S2
+  symbol: MAID
+  name: MaidSafeCoin
+  exchange: null
+- isin: XT4WXHPRNH87
+  symbol: MAMO
+  name: Mamo
+  exchange: null
+- isin: XT21C6LF4SP3
+  symbol: MANA
+  name: Decentraland
+  exchange: null
+- isin: XTNCHJP42Q99
+  symbol: MANEKI
+  name: MANEKI
+  exchange: null
+- isin: XTVTV046TSP1
+  symbol: MASK
+  name: Mask Network
+  exchange: null
+- isin: XTRKVDPH4BZ8
+  symbol: MAT
+  name: Matchain
+  exchange: null
+- isin: XTF1LPK8ZKZ2
+  symbol: MATH
+  name: MATH Token
+  exchange: null
+- isin: XTPNGQKJNSN3
+  symbol: MATICET
+  name: Matic
+  exchange: null
+- isin: XT1M2QWWXRL0
+  symbol: MATICPO
+  name: Matic
+  exchange: null
+- isin: XT50VKK1B1X1
+  symbol: MAV
+  name: Maverick Protocol
+  exchange: null
+- isin: XTK4ZWXQ8M15
+  symbol: MAVIA
+  name: Heroes of Mavia
+  exchange: null
+- isin: XTG1BQHVFDN2
+  symbol: MBL
+  name: MovieBloc
+  exchange: null
+- isin: XTLXRP46Q0V5
+  symbol: MBOX
+  name: Mobox
+  exchange: null
+- isin: XTKWRXWPTP23
+  symbol: MC
+  name: Merit Circle
+  exchange: null
+- isin: XT2WTT2M7FF8
+  symbol: MC314
+  name: MANCIPI
+  exchange: null
+- isin: XTDXTB3C73K2
+  symbol: MCO
+  name: Monaco
+  exchange: null
+- isin: XT70J0XTHGG8
+  symbol: MCO2
+  name: Moss Carbon Credit
+  exchange: null
+- isin: XTCFT2WVB5L7
+  symbol: MDT
+  name: Measuarable Data Token
+  exchange: null
+- isin: XTL2ZBM28C73
+  symbol: MDX
+  name: MDX Token
+  exchange: null
+- isin: XT7987R7S6H6
+  symbol: ME
+  name: Magic Eden
+  exchange: null
+- isin: XTP5Z43GPLK1
+  symbol: MEDIA
+  name: Media Network
+  exchange: null
+- isin: XTTC417FPLR1
+  symbol: MELANIA
+  name: Melania Meme
+  exchange: null
+- isin: XTTHW1BFN8J1
+  symbol: MEME
+  name: Memecoin
+  exchange: null
+- isin: XTKQFDFXVRB8
+  symbol: MEOW
+  name: MEOW
+  exchange: null
+- isin: XTNW1M13H3L4
+  symbol: MERL
+  name: Merlin
+  exchange: null
+- isin: XT1Q87CKDCB6
+  symbol: MERY
+  name: Mistery
+  exchange: null
+- isin: XT2CR0HWFTK5
+  symbol: META
+  name: Metadium
+  exchange: null
+- isin: XTRCGXTQ3G08
+  symbol: METIS
+  name: Metis Token
+  exchange: null
+- isin: XT5Z3NS3NDB7
+  symbol: MEW
+  name: cat in a dogs world
+  exchange: null
+- isin: XTPS0KBHG3H2
+  symbol: MFER
+  name: Mfercoin
+  exchange: null
+- isin: XTMVTH0BTN90
+  symbol: MICRO
+  name: Micromines
+  exchange: null
+- isin: XTMD3L6D9M38
+  symbol: MILK
+  name: MILK
+  exchange: null
+- isin: XTJCF491XR74
+  symbol: MILKALGO
+  name: Milkomeda A1
+  exchange: null
+- isin: XT1P2BGKF2D8
+  symbol: MIM
+  name: Magic Internet Money
+  exchange: null
+- isin: XT6LKJK66MZ8
+  symbol: MIN
+  name: Minswap
+  exchange: null
+- isin: XT133H6VJ482
+  symbol: MINA
+  name: Mina
+  exchange: null
+- isin: XT7D7J4M6FR1
+  symbol: MIR
+  name: Wrapped MIR Token
+  exchange: null
+- isin: XT9D7L206V02
+  symbol: MIRROR
+  name: Black Mirror Experience Token
+  exchange: null
+- isin: XTPKS50BLR11
+  symbol: MITH
+  name: Mithril
+  exchange: null
+- isin: XTSV17PZF241
+  symbol: MKR;MAKER
+  name: Maker
+  exchange: null
+- isin: XT2RTGD1N407
+  symbol: MLC
+  name: MELE
+  exchange: null
+- isin: XTF5GT1QBFL6
+  symbol: MLK
+  name: MiLk
+  exchange: null
+- isin: XT19MV8MKPG2
+  symbol: MLN
+  name: Melon Token
+  exchange: null
+- isin: XTFQM4CQTFJ4
+  symbol: MMF
+  name: Mad Meerkat Finance
+  exchange: null
+- isin: XTXZJPBZFJZ1
+  symbol: MMT
+  name: MyMetaTrader
+  exchange: null
+- isin: XTKP2V762CJ6
+  symbol: MNDE
+  name: Marinade
+  exchange: null
+- isin: XTQH1GF1J5H2
+  symbol: MNT
+  name: Mantle
+  exchange: null
+- isin: XTMJCWT0S6X7
+  symbol: MNTC
+  name: Terra Classic MNT
+  exchange: null
+- isin: XT1P9S89DSS0
+  symbol: MOBILE
+  name: Helium Mobile
+  exchange: null
+- isin: XTNRS9TCXX28
+  symbol: MOCA
+  name: Moca
+  exchange: null
+- isin: XTS42VK6G6J9
+  symbol: MODE
+  name: Mode
+  exchange: null
+- isin: XTC4044KDRD6
+  symbol: MOG
+  name: Mog Coin
+  exchange: null
+- isin: XT3GC9CL3CZ0
+  symbol: MONA
+  name: MonaCoin
+  exchange: null
+- isin: XTTDDC83RQ75
+  symbol: MONG
+  name: MongCoin
+  exchange: null
+- isin: XTZXQF9858V7
+  symbol: MONI
+  name: Monsta Infinite Token
+  exchange: null
+- isin: XTTMJ77771Z8
+  symbol: MOODENG
+  name: MOODENG
+  exchange: null
+- isin: XTH0878D35D5
+  symbol: MOON
+  name: Moons
+  exchange: null
+- isin: XTCH7NXRXR13
+  symbol: MORPHO
+  name: Morpho Token
+  exchange: null
+- isin: XT11KGBJ2W40
+  symbol: MOVE
+  name: Movement
+  exchange: null
+- isin: XTKW2NCBQ6M6
+  symbol: MOVR
+  name: Moonriver
+  exchange: null
+- isin: XT4GD9CGMXV5
+  symbol: MPL
+  name: Maple Token
+  exchange: null
+- isin: XT2FX0H8T881
+  symbol: MPLX
+  name: Metaplex
+  exchange: null
+- isin: XTL5QG5NJR66
+  symbol: MSOL
+  name: Marinade staked SOL
+  exchange: null
+- isin: XTWQ70K9G5F9
+  symbol: MTD
+  name: Minted Token
+  exchange: null
+- isin: XT3BN95WJXH9
+  symbol: MTL
+  name: Metal
+  exchange: null
+- isin: XT3P7FWNG6K7
+  symbol: MTR
+  name: Meter
+  exchange: null
+- isin: XTWWW3TNHWT5
+  symbol: MUBARAK
+  name: Mubarak
+  exchange: null
+- isin: XTKB7FDVF570
+  symbol: MULTI
+  name: Multichain
+  exchange: null
+- isin: XTWBJVM843M0
+  symbol: MUSD
+  name: mStable USD
+  exchange: null
+- isin: XT6KLT02RFP2
+  symbol: MUSDC
+  name: USDC Token
+  exchange: null
+- isin: XTWWB63763Z2
+  symbol: MUSDT
+  name: USDT Token
+  exchange: null
+- isin: XT60STSXHFP5
+  symbol: MUSE
+  name: Muse
+  exchange: null
+- isin: XT8QTHKMDSF3
+  symbol: MV
+  name: Metaverse
+  exchange: null
+- isin: XT3HQBD07287
+  symbol: MX
+  name: MX Token
+  exchange: null
+- isin: XT9DMB49P5L6
+  symbol: MXC
+  name: MXCToken
+  exchange: null
+- isin: XTJ1Q2BN4RM7
+  symbol: MYRO
+  name: MYRO
+  exchange: null
+- isin: XTKVXQG21ZB4
+  symbol: MYTH
+  name: Mythos
+  exchange: null
+- isin: XTLRD8N7FT54
+  symbol: NAS
+  name: Nebulas
+  exchange: null
+- isin: XTJDTCW5ZB19
+  symbol: NC
+  name: Nodecoin
+  exchange: null
+- isin: XT4BQW9JSSR1
+  symbol: NCT
+  name: PolySwarm
+  exchange: null
+- isin: XTMXXM59Z0T6
+  symbol: NEAR
+  name: NEAR Protocol
+  exchange: null
+- isin: XTQ4TK4Q00M5
+  symbol: NEIRO
+  name: Neiro
+  exchange: null
+- isin: XTN2FWML4CL7
+  symbol: NEO
+  name: NEO
+  exchange: null
+- isin: XTM3F18CFSJ0
+  symbol: NEON
+  name: NEON EVM Token
+  exchange: null
+- isin: XTL9974SKDQ0
+  symbol: NEST
+  name: NEST
+  exchange: null
+- isin: XTV0V04KHR34
+  symbol: NEWT
+  name: Newton
+  exchange: null
+- isin: XTQG5H3KFW27
+  symbol: NEXO
+  name: Nexo
+  exchange: null
+- isin: XT4MH0C4BL61
+  symbol: NFT
+  name: APENFT
+  exchange: null
+- isin: XT130W9TDKG2
+  symbol: NFTN
+  name: NFTNetwork
+  exchange: null
+- isin: XT2TF3Z8C8J9
+  symbol: NIM
+  name: Nimiq
+  exchange: null
+- isin: XT89HB4LPFS4
+  symbol: NKN
+  name: NKN
+  exchange: null
+- isin: XTTCRZ9GZRF3
+  symbol: NMR
+  name: Numeraire
+  exchange: null
+- isin: XTQ2BLLJNF88
+  symbol: NOBODY
+  name: Nobody Sausage
+  exchange: null
+- isin: XTKWK003WN76
+  symbol: NODE
+  name: NodeOps
+  exchange: null
+- isin: XTD1RSPC2317
+  symbol: NODEWAVEONEPOINT
+  name: NodeOpsWaveOne
+  exchange: null
+- isin: XTZ53WMGJQX4
+  symbol: NOICE
+  name: noice
+  exchange: null
+- isin: XTFXD9KSSZF2
+  symbol: NOS
+  name: Nosana
+  exchange: null
+- isin: XT2W30TD6D96
+  symbol: NOTCOIN
+  name: NOT
+  exchange: null
+- isin: XTMSVH7D0945
+  symbol: NOTE
+  name: Note
+  exchange: null
+- isin: XTX088BGGWB3
+  symbol: NPXS
+  name: Pundi X Token
+  exchange: null
+- isin: XTXDNXPCKL89
+  symbol: NRG
+  name: Energi
+  exchange: null
+- isin: XTV80FN8FW95
+  symbol: NRN
+  name: Neuron
+  exchange: null
+- isin: XTMB670B1M82
+  symbol: NTRN
+  name: Neutron
+  exchange: null
+- isin: XTWLNF8R8706
+  symbol: NU
+  name: NuCypher
+  exchange: null
+- isin: XTK2M3S8FZG2
+  symbol: NULS
+  name: Nuls
+  exchange: null
+- isin: XT679QG56ZS9
+  symbol: NUM
+  name: Numbers Protocol
+  exchange: null
+- isin: XT5TFNGQBSS6
+  symbol: NXPC
+  name: Nexpace
+  exchange: null
+- isin: XTLBMZ0F5MB6
+  symbol: NXRA
+  name: AllianceBlock Nexera Token
+  exchange: null
+- isin: XT3S3S0DBWN3
+  symbol: NYAN
+  name: NYAN
+  exchange: null
+- isin: XTNVT9MPCN27
+  symbol: OAS
+  name: Oasys
+  exchange: null
+- isin: XTJ4L4TPV1F8
+  symbol: OBT
+  name: Oobit
+  exchange: null
+- isin: XTTDDNSZP8W2
+  symbol: OCEAN
+  name: Ocean Token
+  exchange: null
+- isin: XTKM18K28K81
+  symbol: OCT
+  name: Octopus Network Token
+  exchange: null
+- isin: XTLQJ9TKJ323
+  symbol: OG
+  name: OG
+  exchange: null
+- isin: XT4N5X371R33
+  symbol: OGN
+  name: OriginToken
+  exchange: null
+- isin: XTG8541DXQP7
+  symbol: OGV
+  name: Origin Dollar Governance
+  exchange: null
+- isin: XTDPBNMCZQ52
+  symbol: OKB
+  name: OKB
+  exchange: null
+- isin: XT72L89HF810
+  symbol: OKT
+  name: OKC Token
+  exchange: null
+- isin: XTT0RGMNHD45
+  symbol: OLE
+  name: OpenLeverage
+  exchange: null
+- isin: XT11B60HRDS9
+  symbol: OM
+  name: MANTRA
+  exchange: null
+- isin: XTHRSP99WHX5
+  symbol: OMG
+  name: OMGToken
+  exchange: null
+- isin: XT3JJ63T2TQ6
+  symbol: OMI
+  name: OMI Token
+  exchange: null
+- isin: XT91VT8QMN02
+  symbol: OMNI
+  name: Omni Network
+  exchange: null
+- isin: XTWKH09L3DV5
+  symbol: ONDO
+  name: Ondo
+  exchange: null
+- isin: XTD6KMQGX4Z8
+  symbol: ONE
+  name: Harmony ONE
+  exchange: null
+- isin: XTV0KMHWRQH2
+  symbol: ONG
+  name: Ontology Gas
+  exchange: null
+- isin: XTM2W3DQB672
+  symbol: ONT
+  name: Ontology
+  exchange: null
+- isin: XTLXVNJGM0D8
+  symbol: OOKI
+  name: Ooki Token
+  exchange: null
+- isin: XT9NRMM2RC47
+  symbol: OP
+  name: Optimism
+  exchange: null
+- isin: XTDMKTQ7GGR0
+  symbol: OPEN;QRDO
+  name: Open Token
+  exchange: null
+- isin: XTS621HFJ9Z0
+  symbol: OPT
+  name: OptionFlowToken
+  exchange: null
+- isin: XTPR24TS1MZ3
+  symbol: ORAI
+  name: Oraichain Token
+  exchange: null
+- isin: XTNRNDVDRLS8
+  symbol: ORBR
+  name: Orbler
+  exchange: null
+- isin: XTXW3GWJ75G2
+  symbol: ORBS
+  name: Orbs
+  exchange: null
+- isin: XTQS946B4NN6
+  symbol: ORCA
+  name: Orca
+  exchange: null
+- isin: XTQJL2K39KZ8
+  symbol: ORDI
+  name: ORDI
+  exchange: null
+- isin: XT9MX0F8R7N2
+  symbol: ORN
+  name: Orion Protocol
+  exchange: null
+- isin: XTTDS6NVZ461
+  symbol: OSMO
+  name: Osmosis
+  exchange: null
+- isin: XTQR6Z8Z0324
+  symbol: OUSDC
+  name: Orbit Bridge Ton USD Coin
+  exchange: null
+- isin: XTPNMPB2JKX9
+  symbol: OUSDT
+  name: Orbit Bridge Ton USD Tether
+  exchange: null
+- isin: XTWHX0WG0LT7
+  symbol: OXT
+  name: Orchid
+  exchange: null
+- isin: XTCWXS1JL843
+  symbol: PAI
+  name: Project Pai
+  exchange: null
+- isin: XTRPGFC7GN31
+  symbol: PAXG
+  name: Paxos Gold
+  exchange: null
+- isin: XTT3LTN4SZ33
+  symbol: PBR
+  name: PolkaBridge
+  exchange: null
+- isin: XTKLZ3KCP333
+  symbol: PCI
+  name: Paycoin
+  exchange: null
+- isin: XTJ61XJ36B40
+  symbol: PCKB
+  name: Godwoken
+  exchange: null
+- isin: XT4XC8CV8ZN8
+  symbol: PDA
+  name: PlayDapp
+  exchange: null
+- isin: XTHD9F0F6K33
+  symbol: PDT
+  name: Paragons DAO Token
+  exchange: null
+- isin: XT5ZCF8MLPL9
+  symbol: PEAQ
+  name: PEAQ
+  exchange: null
+- isin: XT5RJT6339X6
+  symbol: PENDLE
+  name: Pendle
+  exchange: null
+- isin: XT13JBPT88T0
+  symbol: PENGU
+  name: Pudgy Penguins
+  exchange: null
+- isin: XTM69M29HTV0
+  symbol: PEOPLE
+  name: ConstitutionDAO
+  exchange: null
+- isin: XTJ41R6PF819
+  symbol: PEPE
+  name: Pepe
+  exchange: null
+- isin: XTGR9L526G94
+  symbol: PEPE20
+  name: Pepe 2 0
+  exchange: null
+- isin: XTJZCFQ06MH9
+  symbol: PEPEBOMB
+  name: pepe
+  exchange: null
+- isin: XTCWDH5H2FP2
+  symbol: PERL
+  name: Perlin
+  exchange: null
+- isin: XTVTP4QVSMM0
+  symbol: PERP
+  name: Perpetual
+  exchange: null
+- isin: XTC03MS3PW12
+  symbol: PHA
+  name: Phala
+  exchange: null
+- isin: XT30J3JZLZB0
+  symbol: PHB
+  name: Phoenix Global
+  exchange: null
+- isin: XT2Z2WZP5KM1
+  symbol: PI
+  name: Pi Network
+  exchange: null
+- isin: XTFKXCRW2GB4
+  symbol: PICKLE
+  name: PickleToken
+  exchange: null
+- isin: XT91K5D3RNW9
+  symbol: PIEVERSE
+  name: Pieverse
+  exchange: null
+- isin: XTDZGQ59L7G0
+  symbol: PIG
+  name: Pigcoin
+  exchange: null
+- isin: XT70H2X3L014
+  symbol: PIRATE
+  name: Pirate Nation Token
+  exchange: null
+- isin: XTJCH75N1G38
+  symbol: PIVX
+  name: PIVX
+  exchange: null
+- isin: XT5HPLWBHDP8
+  symbol: PIXEL
+  name: Pixels
+  exchange: null
+- isin: XTB5XCG9SX89
+  symbol: PLA
+  name: PlayDapp Token PoS
+  exchange: null
+- isin: XTFZ9ZQ1JLT7
+  symbol: PLANETS
+  name: PLANET
+  exchange: null
+- isin: XTM0ZDD763J6
+  symbol: PLAY
+  name: Play Solana
+  exchange: null
+- isin: XTS87V7S9H45
+  symbol: PLS
+  name: Pulsechain
+  exchange: null
+- isin: XTJ4GXQK19H3
+  symbol: PLU
+  name: Pluton
+  exchange: null
+- isin: XTFRZQZJ7BL5
+  symbol: PLUME
+  name: Plume
+  exchange: null
+- isin: XTD8ZX9L3K13
+  symbol: PLUS
+  name: PLUS
+  exchange: null
+- isin: XTG3RGPNTVK4
+  symbol: PNG
+  name: Pangolin
+  exchange: null
+- isin: XTQCJS0V8H25
+  symbol: PNT
+  name: pNetwork Token
+  exchange: null
+- isin: XT75D0KJ7WN0
+  symbol: PNUT
+  name: Peanut the Squirrel
+  exchange: null
+- isin: XT9BDHNNC846
+  symbol: POGAI
+  name: POGAI
+  exchange: null
+- isin: XTFZDNRS0GH5
+  symbol: POKT
+  name: Pocket Network
+  exchange: null
+- isin: XTGB8DQ8DWN1
+  symbol: POL;MATIC
+  name: Polygon POL
+  exchange: null
+- isin: XTQ2LNT82BH0
+  symbol: POLA
+  name: Polaris Share
+  exchange: null
+- isin: XT8V4HL8BTV2
+  symbol: POLS
+  name: PolkastarterToken
+  exchange: null
+- isin: XTTQ2MGJBPH9
+  symbol: POLY
+  name: Polymath
+  exchange: null
+- isin: XT6JQ3HB7DH7
+  symbol: POLYX
+  name: Polymesh
+  exchange: null
+- isin: XTQFL8HTJ6P2
+  symbol: POND
+  name: Marlin POND
+  exchange: null
+- isin: XTDJLRN98WQ6
+  symbol: PONKE
+  name: PONKE
+  exchange: null
+- isin: XTF69G633611
+  symbol: PONT
+  name: Poly Ontology Token
+  exchange: null
+- isin: XTCPLCKVT112
+  symbol: POPCAT
+  name: POPCAT
+  exchange: null
+- isin: XT7LTZ22LCL5
+  symbol: PORK
+  name: PepeFork
+  exchange: null
+- isin: XTFM8WBW4WC5
+  symbol: PORTAL
+  name: PORTAL
+  exchange: null
+- isin: XT9V48XSXL78
+  symbol: PORTO
+  name: FC Porto Fan Token
+  exchange: null
+- isin: XTJWDR0ZDL65
+  symbol: POWR
+  name: PowerLedger
+  exchange: null
+- isin: XTJPJ2QRH6R5
+  symbol: PRCL
+  name: Parcl
+  exchange: null
+- isin: XT1VJ02JBZN2
+  symbol: PRIME
+  name: Echelon Prime
+  exchange: null
+- isin: XTNHB6V3B2W4
+  symbol: PRO
+  name: Propy
+  exchange: null
+- isin: XTFLKTMN0469
+  symbol: PROM
+  name: Prometeus
+  exchange: null
+- isin: XT3DFF12GSV8
+  symbol: PROMPT
+  name: Wayfinder Prompt
+  exchange: null
+- isin: XTMQ9RBPS5Q9
+  symbol: PROS
+  name: Prosper
+  exchange: null
+- isin: XT1ZZ7H452N7
+  symbol: PROVE
+  name: Succinct
+  exchange: null
+- isin: XTN5DG5PWTG8
+  symbol: PRQ
+  name: Parsiq Token
+  exchange: null
+- isin: XT4XG3KHWP12
+  symbol: PSG
+  name: Paris Saint-Germain
+  exchange: null
+- isin: XTC2F189JNL5
+  symbol: PUMP
+  name: Pump.fun
+  exchange: null
+- isin: XTXFJCPTSL24
+  symbol: PUNDIX
+  name: Pundi X Token
+  exchange: null
+- isin: XTDS87QBF019
+  symbol: PUSDT
+  name: TetherToken
+  exchange: null
+- isin: XTXV5FHLDLH2
+  symbol: PUSH
+  name: Ethereum Push Notification Service
+  exchange: null
+- isin: XTCPQX5D6RN0
+  symbol: PYR
+  name: Vulcan Forged PYR Token
+  exchange: null
+- isin: XT3980Q2CPS5
+  symbol: PYTH
+  name: Pyth Network
+  exchange: null
+- isin: XTSQP45P2LT6
+  symbol: PYUSD
+  name: PayPal USD
+  exchange: null
+- isin: XTGBW438Z5Q1
+  symbol: QC
+  name: Qcash
+  exchange: null
+- isin: XTHZZKQKLNK3
+  symbol: QI
+  name: BENQI
+  exchange: null
+- isin: XT2RDHVSGPJ3
+  symbol: QKC
+  name: QuarkChain
+  exchange: null
+- isin: XTL8M8X31JL7
+  symbol: QNT
+  name: Quant
+  exchange: null
+- isin: XTW5XBP9LPN3
+  symbol: QSP
+  name: Quantstamp
+  exchange: null
+- isin: XT3BZV708657
+  symbol: QTF
+  name: Quantfury Token
+  exchange: null
+- isin: XTSH1MLXP1W6
+  symbol: QTUM
+  name: Qtum
+  exchange: null
+- isin: XT6XSVKC9B94
+  symbol: QUICK
+  name: Old Quickswap
+  exchange: null
+- isin: XT315760HRD9
+  symbol: RAD
+  name: Radicle
+  exchange: null
+- isin: XT5VTPW1P8S5
+  symbol: RADAR
+  name: DappRadar
+  exchange: null
+- isin: XTT2J7MS6599
+  symbol: RAI
+  name: Rai Reflex Index
+  exchange: null
+- isin: XT5TNGTBJ2D9
+  symbol: RAIIN
+  name: Raiin
+  exchange: null
+- isin: XTFBT24PNBJ0
+  symbol: RAILS
+  name: RAILS
+  exchange: null
+- isin: XTBP7F347WD1
+  symbol: RARE
+  name: SuperRare
+  exchange: null
+- isin: XT2GFN66H476
+  symbol: RARI
+  name: Rarible
+  exchange: null
+- isin: XT99LPKQWWZ0
+  symbol: RATS
+  name: rats Ordinals
+  exchange: null
+- isin: XT7HFXRDFHH8
+  symbol: RAY
+  name: Raydium
+  exchange: null
+- isin: XTMNB68CVWV8
+  symbol: RBN
+  name: Ribbon
+  exchange: null
+- isin: XTNR7XN9ZTX9
+  symbol: RBTC
+  name: Rootstock Smart Bitcoin
+  exchange: null
+- isin: XTP3W5NNZ5S6
+  symbol: RCN
+  name: Ripio Credit Network Token
+  exchange: null
+- isin: XTSQG2VBW694
+  symbol: RDD
+  name: ReddCoin
+  exchange: null
+- isin: XT6SS7PN4RZ5
+  symbol: RDNT
+  name: Radiant Capital
+  exchange: null
+- isin: XTBSQQQW4874
+  symbol: REACT
+  name: Reactive Network
+  exchange: null
+- isin: XT7M4589PKM4
+  symbol: RED
+  name: RedStone
+  exchange: null
+- isin: XT94P6VW0XJ0
+  symbol: REEF
+  name: Reef finance
+  exchange: null
+- isin: XTHH35JRTRS0
+  symbol: REI
+  name: REI Network
+  exchange: null
+- isin: XT9FP84XTTP4
+  symbol: REN
+  name: Republic Token
+  exchange: null
+- isin: XTB6CQ0H4PC7
+  symbol: REP
+  name: Augur Reputation Token
+  exchange: null
+- isin: XT3CJF47H8S5
+  symbol: REQ
+  name: Request Token
+  exchange: null
+- isin: XTGS94R1BBD9
+  symbol: REV
+  name: Revain
+  exchange: null
+- isin: XT3SPXMRFNC3
+  symbol: REZ
+  name: Renzo
+  exchange: null
+- isin: XTD0JZ1QQKB4
+  symbol: RFR
+  name: Refereum
+  exchange: null
+- isin: XTD51DH3VGT1
+  symbol: RGT
+  name: Rari Governance Token
+  exchange: null
+- isin: XTXNL19S75H6
+  symbol: RIF
+  name: RIF
+  exchange: null
+- isin: XTN3C3RTS7W9
+  symbol: RIO
+  name: Realio Network
+  exchange: null
+- isin: XTKP27CC5QB7
+  symbol: RION
+  name: Hyperion
+  exchange: null
+- isin: XTHVLR4Q5C53
+  symbol: RIZ
+  name: Rivalz Token
+  exchange: null
+- isin: XTXFRDT01VR0
+  symbol: RLC
+  name: iEx ec Network Token
+  exchange: null
+- isin: XT38Z5SZ99Q6
+  symbol: RLUSD
+  name: Ripple USD
+  exchange: null
+- isin: XTHHXM8FXS80
+  symbol: RLY
+  name: Rally
+  exchange: null
+- isin: XTXR0JSKLNZ1
+  symbol: RNDR;RENDER
+  name: Render Token
+  exchange: null
+- isin: XTW7BRR40HZ4
+  symbol: ROA
+  name: ROA CORE
+  exchange: null
+- isin: XTTVJX4PPWF5
+  symbol: RON
+  name: Ronin
+  exchange: null
+- isin: XTNJP8NH5JB1
+  symbol: ROOK
+  name: ROOK
+  exchange: null
+- isin: XTSXGLQRF6T2
+  symbol: ROSE
+  name: ROSE
+  exchange: null
+- isin: XTVGQDBVR442
+  symbol: ROW
+  name: RageOnWheels
+  exchange: null
+- isin: XT69Q6NLJ3M9
+  symbol: RPL
+  name: Rocket Pool
+  exchange: null
+- isin: XTFDQM0JPZP0
+  symbol: RSC
+  name: ResearchCoin
+  exchange: null
+- isin: XT6X9GKMMS27
+  symbol: RSR
+  name: Reserve Rights
+  exchange: null
+- isin: XTNX7TM2NSS7
+  symbol: RUJI
+  name: Rujira
+  exchange: null
+- isin: XT426HSHMDM5
+  symbol: RUNE
+  name: THORChain
+  exchange: null
+- isin: XTVW20Z13CQ5
+  symbol: RUSDT
+  name: rUSDT
+  exchange: null
+- isin: XTSVCV42BS86
+  symbol: RVN
+  name: Ravencoin
+  exchange: null
+- isin: XT8SBX90CN81
+  symbol: RZTO
+  name: RZTO Token
+  exchange: null
+- isin: XT7JBMLCWCR6
+  symbol: S
+  name: Sonic
+  exchange: null
+- isin: XTG0PCM6RDP7
+  symbol: SAED
+  name: AFREUM STABLE AED
+  exchange: null
+- isin: XTGLNXBZWH57
+  symbol: SAFE
+  name: Safe Token
+  exchange: null
+- isin: XT7KJGL5LGG2
+  symbol: SAFN
+  name: AFREUM STABLE AFN
+  exchange: null
+- isin: XT4PS1S77QG3
+  symbol: SAHARA
+  name: Sahara AI
+  exchange: null
+- isin: XTJNDWGHBP16
+  symbol: SALL
+  name: AFREUM STABLE ALL
+  exchange: null
+- isin: XTDQNS1TV246
+  symbol: SAMD
+  name: AFREUM STABLE AMD
+  exchange: null
+- isin: XTBVGX9WS2C1
+  symbol: SAND
+  name: SAND
+  exchange: null
+- isin: XT3S5HHJWR00
+  symbol: SANG
+  name: AFREUM STABLE ANG
+  exchange: null
+- isin: XT8QT6TDLH72
+  symbol: SANTOS
+  name: FC Santos Fan Token
+  exchange: null
+- isin: XTJ4WF89BPD0
+  symbol: SAOA
+  name: AFREUM STABLE AOA
+  exchange: null
+- isin: XTNFF56QPXF1
+  symbol: SAPIEN
+  name: Sapien
+  exchange: null
+- isin: XTW1R5KQML92
+  symbol: SARS
+  name: AFREUM STABLE ARS
+  exchange: null
+- isin: XT5KGFMFKZZ1
+  symbol: SATS
+  name: SATS Ordinals
+  exchange: null
+- isin: XT5RW035L9R1
+  symbol: SAUD
+  name: AFREUM STABLE AUD
+  exchange: null
+- isin: XTZKTXXDV5Q4
+  symbol: SAWG
+  name: AFREUM STABLE AWG
+  exchange: null
+- isin: XTVKCZPXH2D4
+  symbol: SAZN
+  name: AFREUM STABLE AZN
+  exchange: null
+- isin: XTSFRNRN1P41
+  symbol: SBAM
+  name: AFREUM STABLE BAM
+  exchange: null
+- isin: XT6CQC7VDD71
+  symbol: SBBD
+  name: AFREUM STABLE BBD
+  exchange: null
+- isin: XTW895NQJ6X1
+  symbol: SBD
+  name: Steem Dollars
+  exchange: null
+- isin: XTGSSQ7G26W5
+  symbol: SBDT
+  name: AFREUM STABLE BDT
+  exchange: null
+- isin: XTT1PR8S03J6
+  symbol: SBGN
+  name: AFREUM STABLE BGN
+  exchange: null
+- isin: XT17NF231CC6
+  symbol: SBHD
+  name: AFREUM STABLE BHD
+  exchange: null
+- isin: XTXHD7DD67K3
+  symbol: SBIF
+  name: AFREUM STABLE BIF
+  exchange: null
+- isin: XTSMS7F684Q8
+  symbol: SBMD
+  name: AFREUM STABLE BMD
+  exchange: null
+- isin: XTM54BKKLMP1
+  symbol: SBND
+  name: AFREUM STABLE BND
+  exchange: null
+- isin: XTQTCT4SJQ76
+  symbol: SBOB
+  name: AFREUM STABLE BOB
+  exchange: null
+- isin: XTMX130W1982
+  symbol: SBRL
+  name: AFREUM STABLE BRL
+  exchange: null
+- isin: XT224187W321
+  symbol: SBSD
+  name: AFREUM STABLE BSD
+  exchange: null
+- isin: XTSLQNXLR1B4
+  symbol: SBTN
+  name: AFREUM STABLE BTN
+  exchange: null
+- isin: XTJJ8GLRL8C1
+  symbol: SBWP
+  name: AFREUM STABLE BWP
+  exchange: null
+- isin: XT4DLBJ71CZ8
+  symbol: SBYN
+  name: AFREUM STABLE BYN
+  exchange: null
+- isin: XTXTRV09CBD4
+  symbol: SBZD
+  name: AFREUM STABLE BZD
+  exchange: null
+- isin: XT766NMMLMQ9
+  symbol: SC
+  name: Siacoin
+  exchange: null
+- isin: XTJXJJT3DWZ9
+  symbol: SCAD
+  name: AFREUM STABLE CAD
+  exchange: null
+- isin: XTD8GVBBV550
+  symbol: SCDF
+  name: AFREUM STABLE CDF
+  exchange: null
+- isin: XTKGBBXFJ6S1
+  symbol: SCHF
+  name: AFREUM STABLE CHF
+  exchange: null
+- isin: XTD6HB0K96R4
+  symbol: SCLP
+  name: AFREUM STABLE CLP
+  exchange: null
+- isin: XT12BJRTH339
+  symbol: SCNY
+  name: AFREUM STABLE CNY
+  exchange: null
+- isin: XTSKQSJ3TK88
+  symbol: SCOP
+  name: AFREUM STABLE COP
+  exchange: null
+- isin: XT8XHQ4VVHW3
+  symbol: SCR
+  name: Scroll
+  exchange: null
+- isin: XT263BF2F5G3
+  symbol: SCRC
+  name: AFREUM STABLE CRC
+  exchange: null
+- isin: XTVSWL0KJX68
+  symbol: SCROOGE
+  name: SCROOGE
+  exchange: null
+- isin: XT93XJT88VH9
+  symbol: SCRT
+  name: Secret
+  exchange: null
+- isin: XTKZ61ZLCDP3
+  symbol: SCUP
+  name: AFREUM STABLE CUP
+  exchange: null
+- isin: XT9V4TQ4JNM5
+  symbol: SCVE
+  name: AFREUM STABLE CVE
+  exchange: null
+- isin: XTZCT32CJK37
+  symbol: SCZK
+  name: AFREUM STABLE CZK
+  exchange: null
+- isin: XTT1CP5RKGN3
+  symbol: SD
+  name: Stader
+  exchange: null
+- isin: XTWXZM2HXVB7
+  symbol: SDA
+  name: Sustainable Digital Assets
+  exchange: null
+- isin: XTPRM5989MF5
+  symbol: SDJF
+  name: AFREUM STABLE DJF
+  exchange: null
+- isin: XTN6B788KNR6
+  symbol: SDKK
+  name: AFREUM STABLE DKK
+  exchange: null
+- isin: XT2HQFBDLXV3
+  symbol: SDN
+  name: Shiden Network
+  exchange: null
+- isin: XTFF8GTRBJX3
+  symbol: SDOP
+  name: AFREUM STABLE DOP
+  exchange: null
+- isin: XTLT00FW5MR1
+  symbol: SDTC
+  name: Terra Classic SDR
+  exchange: null
+- isin: XTTCG4THQ920
+  symbol: SDZD
+  name: AFREUM STABLE DZD
+  exchange: null
+- isin: XT69RTFRXSX1
+  symbol: SEAM
+  name: Seamless
+  exchange: null
+- isin: XTXH2P6PTZT2
+  symbol: SEELE
+  name: Seele Token
+  exchange: null
+- isin: XT4M6H7ZPKW8
+  symbol: SEGP
+  name: AFREUM STABLE EGP
+  exchange: null
+- isin: XTXCDVP53WR6
+  symbol: SEI
+  name: SEI
+  exchange: null
+- isin: XTVF1CJ27ZT5
+  symbol: SENSO
+  name: Sensorium
+  exchange: null
+- isin: XTQMVXV43GT5
+  symbol: SERAPH
+  name: Seraph
+  exchange: null
+- isin: XTTD989FB8L6
+  symbol: SERN
+  name: AFREUM STABLE ERN
+  exchange: null
+- isin: XT93NFQLX9H3
+  symbol: SETB
+  name: AFREUM STABLE ETB
+  exchange: null
+- isin: XTZJJ484DKN4
+  symbol: SEUR
+  name: AFREUM STABLE EUR
+  exchange: null
+- isin: XT652WP46JG5
+  symbol: SFJD
+  name: AFREUM STABLE FJD
+  exchange: null
+- isin: XTRPTQ0J87W5
+  symbol: SFKP
+  name: AFREUM STABLE FKP
+  exchange: null
+- isin: XTN2K3FD50R9
+  symbol: SFM
+  name: SafeMoon
+  exchange: null
+- isin: XTK79PF0NLX3
+  symbol: SFP
+  name: SafePal Token
+  exchange: null
+- isin: XT1GB15J0497
+  symbol: SGB
+  name: Songbird
+  exchange: null
+- isin: XTWKMPV060W1
+  symbol: SGBP
+  name: AFREUM STABLE GBP
+  exchange: null
+- isin: XTWNLPZVZVB7
+  symbol: SGEL
+  name: AFREUM STABLE GEL
+  exchange: null
+- isin: XTGZ8FQFJKZ7
+  symbol: SGHS
+  name: AFREUM STABLE GHS
+  exchange: null
+- isin: XTL3XFHRWXQ2
+  symbol: SGIP
+  name: AFREUM STABLE GIP
+  exchange: null
+- isin: XTJJLGNPXB96
+  symbol: SGMD
+  name: AFREUM STABLE GMD
+  exchange: null
+- isin: XT3HGCXHXVG4
+  symbol: SGNF
+  name: AFREUM STABLE GNF
+  exchange: null
+- isin: XT8XGJ9PFR69
+  symbol: SGTQ
+  name: AFREUM STABLE GTQ
+  exchange: null
+- isin: XT3HB53SBVG1
+  symbol: SGYD
+  name: AFREUM STABLE GYD
+  exchange: null
+- isin: XTB80ZZM7F76
+  symbol: SHDW
+  name: Shadow Token
+  exchange: null
+- isin: XTM4HFTFNPC7
+  symbol: SHIB
+  name: SHIBA INU
+  exchange: null
+- isin: XTJMXNWD8NZ3
+  symbol: SHKD
+  name: AFREUM STABLE HKD
+  exchange: null
+- isin: XTDBTF2BTJD5
+  symbol: SHNL
+  name: AFREUM STABLE HNL
+  exchange: null
+- isin: XT3T8Q5L0NS5
+  symbol: SHPING
+  name: Shping Coin
+  exchange: null
+- isin: XTZMR203BL34
+  symbol: SHRAP
+  name: SHRAPToken
+  exchange: null
+- isin: XT3DBCXMHS33
+  symbol: SHRK
+  name: AFREUM STABLE HRK
+  exchange: null
+- isin: XTJ60FZ0STB3
+  symbol: SHTG
+  name: AFREUM STABLE HTG
+  exchange: null
+- isin: XTM7652BBGJ5
+  symbol: SHUF
+  name: AFREUM STABLE HUF
+  exchange: null
+- isin: XTZ9XPPVGGK8
+  symbol: SHX
+  name: Stronghold SHx
+  exchange: null
+- isin: XTD33FTFSX22
+  symbol: SIDR
+  name: AFREUM STABLE IDR
+  exchange: null
+- isin: XT76QNDCS9G6
+  symbol: SILS
+  name: AFREUM STABLE ILS
+  exchange: null
+- isin: XTJXFRQ2LS65
+  symbol: SINR
+  name: AFREUM STABLE INR
+  exchange: null
+- isin: XTC5F8LP6TT4
+  symbol: SIQD
+  name: AFREUM STABLE IQD
+  exchange: null
+- isin: XT4F32NMGSR7
+  symbol: SIRR
+  name: AFREUM STABLE IRR
+  exchange: null
+- isin: XTDD66FK8KS0
+  symbol: SISK
+  name: AFREUM STABLE ISK
+  exchange: null
+- isin: XTM788V9L887
+  symbol: SJMD
+  name: AFREUM STABLE JMD
+  exchange: null
+- isin: XTQR9LKGGX39
+  symbol: SJOD
+  name: AFREUM STABLE JOD
+  exchange: null
+- isin: XTQJ0RKC0X20
+  symbol: SJPY
+  name: AFREUM STABLE JPY
+  exchange: null
+- isin: XT99LFXZPRR6
+  symbol: SKES
+  name: AFREUM STABLE KES
+  exchange: null
+- isin: XTQGK6HJX4S7
+  symbol: SKGS
+  name: AFREUM STABLE KGS
+  exchange: null
+- isin: XT1RXFNZMV35
+  symbol: SKHR
+  name: AFREUM STABLE KHR
+  exchange: null
+- isin: XT9KVZ861DR0
+  symbol: SKL
+  name: SKALE
+  exchange: null
+- isin: XT57KG22S470
+  symbol: SKMF
+  name: AFREUM STABLE KMF
+  exchange: null
+- isin: XTLV9CS76WW9
+  symbol: SKPW
+  name: AFREUM STABLE KPW
+  exchange: null
+- isin: XT2T77BLJB35
+  symbol: SKR
+  name: Saakuru Protocol
+  exchange: null
+- isin: XTQB4LQ1DCR2
+  symbol: SKRW
+  name: AFREUM STABLE KRW
+  exchange: null
+- isin: XTVNWQZ025Z8
+  symbol: SKWD
+  name: AFREUM STABLE KWD
+  exchange: null
+- isin: XTG4GDNF84C0
+  symbol: SKY
+  name: SKY Governance Token
+  exchange: null
+- isin: XT4CV6WHNM95
+  symbol: SKYD
+  name: AFREUM STABLE KYD
+  exchange: null
+- isin: XTT28VG7QV98
+  symbol: SKYG
+  name: SKYGATE TOKEN
+  exchange: null
+- isin: XTW6JXPMX9D7
+  symbol: SKZT
+  name: AFREUM STABLE KZT
+  exchange: null
+- isin: XTDVTJF80L03
+  symbol: SLAK
+  name: AFREUM STABLE LAK
+  exchange: null
+- isin: XTXLM66MCXJ2
+  symbol: SLBP
+  name: AFREUM STABLE LBP
+  exchange: null
+- isin: XTPP8ML24Q64
+  symbol: SLERF
+  name: SLERF
+  exchange: null
+- isin: XTWSJQ43S398
+  symbol: SLF
+  name: SLF token
+  exchange: null
+- isin: XT6WNKTK94P5
+  symbol: SLKR
+  name: AFREUM STABLE LKR
+  exchange: null
+- isin: XTN6BWN824K9
+  symbol: SLN
+  name: Smart Layer Network Token
+  exchange: null
+- isin: XT1JMZBTS1G7
+  symbol: SLP
+  name: Smooth Love Potion
+  exchange: null
+- isin: XTB1XQFSVKM5
+  symbol: SLRD
+  name: AFREUM STABLE LRD
+  exchange: null
+- isin: XTV91QR1LVH3
+  symbol: SLSL
+  name: AFREUM STABLE LSL
+  exchange: null
+- isin: XTJ5W8XW4469
+  symbol: SLYD
+  name: AFREUM STABLE LYD
+  exchange: null
+- isin: XT9C27RL1R53
+  symbol: SMAD
+  name: AFREUM STABLE MAD
+  exchange: null
+- isin: XTBXT9DJ5563
+  symbol: SMDL
+  name: AFREUM STABLE MDL
+  exchange: null
+- isin: XT9TQLJF8LR7
+  symbol: SMGA
+  name: AFREUM STABLE MGA
+  exchange: null
+- isin: XT8FK81BW6G5
+  symbol: SMKD
+  name: AFREUM STABLE MKD
+  exchange: null
+- isin: XT6DDKVBP9K0
+  symbol: SMMK
+  name: AFREUM STABLE MMK
+  exchange: null
+- isin: XT7K598946X4
+  symbol: SMNT
+  name: AFREUM STABLE MNT
+  exchange: null
+- isin: XTJM9335XK21
+  symbol: SMOP
+  name: AFREUM STABLE MOP
+  exchange: null
+- isin: XTZFHB42VFG6
+  symbol: SMR
+  name: Shimmer
+  exchange: null
+- isin: XTHJ01KHVDZ8
+  symbol: SMRU
+  name: AFREUM STABLE MRU
+  exchange: null
+- isin: XTQ7TLML24F6
+  symbol: SMUR
+  name: AFREUM STABLE MUR
+  exchange: null
+- isin: XT9QBCBCBX88
+  symbol: SMVR
+  name: AFREUM STABLE MVR
+  exchange: null
+- isin: XT45G00S09B0
+  symbol: SMWK
+  name: AFREUM STABLE MWK
+  exchange: null
+- isin: XTWHL5P994C8
+  symbol: SMXN
+  name: AFREUM STABLE MXN
+  exchange: null
+- isin: XT60ZVLJSMZ2
+  symbol: SMYR
+  name: AFREUM STABLE MYR
+  exchange: null
+- isin: XTX431DLKTF0
+  symbol: SMZN
+  name: AFREUM STABLE MZN
+  exchange: null
+- isin: XTQFNF59MNR8
+  symbol: SNAD
+  name: AFREUM STABLE NAD
+  exchange: null
+- isin: XTBWXFZFFGQ2
+  symbol: SNEK
+  name: SNEK
+  exchange: null
+- isin: XTQ59NGCGJJ0
+  symbol: SNGN
+  name: AFREUM STABLE NGN
+  exchange: null
+- isin: XTPKXXZLP600
+  symbol: SNIO
+  name: AFREUM STABLE NIO
+  exchange: null
+- isin: XT7D1X3RSPB8
+  symbol: SNM
+  name: SONM
+  exchange: null
+- isin: XTJXWVW3B5P2
+  symbol: SNOK
+  name: AFREUM STABLE NOK
+  exchange: null
+- isin: XT48SKHN2287
+  symbol: SNPR
+  name: AFREUM STABLE NPR
+  exchange: null
+- isin: XT9CTFJXKR10
+  symbol: SNT
+  name: Supernova Token
+  exchange: null
+- isin: XTRSN26S0SB4
+  symbol: SNX
+  name: Synthetix Network
+  exchange: null
+- isin: XTT6QCZ9M4D8
+  symbol: SNZD
+  name: AFREUM STABLE NZD
+  exchange: null
+- isin: XTBSGDS8Q2R9
+  symbol: SOETH
+  name: Wrapped Ethereum
+  exchange: null
+- isin: XT6QZ1LNC129
+  symbol: SOL
+  name: Solana SOL
+  exchange: null
+- isin: XT88V0MHNK04
+  symbol: SOLA
+  name: SOLA Token
+  exchange: null
+- isin: XTKZ528P9N95
+  symbol: SOLACE
+  name: solace
+  exchange: null
+- isin: XTLTGRM9BKP8
+  symbol: SOLINK
+  name: Wrapped Chainlink
+  exchange: null
+- isin: XTBT7GS1GH30
+  symbol: SOLO
+  name: Sologenic
+  exchange: null
+- isin: XTLHKBB1ZJN0
+  symbol: SOMR
+  name: AFREUM STABLE OMR
+  exchange: null
+- isin: XTWLR4VX2XB6
+  symbol: SONIC
+  name: Sonic SVM
+  exchange: null
+- isin: XTBSVMDF86Q2
+  symbol: SOPH
+  name: Sophon
+  exchange: null
+- isin: XTQ3S9RB2ZT1
+  symbol: SOSUSHI
+  name: Wrapped SUSHI
+  exchange: null
+- isin: XT92ZKXL4FW1
+  symbol: SPA
+  name: Sperax
+  exchange: null
+- isin: XTKP960X7NB8
+  symbol: SPAB
+  name: AFREUM STABLE PAB
+  exchange: null
+- isin: XTVK8NVV5409
+  symbol: SPEC
+  name: Spectral Token
+  exchange: null
+- isin: XT2D7W0LVCF6
+  symbol: SPELL
+  name: Spell Token
+  exchange: null
+- isin: XTMGZPDH7TH8
+  symbol: SPEN
+  name: AFREUM STABLE PEN
+  exchange: null
+- isin: XT2GKX8G1JF9
+  symbol: SPGK
+  name: AFREUM STABLE PGK
+  exchange: null
+- isin: XT9HHT4FHFF0
+  symbol: SPHP
+  name: AFREUM STABLE PHP
+  exchange: null
+- isin: XTGS4H3VSB17
+  symbol: SPK
+  name: Spark
+  exchange: null
+- isin: XTZLC9LCHPH5
+  symbol: SPKR
+  name: AFREUM STABLE PKR
+  exchange: null
+- isin: XTP5SG5LWW25
+  symbol: SPLN
+  name: AFREUM STABLE PLN
+  exchange: null
+- isin: XTGX4HC9SLK6
+  symbol: SPS
+  name: SPS
+  exchange: null
+- isin: XTV9FVRLGKC3
+  symbol: SPX
+  name: SPX6900
+  exchange: null
+- isin: XTG2ZKHQF0M7
+  symbol: SPYG
+  name: AFREUM STABLE PYG
+  exchange: null
+- isin: XTWLDVCXKTV5
+  symbol: SQAR
+  name: AFREUM STABLE QAR
+  exchange: null
+- isin: XTS0059SFFN6
+  symbol: SQD
+  name: Subsquid
+  exchange: null
+- isin: XTKNBWHRBHH2
+  symbol: SQT
+  name: SubQueryToken
+  exchange: null
+- isin: XTRQQ7X7PQF2
+  symbol: SRM
+  name: Serum
+  exchange: null
+- isin: XTBQ17W7FZ53
+  symbol: SRON
+  name: AFREUM STABLE RON
+  exchange: null
+- isin: XT10LLHC6P47
+  symbol: SRSD
+  name: AFREUM STABLE RSD
+  exchange: null
+- isin: XT3F7R2SSCX6
+  symbol: SRUB
+  name: AFREUM STABLE RUB
+  exchange: null
+- isin: XTQHT9Z19Q15
+  symbol: SRWF
+  name: AFREUM STABLE RWF
+  exchange: null
+- isin: XTWTD7PT0S27
+  symbol: SSAR
+  name: AFREUM STABLE SAR
+  exchange: null
+- isin: XT4TX6R77XL9
+  symbol: SSBD
+  name: AFREUM STABLE SBD
+  exchange: null
+- isin: XTRLL6KMNHD5
+  symbol: SSCR
+  name: AFREUM STABLE SCR
+  exchange: null
+- isin: XTXNB389RGR8
+  symbol: SSDG
+  name: AFREUM STABLE SDG
+  exchange: null
+- isin: XTQ0HSJMKMV4
+  symbol: SSEK
+  name: AFREUM STABLE SEK
+  exchange: null
+- isin: XTGNDTS1F7R1
+  symbol: SSGD
+  name: AFREUM STABLE SGD
+  exchange: null
+- isin: XTWSLBS6P218
+  symbol: SSHP
+  name: AFREUM STABLE SHP
+  exchange: null
+- isin: XT6XLK3PSN33
+  symbol: SSLL
+  name: AFREUM STABLE SLL
+  exchange: null
+- isin: XTC1PCF7HXP1
+  symbol: SSOS
+  name: AFREUM STABLE SOS
+  exchange: null
+- isin: XT3XZWHK66L1
+  symbol: SSRD
+  name: AFREUM STABLE SRD
+  exchange: null
+- isin: XTLQGKS7K8W1
+  symbol: SSSP
+  name: AFREUM STABLE SSP
+  exchange: null
+- isin: XT6FQB5D3JQ4
+  symbol: SSTN
+  name: AFREUM STABLE STN
+  exchange: null
+- isin: XTCLN52KS0K1
+  symbol: SSV
+  name: ssv network
+  exchange: null
+- isin: XTGM0BD7LLP6
+  symbol: SSVC
+  name: AFREUM STABLE SVC
+  exchange: null
+- isin: XT89C245MG82
+  symbol: SSX
+  name: SOMESING
+  exchange: null
+- isin: XTRGHTBLZMF3
+  symbol: SSYP
+  name: AFREUM STABLE SYP
+  exchange: null
+- isin: XT6SQ3ZQ05X7
+  symbol: SSZL
+  name: AFREUM STABLE SZL
+  exchange: null
+- isin: XTJ14WG6BG03
+  symbol: STC
+  name: SaitaChain
+  exchange: null
+- isin: XTZ0XDMNV416
+  symbol: STEEM
+  name: Steem
+  exchange: null
+- isin: XTG70ZF48HJ6
+  symbol: STETH
+  name: stakedETH
+  exchange: null
+- isin: XTRGP779MCT7
+  symbol: STG
+  name: StargateToken
+  exchange: null
+- isin: XTL2Q1BFW8F6
+  symbol: STHB
+  name: AFREUM STABLE THB
+  exchange: null
+- isin: XTQP7VNRTR71
+  symbol: STJS
+  name: AFREUM STABLE TJS
+  exchange: null
+- isin: XTRPXPH9GQS4
+  symbol: STMT
+  name: AFREUM STABLE TMT
+  exchange: null
+- isin: XTW639HT10X8
+  symbol: STMX
+  name: StormX
+  exchange: null
+- isin: XTX5LX31FZF2
+  symbol: STND
+  name: AFREUM STABLE TND
+  exchange: null
+- isin: XTG0R33991N8
+  symbol: STOP
+  name: AFREUM STABLE TOP
+  exchange: null
+- isin: XT3W1DV4L6C8
+  symbol: STORJ
+  name: StorjToken
+  exchange: null
+- isin: XTBVZJV41L88
+  symbol: STORY
+  name: Story
+  exchange: null
+- isin: XTX5KQSDHTJ8
+  symbol: STPT
+  name: STPT
+  exchange: null
+- isin: XT6XCV1TQSF5
+  symbol: STRAX
+  name: Stratis Old
+  exchange: null
+- isin: XTNLWPNNWQZ6
+  symbol: STRK
+  name: StarkNet Token
+  exchange: null
+- isin: XT9FZ1KQR5S7
+  symbol: STRY
+  name: AFREUM STABLE TRY
+  exchange: null
+- isin: XTP4NB4XFZ74
+  symbol: STTD
+  name: AFREUM STABLE TTD
+  exchange: null
+- isin: XTK7KL16KHQ6
+  symbol: STWD
+  name: AFREUM STABLE TWD
+  exchange: null
+- isin: XTPQTGLSGRG9
+  symbol: STX
+  name: Stacks
+  exchange: null
+- isin: XTKCL00QV5H1
+  symbol: STZS
+  name: AFREUM STABLE TZS
+  exchange: null
+- isin: XT3KJ0W2RRD7
+  symbol: SUAH
+  name: AFREUM STABLE UAH
+  exchange: null
+- isin: XTQK86HZ23F2
+  symbol: SUDO
+  name: SUDO GOVERNANCE TOKEN
+  exchange: null
+- isin: XTF46H589RV8
+  symbol: SUGX
+  name: AFREUM STABLE UGX
+  exchange: null
+- isin: XT64RFW3D8P2
+  symbol: SUI
+  name: Sui
+  exchange: null
+- isin: XT1M1LPK2510
+  symbol: SUKU
+  name: SUKU
+  exchange: null
+- isin: XTDRSV113K44
+  symbol: SUN
+  name: SUN
+  exchange: null
+- isin: XT98395D38B5
+  symbol: SUNOLD
+  name: SUNOLD
+  exchange: null
+- isin: XTN886T4TWH6
+  symbol: SUPER
+  name: SuperVerse
+  exchange: null
+- isin: XT92CC8GDX64
+  symbol: SUSD
+  name: Synth sUSD
+  exchange: null
+- isin: XTC1Z2W2TT12
+  symbol: SUSHI
+  name: SushiSwap
+  exchange: null
+- isin: XTDXF1SF2FW9
+  symbol: SUYU
+  name: AFREUM STABLE UYU
+  exchange: null
+- isin: XT5MK46D8FK5
+  symbol: SUZS
+  name: AFREUM STABLE UZS
+  exchange: null
+- isin: XTVQPM3NH840
+  symbol: SVA
+  name: SUPERNOVA
+  exchange: null
+- isin: XT70J91XGJR2
+  symbol: SVES
+  name: AFREUM STABLE VES
+  exchange: null
+- isin: XTH1V8X0QBB4
+  symbol: SVND
+  name: AFREUM STABLE VND
+  exchange: null
+- isin: XTJ8RB7ZCJ49
+  symbol: SVUV
+  name: AFREUM STABLE VUV
+  exchange: null
+- isin: XTP9FGKPQPS2
+  symbol: SWAN
+  name: White Swan
+  exchange: null
+- isin: XT30KCVXPWP3
+  symbol: SWARMS
+  name: swarms
+  exchange: null
+- isin: XTDFK01RSF76
+  symbol: SWEAT
+  name: Sweat Economy
+  exchange: null
+- isin: XTG2M3R6WBH7
+  symbol: SWELL
+  name: Swell Governance Token
+  exchange: null
+- isin: XT3N9BLCRG20
+  symbol: SWFTC
+  name: SwftCoin
+  exchange: null
+- isin: XT8BNG34V638
+  symbol: SWRV
+  name: Swerve DAO Token
+  exchange: null
+- isin: XTZ70KV89B02
+  symbol: SWST
+  name: AFREUM STABLE WST
+  exchange: null
+- isin: XT8NRWZLFTX9
+  symbol: SWTH
+  name: Switcheo
+  exchange: null
+- isin: XT6MJH3QRQF3
+  symbol: SX
+  name: SX Network
+  exchange: null
+- isin: XTDS277GXCN9
+  symbol: SXAF
+  name: AFREUM STABLE XAF
+  exchange: null
+- isin: XTCNDZNG3DS4
+  symbol: SXCD
+  name: AFREUM STABLE XCD
+  exchange: null
+- isin: XT26SQ8BK8R2
+  symbol: SXOF
+  name: AFREUM STABLE XOF
+  exchange: null
+- isin: XTJ82048MMV0
+  symbol: SXP
+  name: Swipe
+  exchange: null
+- isin: XTRB3JCQHMN8
+  symbol: SXPF
+  name: AFREUM STABLE XPF
+  exchange: null
+- isin: XTQSTZK3PLV0
+  symbol: SXT
+  name: Space and Time
+  exchange: null
+- isin: XTBM7PJ8XDB8
+  symbol: SYER
+  name: AFREUM STABLE YER
+  exchange: null
+- isin: XTB6PL55JZH9
+  symbol: SYLO
+  name: Sylo
+  exchange: null
+- isin: XTGS8ZHZ81L3
+  symbol: SYN
+  name: Synapse
+  exchange: null
+- isin: XT9LM15TVM07
+  symbol: SYNCOIN
+  name: SynCoin
+  exchange: null
+- isin: XT7DLXGNF132
+  symbol: SYRUP
+  name: Syrup Token
+  exchange: null
+- isin: XTDTJR10DR67
+  symbol: SYS
+  name: Syscoin
+  exchange: null
+- isin: XT6C9LJXV2H9
+  symbol: SZAR
+  name: AFREUM STABLE ZAR
+  exchange: null
+- isin: XT617PX5PLZ5
+  symbol: SZMW
+  name: AFREUM STABLE ZMW
+  exchange: null
+- isin: XTR6M56WW4P7
+  symbol: SZWL
+  name: AFREUM STABLE ZWL
+  exchange: null
+- isin: XTLTSB7W5CZ8
+  symbol: T
+  name: Threshold Network Token
+  exchange: null
+- isin: XTSTW1X0J383
+  symbol: TAI
+  name: TARS AI
+  exchange: null
+- isin: XTPT54X2BV69
+  symbol: TAIKO
+  name: Taiko Token
+  exchange: null
+- isin: XT5WC06T0FP9
+  symbol: TAKE
+  name: OVERTAKE
+  exchange: null
+- isin: XTLBQFC0FVK0
+  symbol: TAO
+  name: Bittensor
+  exchange: null
+- isin: XTD0H2Q38J18
+  symbol: TAUD
+  name: TrueAUD
+  exchange: null
+- isin: XT2W82B5R877
+  symbol: TCAD
+  name: TrueCAD
+  exchange: null
+- isin: XTPF9NQRD105
+  symbol: TCOIN
+  name: TCoin
+  exchange: null
+- isin: XTQ95MMRGRC0
+  symbol: TEL
+  name: Telcoin
+  exchange: null
+- isin: XTDKF3F9L0L6
+  symbol: TEVA
+  name: Tevaera
+  exchange: null
+- isin: XTWFB47NDGV5
+  symbol: TFUEL
+  name: TFUEL
+  exchange: null
+- isin: XTF14JNT9X28
+  symbol: TGBP
+  name: TrueGBP
+  exchange: null
+- isin: XTJZP0682XF7
+  symbol: THETA
+  name: THETA
+  exchange: null
+- isin: XTM7NN4STH94
+  symbol: TIA
+  name: Celestia
+  exchange: null
+- isin: XTLZGTM9GWH9
+  symbol: TIME
+  name: ChronoTech Token
+  exchange: null
+- isin: XT5Q0Q2WF785
+  symbol: TITAN
+  name: TitanSwap
+  exchange: null
+- isin: XTZC1SP684P7
+  symbol: TKO
+  name: Tokocrypto Token
+  exchange: null
+- isin: XTSGCHCLHT46
+  symbol: TLM
+  name: Alien Worlds Trilium
+  exchange: null
+- isin: XTJDWBWGK893
+  symbol: TLOS
+  name: Telos
+  exchange: null
+- isin: XTNTJJ182D71
+  symbol: TNSR
+  name: Tensor
+  exchange: null
+- isin: XT6B8SMHSXT4
+  symbol: TOKE
+  name: Tokemak
+  exchange: null
+- isin: XTGM5K7XZZ29
+  symbol: TOKENWBTC
+  name: Wrapped Bitcoin
+  exchange: null
+- isin: XTS70BXPL476
+  symbol: TOKENWSTX
+  name: Wrapped Stacks
+  exchange: null
+- isin: XTQ16Z9QWQ34
+  symbol: TOMB
+  name: TOMB
+  exchange: null
+- isin: XT1KSLLBVXW3
+  symbol: TOMI
+  name: tomi Token
+  exchange: null
+- isin: XT121SQT2LT0
+  symbol: TOMOB
+  name: TomoChain
+  exchange: null
+- isin: XTFVHZM5C069
+  symbol: TOMOE
+  name: TomoChain
+  exchange: null
+- isin: XTKK12JMBTX2
+  symbol: TON
+  name: Toncoin
+  exchange: null
+- isin: XTS27QKS03W5
+  symbol: TONCOIN
+  name: Wrapped TON Coin
+  exchange: null
+- isin: XT7710MTZ188
+  symbol: TONE
+  name: TE-FOOD
+  exchange: null
+- isin: XT1N0VDGS6P0
+  symbol: TONIC
+  name: Tectonic Governance Token
+  exchange: null
+- isin: XTPNM7DHFVZ7
+  symbol: TORN
+  name: TornadoCash
+  exchange: null
+- isin: XTWT9GJ1K9R3
+  symbol: TOSHI
+  name: Toshi
+  exchange: null
+- isin: XTHW00GMBVL5
+  symbol: TOTO
+  name: TOTO Token
+  exchange: null
+- isin: XTRSZX7TVDD0
+  symbol: TOWNS
+  name: Towns
+  exchange: null
+- isin: XTJD5R52PQX8
+  symbol: TRAC
+  name: Trace Token
+  exchange: null
+- isin: XTB1P335VP18
+  symbol: TRB
+  name: Tellor Tributes
+  exchange: null
+- isin: XT7PQ1242P35
+  symbol: TREE
+  name: Treehouse
+  exchange: null
+- isin: XTJPM88GN3L2
+  symbol: TRIBE
+  name: Tribe
+  exchange: null
+- isin: XT7003FXZ1G7
+  symbol: TRIBL
+  name: Tribal Token
+  exchange: null
+- isin: XTH9W8HR1JD6
+  symbol: TROLL
+  name: TROLL
+  exchange: null
+- isin: XTTZCP3KN4J5
+  symbol: TROY
+  name: TROY
+  exchange: null
+- isin: XTXRDMKF3GK4
+  symbol: TRU
+  name: TrueFi
+  exchange: null
+- isin: XTLJDPGNXXK4
+  symbol: TRUMP
+  name: OFFICIAL TRUMP
+  exchange: null
+- isin: XTHZ9HHNPLG8
+  symbol: TRX;WTRX
+  name: TRON TRX
+  exchange: null
+- isin: XT74Q01P4LN9
+  symbol: TRY
+  name: TRYfinance
+  exchange: null
+- isin: XTXF2FRV2PX6
+  symbol: TRYB
+  name: BiLira
+  exchange: null
+- isin: XT1ZKNRN9539
+  symbol: TT
+  name: Thunder Core
+  exchange: null
+- isin: XTT35MLM0643
+  symbol: TTUSDC
+  name: TT USDC
+  exchange: null
+- isin: XT41MCFTRVP5
+  symbol: TTUSDT
+  name: TT USDT
+  exchange: null
+- isin: XT3GCHWJSWC9
+  symbol: TURBO
+  name: Turbo
+  exchange: null
+- isin: XTQ00DC0PHH4
+  symbol: TUSD
+  name: TrueUSD
+  exchange: null
+- isin: XTV1S5320J78
+  symbol: TVK
+  name: Virtua
+  exchange: null
+- isin: XTSKLQJRHFV0
+  symbol: TWT
+  name: Trust Wallet
+  exchange: null
+- isin: XT8MM7XM03K2
+  symbol: UBT
+  name: UniBright
+  exchange: null
+- isin: XT5C24S9MMZ6
+  symbol: UFT
+  name: UniLend Finance Token
+  exchange: null
+- isin: XTJM4LKD71T0
+  symbol: UMA
+  name: UMA Voting Token v1
+  exchange: null
+- isin: XTTDD0W0CBG5
+  symbol: UMAE;UMA.E
+  name: UMA Voting Token v1
+  exchange: null
+- isin: XTMBQSB4WDK0
+  symbol: UNFI
+  name: UNFI
+  exchange: null
+- isin: XTXMB84LZBZ1
+  symbol: UNI
+  name: Uniswap
+  exchange: null
+- isin: XT8Q45SFL980
+  symbol: UNIBOT
+  name: Unibot
+  exchange: null
+- isin: XTTVRKPXG3M5
+  symbol: UNIE
+  name: Uniswap
+  exchange: null
+- isin: XTD4VC6RLRB4
+  symbol: UNIW
+  name: UniWswap
+  exchange: null
+- isin: XTR6CJG2BR09
+  symbol: UPBTC
+  name: Universal Bitcoin
+  exchange: null
+- isin: XTJG1LKT3FN7
+  symbol: UPCO2
+  name: Universal Carbon
+  exchange: null
+- isin: XTFP01DJC3L1
+  symbol: UPEUR
+  name: Universal Euro
+  exchange: null
+- isin: XTDF4RGR9B73
+  symbol: UPI
+  name: Pawtocol Network UPI Token
+  exchange: null
+- isin: XTZ6BK2L3CD4
+  symbol: UPP
+  name: SENTINEL PROTOCOL
+  exchange: null
+- isin: XTBGPPWPXW21
+  symbol: UPT
+  name: Universal Protocol Token
+  exchange: null
+- isin: XTFG85D611L6
+  symbol: UPUSD
+  name: Universal US Dollar
+  exchange: null
+- isin: XTBFJ12CMC41
+  symbol: UPXAU
+  name: Universal Gold
+  exchange: null
+- isin: XTXPNN5CC7M8
+  symbol: UQC
+  name: Uquid Coin
+  exchange: null
+- isin: XTG68T5J9X56
+  symbol: USD1
+  name: World Liberty Financial USD
+  exchange: null
+- isin: XTTJWK5QTRK6
+  symbol: USDC
+  name: USDC
+  exchange: null
+- isin: XT7KN4QWW369
+  symbol: USDCETH
+  name: Wrapped USDC from Ethereum
+  exchange: null
+- isin: XTD31XD5D2Q3
+  symbol: USDCLEGACY
+  name: USD Coin
+  exchange: null
+- isin: XTLD6JM2JN25
+  symbol: USDCV
+  name: USDCV
+  exchange: null
+- isin: XTWC65QMPR28
+  symbol: USDD
+  name: Decentralized USD
+  exchange: null
+- isin: XTCQ1XTHCKZ5
+  symbol: USDE
+  name: USDe
+  exchange: null
+- isin: XTR9MZCNWS48
+  symbol: USDG
+  name: Global Dollar
+  exchange: null
+- isin: XT2WCK3BD2J5
+  symbol: USDK
+  name: USDK
+  exchange: null
+- isin: XTV0PPNH3S71
+  symbol: USDL
+  name: Lift Dollar
+  exchange: null
+- isin: XTLR99H4BTQ8
+  symbol: USDM
+  name: Mountain Protocol USD
+  exchange: null
+- isin: XT8G4JTC9D06
+  symbol: USDP
+  name: Pax Dollar
+  exchange: null
+- isin: XTXL2ZV90NC9
+  symbol: USDQ
+  name: Quantoz USDQ
+  exchange: null
+- isin: XTMQ45TVC0V0
+  symbol: USDR
+  name: StablR USD
+  exchange: null
+- isin: XTMW2GQD34J3
+  symbol: USDSM
+  name: USDSM
+  exchange: null
+- isin: XTL09Q657BK6
+  symbol: USDT
+  name: USD Tether
+  exchange: null
+- isin: XTT5C1H8V9S9
+  symbol: USDTE
+  name: Tether USD
+  exchange: null
+- isin: XTH612G8RG75
+  symbol: USDTETH
+  name: Wrapped USDT from Ethereum on Meter
+  exchange: null
+- isin: XT3CP82LQP68
+  symbol: USDTM
+  name: USDT moonriver
+  exchange: null
+- isin: XT5R2HX92S49
+  symbol: USDTPPT
+  name: USDT Crosschain Token
+  exchange: null
+- isin: XT8HBMRV08Q2
+  symbol: USELESS
+  name: Useless Coin
+  exchange: null
+- isin: XTR56RSDLS88
+  symbol: UST
+  name: Wrapped UST Token
+  exchange: null
+- isin: XTL4H5RRFN16
+  symbol: USTC
+  name: Terra Classic USD
+  exchange: null
+- isin: XT9PVCR2KXM9
+  symbol: UTK
+  name: Utrust Token
+  exchange: null
+- isin: XT60HF612GG3
+  symbol: UWPS
+  name: Uni Wallet Pay System
+  exchange: null
+- isin: XT2DJT1QH0L2
+  symbol: UXLINK
+  name: UXLINK Token
+  exchange: null
+- isin: XT6VFTK3CPN1
+  symbol: VADA
+  name: Venus ADA
+  exchange: null
+- isin: XTHVQ9LF20P2
+  symbol: VANA
+  name: Vana
+  exchange: null
+- isin: XTSQVML1HD22
+  symbol: VANRY
+  name: VANRY
+  exchange: null
+- isin: XTC7SF6G33W6
+  symbol: VARA
+  name: Vara Network
+  exchange: null
+- isin: XT3SFGF3RH69
+  symbol: VBNB
+  name: Venus BNB
+  exchange: null
+- isin: XTBFSPKR3NL4
+  symbol: VBTC
+  name: Venus BTC
+  exchange: null
+- isin: XT42DGXTGTB3
+  symbol: VBUSD
+  name: Venus BUSD
+  exchange: null
+- isin: XT725SKLS8D7
+  symbol: VCO
+  name: VCOIN
+  exchange: null
+- isin: XT3QN6WNR4L5
+  symbol: VELO
+  name: Velodrome
+  exchange: null
+- isin: XTM2DJLNPDW2
+  symbol: VET
+  name: VeChain
+  exchange: null
+- isin: XTNVGGVL3SN3
+  symbol: VETH
+  name: Venus ETH
+  exchange: null
+- isin: XTW2022F2TD1
+  symbol: VGX
+  name: VGX Token
+  exchange: null
+- isin: XTTR6XTGJD83
+  symbol: VIC;TOMO
+  name: Viction
+  exchange: null
+- isin: XTB4FW49N5P0
+  symbol: VINE
+  name: Vine Coin
+  exchange: null
+- isin: XT7WMBV0R291
+  symbol: VIRTUAL
+  name: Virtual Protocol
+  exchange: null
+- isin: XTK4VW16RTM6
+  symbol: VITA
+  name: VitaDAO
+  exchange: null
+- isin: XTKH0NHJGGH7
+  symbol: VITE
+  name: VITE
+  exchange: null
+- isin: XTMP9GJ4XVD4
+  symbol: VIVA
+  name: Viva Classic
+  exchange: null
+- isin: XTKN118BVVR7
+  symbol: VLRX4T24
+  name: Valorix Token 4T 2024
+  exchange: null
+- isin: XTLFVWRXFR03
+  symbol: VLX
+  name: Velas
+  exchange: null
+- isin: XTKFDS2CPBT4
+  symbol: VNO
+  name: VenoToken
+  exchange: null
+- isin: XT8CQTQ4VC34
+  symbol: VOLT
+  name: Volt Inu V2
+  exchange: null
+- isin: XTPSMN6CCZ17
+  symbol: VOT3
+  name: VOT3
+  exchange: null
+- isin: XTLWMDWGBJP9
+  symbol: VOW
+  name: Vow
+  exchange: null
+- isin: XTF94WL6LM78
+  symbol: VOXEL
+  name: VOXEL Token
+  exchange: null
+- isin: XTCKFKPWMS61
+  symbol: VRA
+  name: Verasity
+  exchange: null
+- isin: XTX28R08F7T5
+  symbol: VRO
+  name: veraone
+  exchange: null
+- isin: XT1Z9P3J8KD6
+  symbol: VSYS
+  name: v systems
+  exchange: null
+- isin: XTC06P3SQNX2
+  symbol: VTHO
+  name: VeThor
+  exchange: null
+- isin: XTQ7FDRP31K7
+  symbol: VULT
+  name: Vultisig Token
+  exchange: null
+- isin: XT5WW4K4GNP2
+  symbol: VUSDC
+  name: Venus USDC
+  exchange: null
+- isin: XTJFH93SWVH0
+  symbol: VUSDT
+  name: Venus USDT
+  exchange: null
+- isin: XTMN2HDRTG99
+  symbol: VVS
+  name: VVS Token
+  exchange: null
+- isin: XTP0SD47M0W2
+  symbol: VVV
+  name: Venice Token
+  exchange: null
+- isin: XT25J14XV4F6
+  symbol: W
+  name: Wormhole Token
+  exchange: null
+- isin: XTVDK0388GB8
+  symbol: WAL
+  name: Walrus
+  exchange: null
+- isin: XTMXKG9WKGM3
+  symbol: WAMPL
+  name: Wrapped Ampleforth
+  exchange: null
+- isin: XT5D6PMP1BB2
+  symbol: WAN
+  name: Wanchain
+  exchange: null
+- isin: XT9X9LM6VVS8
+  symbol: WAVES
+  name: WAVES
+  exchange: null
+- isin: XTH76QDN5MF7
+  symbol: WAXP
+  name: WAX
+  exchange: null
+- isin: XTHXZ97GZZW8
+  symbol: WBETH
+  name: Wrapped Binance Beacon ETH
+  exchange: null
+- isin: XT19DW0G4463
+  symbol: WBNB
+  name: Wrapped BNB
+  exchange: null
+- isin: XTMGV5ZML457
+  symbol: WBT
+  name: WhiteBIT Coin
+  exchange: null
+- isin: XTZ1K7V8BV86
+  symbol: WBTC
+  name: Wrapped BTC
+  exchange: null
+- isin: XTZ7HPXJPFS0
+  symbol: WCFG
+  name: Wrapped Centrifuge
+  exchange: null
+- isin: XTXFLRSCJST4
+  symbol: WCT
+  name: WalletConnect
+  exchange: null
+- isin: XTFXP331W9D2
+  symbol: WE
+  name: WeBuy
+  exchange: null
+- isin: XTH1SR3Q3CQ2
+  symbol: WELL
+  name: WELL
+  exchange: null
+- isin: XTXTK0G4FZG2
+  symbol: WEMIX
+  name: WEMIX
+  exchange: null
+- isin: XTCT2TZWNCQ7
+  symbol: WEN
+  name: Wen
+  exchange: null
+- isin: XT775BP6K337
+  symbol: WETC
+  name: Wrapped Ether
+  exchange: null
+- isin: XTHKSHK66SJ7
+  symbol: WETHE
+  name: Wrapped Ether
+  exchange: null
+- isin: XTQL6P02L4K9
+  symbol: WETHETH
+  name: Wrapped ETH from Ethereum
+  exchange: null
+- isin: XTCK09R2T6X0
+  symbol: WFLOW
+  name: Wrapped Flow
+  exchange: null
+- isin: XTGWSVB06SM4
+  symbol: WFTM
+  name: Wrapped Fantom
+  exchange: null
+- isin: XTK5DR3W9TP5
+  symbol: WHBAR
+  name: Wrapped HBAR
+  exchange: null
+- isin: XTKMR1Q8N6K0
+  symbol: WICC
+  name: Waykichain
+  exchange: null
+- isin: XT10G31SK868
+  symbol: WIF
+  name: dogwifhat
+  exchange: null
+- isin: XTDMFRX829S3
+  symbol: WIN
+  name: WINkLink
+  exchange: null
+- isin: XTP6CMK20QP3
+  symbol: WING
+  name: Wing Token
+  exchange: null
+- isin: XTBJD0TZ8V17
+  symbol: WLD
+  name: Worldcoin
+  exchange: null
+- isin: XT3XVWCVFSX1
+  symbol: WLFI
+  name: World Liberty Financial
+  exchange: null
+- isin: XT8C41DW2SZ9
+  symbol: WMATIC
+  name: Wrapped Matic
+  exchange: null
+- isin: XT2X9TDCN0L3
+  symbol: WMOC
+  name: Moss Coin
+  exchange: null
+- isin: XTCNVTTLNVC8
+  symbol: WNXM
+  name: Wrapped NXM
+  exchange: null
+- isin: XTGMB92084J4
+  symbol: WOD
+  name: World of Dypians
+  exchange: null
+- isin: XTDDT9TCHLN2
+  symbol: WOJAK
+  name: Wojak
+  exchange: null
+- isin: XTG4515JG807
+  symbol: WOO
+  name: Wootrade Network
+  exchange: null
+- isin: XT2MWQ2XD616
+  symbol: WPEPE
+  name: Wrapped Pepe
+  exchange: null
+- isin: XTNC08FCCJN0
+  symbol: WPLS
+  name: Wrapped Pulse
+  exchange: null
+- isin: XTKNW8RN80H3
+  symbol: WRON
+  name: Wrapped Ronin
+  exchange: null
+- isin: XT8SVC70HN81
+  symbol: WROSE
+  name: Wrapped ROSE
+  exchange: null
+- isin: XT4P31WQ61P9
+  symbol: WSB
+  name: WSB Coin
+  exchange: null
+- isin: XT1VF13SBWC8
+  symbol: WSM
+  name: Wall Street Memes
+  exchange: null
+- isin: XT73BRLTMS83
+  symbol: WSTETH
+  name: Lido wstETH
+  exchange: null
+- isin: XTX68WXTD194
+  symbol: WTC
+  name: Walton Token
+  exchange: null
+- isin: XT395X3LDKS6
+  symbol: WTR
+  name: Water
+  exchange: null
+- isin: XTCK1NR948D7
+  symbol: WXDC
+  name: Wrapped XDC
+  exchange: null
+- isin: XTSR4X97LW93
+  symbol: WXLM
+  name: Wrapped Stellar Lumens
+  exchange: null
+- isin: XTD0B6CL9QD4
+  symbol: WXMR
+  name: Wrapped Monero
+  exchange: null
+- isin: XTNJQZHKP119
+  symbol: WXT
+  name: Wirex Token
+  exchange: null
+- isin: XT1P9HZ2PG69
+  symbol: XAI
+  name: xAI
+  exchange: null
+- isin: XTPXJ4XT7RH4
+  symbol: XAN
+  name: Anoma
+  exchange: null
+- isin: XTRTHP2ZN9X5
+  symbol: XAUT
+  name: Tether Gold
+  exchange: null
+- isin: XTRGF9P4WD78
+  symbol: XCH
+  name: Chia
+  exchange: null
+- isin: XTT9TZR5MLB1
+  symbol: XCHF
+  name: CryptoFranc
+  exchange: null
+- isin: XTXSGP9L77X6
+  symbol: XCN
+  name: Onyxcoin
+  exchange: null
+- isin: XT37M195C630
+  symbol: XDAI
+  name: Gnosis Chain
+  exchange: null
+- isin: XTWMG54WZ9L9
+  symbol: XDATA
+  name: Streamr old
+  exchange: null
+- isin: XT1F2ZWSV961
+  symbol: XDB
+  name: digitalbits
+  exchange: null
+- isin: XT2DHMJ018G5
+  symbol: XDC;XDCE
+  name: XDC Network
+  exchange: null
+- isin: XTCCBL9HXG99
+  symbol: XEC
+  name: eCash
+  exchange: null
+- isin: XTF8MJ7GW593
+  symbol: XEM
+  name: NEM
+  exchange: null
+- isin: XT3TZ6V51J92
+  symbol: XET
+  name: Xfinite Entertainment Token
+  exchange: null
+- isin: XT5QFR4SB8Q2
+  symbol: XETA
+  name: XANA
+  exchange: null
+- isin: XTGCQ90NQ1M2
+  symbol: XGLI
+  name: Glitter Finance
+  exchange: null
+- isin: XT53VW92ZT04
+  symbol: XHV
+  name: Haven Protocol
+  exchange: null
+- isin: XTHFKC0NXKJ5
+  symbol: XION
+  name: Xion
+  exchange: null
+- isin: XTZCN8SR2H77
+  symbol: XLM
+  name: Stellar Lumen
+  exchange: null
+- isin: XTX0LWZ99XT6
+  symbol: XMI
+  name: Microfi Free Flow
+  exchange: null
+- isin: XTBQCLHDP882
+  symbol: XMON
+  name: XMON
+  exchange: null
+- isin: XT2B2D6XWQ01
+  symbol: XMR
+  name: Monero XMR
+  exchange: null
+- isin: XT54PWFZNFT0
+  symbol: XNO;NANO
+  name: Nano XNO
+  exchange: null
+- isin: XT9W46MDZBK3
+  symbol: XOR
+  name: Sora XOR
+  exchange: null
+- isin: XTN22X583C81
+  symbol: XPLA
+  name: Xpla
+  exchange: null
+- isin: XT42PHJB2BS0
+  symbol: XRP
+  name: Ripple XRP
+  exchange: null
+- isin: XTZ02QWQ7FN2
+  symbol: XSGD
+  name: XSGD
+  exchange: null
+- isin: XT1CT9N861W2
+  symbol: XT
+  name: XT Token
+  exchange: null
+- isin: XTLJPVDTGGX3
+  symbol: XTN;USDN;XTN USDN
+  name: Neutrino Index
+  exchange: null
+- isin: XTFLJPFR9RS3
+  symbol: XTZ
+  name: Tezos
+  exchange: null
+- isin: XTKSCZ9SM037
+  symbol: XUSDT
+  name: USDT xinfin
+  exchange: null
+- isin: XT6N3DCCBCZ2
+  symbol: XVG
+  name: Verge
+  exchange: null
+- isin: XTV1GPCS5PV2
+  symbol: XVS
+  name: Venus
+  exchange: null
+- isin: XTBZMFKR3562
+  symbol: XYM
+  name: Symbol
+  exchange: null
+- isin: XTB1LR503284
+  symbol: XYO
+  name: XY Oracle
+  exchange: null
+- isin: XT8KP9HB8M98
+  symbol: YALA
+  name: Yala
+  exchange: null
+- isin: XTLS56Z3QRX6
+  symbol: YFI;YFIE
+  name: yearn finance
+  exchange: null
+- isin: XTK0S08G12K7
+  symbol: YFII
+  name: YFII finance
+  exchange: null
+- isin: XTWV93P8B457
+  symbol: YGG
+  name: Yield Guild Games Token
+  exchange: null
+- isin: XT9ZHXPH8W39
+  symbol: YLDY
+  name: Yieldly
+  exchange: null
+- isin: XTJ56LT21CF6
+  symbol: YZY
+  name: YZY MONEY
+  exchange: null
+- isin: XTJMLHN51TT7
+  symbol: ZBC
+  name: ZEBEC
+  exchange: null
+- isin: XTDHV5NRJCF4
+  symbol: ZBCN
+  name: Zebec Network
+  exchange: null
+- isin: XTJLW633FSF9
+  symbol: ZBU
+  name: ZEEBU
+  exchange: null
+- isin: XT2R50HSCVB4
+  symbol: ZCHF
+  name: Frankencoin
+  exchange: null
+- isin: XT7JPSSTXMS7
+  symbol: ZEC
+  name: Zcash
+  exchange: null
+- isin: XTDDT3Q0JZ36
+  symbol: ZED
+  name: ZED RUN
+  exchange: null
+- isin: XTSSZFF7VV78
+  symbol: ZEN
+  name: Horizen
+  exchange: null
+- isin: XTKHM71QNM18
+  symbol: ZERC
+  name: zkRace
+  exchange: null
+- isin: XT9BJJBHB210
+  symbol: ZETA
+  name: Zeta
+  exchange: null
+- isin: XTMNC3PQN6D2
+  symbol: ZETH
+  name: Zilliqa-bridged ETH token
+  exchange: null
+- isin: XT1TTNHMLDR6
+  symbol: ZEUS
+  name: ZEUS
+  exchange: null
+- isin: XTZJ9HGBW9R3
+  symbol: ZIL
+  name: Zilliqa
+  exchange: null
+- isin: XTBCBLPFRBX1
+  symbol: ZK
+  name: ZKsync
+  exchange: null
+- isin: XTVWSP5225P1
+  symbol: ZKC
+  name: Boundless
+  exchange: null
+- isin: XTWBRGJ0BFP9
+  symbol: ZKJ
+  name: Polyhedra Network Token
+  exchange: null
+- isin: XTM4DCVM90D5
+  symbol: ZORA
+  name: Zora
+  exchange: null
+- isin: XTPRF8RNVR46
+  symbol: ZRC
+  name: Zircuit
+  exchange: null
+- isin: XTC0HH6QTBN7
+  symbol: ZRO
+  name: LayerZero
+  exchange: null
+- isin: XTXMND00KTL3
+  symbol: ZRP
+  name: Zapit Reward Points
+  exchange: null
+- isin: XTHX56HH1ZX0
+  symbol: ZRX
+  name: 0x Protocol Token
+  exchange: null
+- isin: XT1SFBGPGS75
+  symbol: ZUSDT
+  name: Zilliqa bridged USDT token
+  exchange: null
+- isin: XTW0KK66B6Z6
+  symbol: ZWBTC
+  name: Zilliqa bridged WBTC token
+  exchange: null

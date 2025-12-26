@@ -3,10 +3,12 @@
 from typing import Optional, List, Dict, Any, Union
 import os, asyncpg, base64, hashlib, json
 import aiohttp
+from pathlib import Path
 from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
 from fastapi.responses import Response
 from urllib.parse import unquote_plus
 from asyncpg.exceptions import UndefinedFunctionError
+import yaml
 
 from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
@@ -179,6 +181,7 @@ class Registry(DatabaseHandler, APIHandler):
         # Start Database
         await self.init_pool()
         await self._run_enum_guard()
+        await self._seed_identity_manifests()
 
     async def stop(self) -> None:
         """
@@ -198,6 +201,135 @@ class Registry(DatabaseHandler, APIHandler):
             return
         strict = mode == "strict"
         await validate_enums(self.pool, strict=strict)
+
+    async def _seed_identity_manifests(self) -> None:
+        """Seed identity_manifest table with bundled manifests if empty.
+
+        Loads YAML manifests from quasar/seeds/manifests/ and bulk inserts
+        into the database. Idempotent - only seeds if table is empty.
+        Uses prepared statements and transactions for efficiency.
+        """
+        try:
+            # Check if table is already seeded
+            count = await self.pool.fetchval("SELECT COUNT(*) FROM identity_manifest")
+            if count > 0:
+                logger.info("Identity manifests already seeded, skipping.")
+                return
+
+            # Locate manifests directory relative to this file
+            manifests_dir = Path(__file__).parent.parent.parent / "seeds" / "manifests"
+            if not manifests_dir.exists():
+                logger.warning(f"Manifests directory not found: {manifests_dir}")
+                return
+
+            total_seeded = 0
+
+            # Process each manifest file
+            for manifest_file in sorted(manifests_dir.glob("*.yaml")):
+                asset_class_group = manifest_file.stem  # 'crypto' or 'securities'
+
+                if asset_class_group not in ['crypto', 'securities']:
+                    logger.warning(f"Skipping unknown manifest file: {manifest_file.name}")
+                    continue
+
+                logger.info(f"Seeding {asset_class_group} manifest from {manifest_file}")
+
+                try:
+                    # Load YAML file
+                    with open(manifest_file, 'r', encoding='utf-8') as f:
+                        identities = yaml.safe_load(f) or []
+
+                    if not isinstance(identities, list):
+                        logger.error(f"Invalid manifest format in {manifest_file.name}: expected list")
+                        continue
+
+                    # Bulk insert using prepared statement
+                    seeded_count = await self._bulk_insert_manifest(
+                        identities,
+                        asset_class_group,
+                        source='bundled'
+                    )
+                    total_seeded += seeded_count
+                    logger.info(f"Seeded {seeded_count} {asset_class_group} identities from {manifest_file.name}")
+
+                except yaml.YAMLError as e:
+                    logger.error(f"YAML parsing error in {manifest_file.name}: {e}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Failed to seed {asset_class_group} manifest: {e}", exc_info=True)
+                    continue
+
+            logger.info(f"Identity manifest seeding complete. Total identities seeded: {total_seeded}")
+
+        except Exception as e:
+            logger.error(f"Error during identity manifest seeding: {e}", exc_info=True)
+            # Don't fail startup for seeding errors - manifests are optional
+            pass
+
+    async def _bulk_insert_manifest(
+        self,
+        identities: List[Dict],
+        asset_class_group: str,
+        source: str
+    ) -> int:
+        """Bulk insert identities into identity_manifest table.
+
+        Uses conn.execute() directly following the savepoint pattern.
+        Uses transactions for efficiency and atomicity.
+
+        Args:
+            identities: List of identity dicts with keys: isin, symbol, name, exchange
+            asset_class_group: 'securities' or 'crypto'
+            source: Source identifier ('bundled', 'api_upload', etc.)
+
+        Returns:
+            Number of identities successfully inserted
+        """
+        if not identities:
+            return 0
+
+        insert_query = """
+            INSERT INTO identity_manifest
+            (canonical_id, symbol, name, exchange, asset_class_group, source)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (canonical_id, asset_class_group) DO NOTHING
+        """
+
+        inserted_count = 0
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                for identity in identities:
+                    try:
+                        # Validate required fields
+                        canonical_id = identity.get('isin')
+                        symbol = identity.get('symbol')
+                        name = identity.get('name')
+
+                        if not canonical_id or not symbol or not name:
+                            logger.warning(
+                                f"Skipping identity with missing required fields: {identity}"
+                            )
+                            continue
+
+                        # Insert using conn.execute() following savepoint pattern
+                        await conn.execute(
+                            insert_query,
+                            canonical_id,
+                            symbol,
+                            name,
+                            identity.get('exchange'),  # Can be None/null
+                            asset_class_group,
+                            source
+                        )
+                        inserted_count += 1
+
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to insert identity {identity.get('symbol', 'unknown')}: {e}"
+                        )
+                        continue
+
+        return inserted_count
 
     # API ENDPOINTS
     # ---------------------------------------------------------------------
