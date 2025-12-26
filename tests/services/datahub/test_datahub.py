@@ -3,6 +3,7 @@ import pytest
 import os
 import tempfile
 import shutil
+import asyncio
 from unittest.mock import Mock, AsyncMock, MagicMock, patch, mock_open
 from fastapi import HTTPException
 from pathlib import Path
@@ -730,6 +731,51 @@ class TestRefreshSubscriptions:
         job = hub._sched.get_job(job_key)
         assert job is not None
         assert job.args == ["TestProvider", "1d", ["NEW_SYM1", "NEW_SYM2"], ["XNAS", "XNAS"]]
+        
+        hub._sched.shutdown(wait=False)
+
+    @pytest.mark.asyncio
+    async def test_refresh_triggers_immediate_pull_for_new_symbols_in_existing_job(
+        self, datahub_with_mocks, mock_asyncpg_pool, mock_asyncpg_conn, mock_provider_historical
+    ):
+        """Test that refresh_subscriptions triggers an immediate pull for newly added symbols."""
+        hub = datahub_with_mocks
+        
+        # Pre-load the provider
+        hub._providers["TestProvider"] = mock_provider_historical
+        
+        # Start the scheduler and add initial job
+        hub._sched.start()
+        job_key = "TestProvider|1d|0 0 * * *"
+        hub.job_keys.add(job_key)
+        hub._sched.add_job(
+            func=hub.get_data,
+            trigger='interval',
+            seconds=3600,
+            args=["TestProvider", "1d", ["AAPL"], ["XNAS"]],
+            id=job_key,
+        )
+        
+        # Mock database returning updated symbols with a new one
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[
+            {
+                "provider": "TestProvider", 
+                "interval": "1d", 
+                "cron": "0 0 * * *", 
+                "syms": ["AAPL", "TSLA"],
+                "exchanges": ["XNAS", "XNAS"]
+            }
+        ])
+        
+        # Mock get_data to verify it's called
+        with patch.object(hub, 'get_data', new_callable=AsyncMock) as mock_get_data:
+            await hub.refresh_subscriptions()
+            
+            # Allow control to return to the event loop so the task can start
+            await asyncio.sleep(0) 
+
+            # Verify get_data was called for TSLA only
+            mock_get_data.assert_called_once_with("TestProvider", "1d", ["TSLA"], ["XNAS"])
         
         hub._sched.shutdown(wait=False)
 
