@@ -22,6 +22,7 @@ from quasar.services.registry.schemas import (
     AssetMappingResponse, AssetMappingUpdate,
     SuggestionsResponse, SuggestionItem
 )
+from quasar.services.registry.matcher import IdentityMatcher
 
 import logging
 logger = logging.getLogger(__name__)
@@ -90,6 +91,9 @@ class Registry(DatabaseHandler, APIHandler):
         # Initialize Supers
         DatabaseHandler.__init__(self, dsn=dsn, pool=pool)
         APIHandler.__init__(self, api_host=api_host, api_port=api_port) 
+
+        # Initialize Matcher
+        self.matcher = IdentityMatcher(dsn=dsn, pool=pool)
 
 
     def _setup_routes(self) -> None:
@@ -180,6 +184,7 @@ class Registry(DatabaseHandler, APIHandler):
 
         # Start Database
         await self.init_pool()
+        self.matcher._pool = self.pool  # Share the initialized pool with the matcher
         await self._run_enum_guard()
         await self._seed_identity_manifests()
 
@@ -290,9 +295,9 @@ class Registry(DatabaseHandler, APIHandler):
 
         insert_query = """
             INSERT INTO identity_manifest
-            (canonical_id, symbol, name, exchange, asset_class_group, source)
+            (isin, symbol, name, exchange, asset_class_group, source)
             VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (canonical_id, asset_class_group) DO NOTHING
+            ON CONFLICT (isin, asset_class_group) DO NOTHING
         """
 
         inserted_count = 0
@@ -301,11 +306,11 @@ class Registry(DatabaseHandler, APIHandler):
                 for identity in identities:
                     try:
                         # Validate required fields
-                        canonical_id = identity.get('isin')
+                        isin = identity.get('isin')
                         symbol = identity.get('symbol')
                         name = identity.get('name')
 
-                        if not canonical_id or not symbol or not name:
+                        if not isin or not symbol or not name:
                             logger.warning(
                                 f"Skipping identity with missing required fields: {identity}"
                             )
@@ -314,7 +319,7 @@ class Registry(DatabaseHandler, APIHandler):
                         # Insert using conn.execute() following savepoint pattern
                         await conn.execute(
                             insert_query,
-                            canonical_id,
+                            isin,
                             symbol,
                             name,
                             identity.get('exchange'),  # Can be None/null

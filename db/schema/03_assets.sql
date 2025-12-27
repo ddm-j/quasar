@@ -14,6 +14,20 @@ CREATE TABLE IF NOT EXISTS assets (
     quote_currency TEXT,
     country TEXT,
 
+    -- Identity Matching Tracking
+    identity_conf DOUBLE PRECISION,
+    identity_match_type TEXT, -- 'exact_alias', 'fuzzy_symbol', etc.
+    identity_updated_at TIMESTAMP,
+
+    -- Generated Grouping for Matcher
+    asset_class_group TEXT GENERATED ALWAYS AS (
+        CASE 
+            WHEN asset_class = 'crypto' THEN 'crypto'
+            WHEN asset_class IN ('equity', 'fund', 'etf', 'bond', 'preferred', 'warrant', 'adr', 'mutual_fund', 'index') THEN 'securities'
+            ELSE NULL
+        END
+    ) STORED,
+
     -- Normalized symbol columns for efficient matching (computed on INSERT/UPDATE)
     sym_norm_full TEXT GENERATED ALWAYS AS (
         regexp_replace(lower(symbol), '[^a-z0-9]', '', 'g')
@@ -33,3 +47,8 @@ CREATE TABLE IF NOT EXISTS assets (
         FOREIGN KEY (asset_class)
         REFERENCES asset_class (code)
 );
+
+-- Indexes for fast lookups
+CREATE INDEX IF NOT EXISTS idx_assets_identity_group ON assets (asset_class_group) WHERE asset_class_group IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_unidentified ON assets (isin) WHERE isin IS NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_isin ON assets (isin) WHERE isin IS NOT NULL;
