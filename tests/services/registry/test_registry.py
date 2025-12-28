@@ -294,6 +294,7 @@ class TestRegistryUpdateAssets:
         mock_aiohttp_session["response"].json = AsyncMock(return_value=[
             {
                 "symbol": "TEST",
+                "matcher_symbol": "TEST",
                 "name": "Test Asset",
                 "provider_id": "TEST_ID"
             }
@@ -382,12 +383,13 @@ class TestRegistryGetAssets:
 
         # AssetItem requires: id, class_name, class_type, symbol (and optional fields)
         mock_record = MockRecord(
-            id=1, 
-            class_name="TestProvider", 
+            id=1,
+            class_name="TestProvider",
             class_type="provider",
-            symbol="TEST"
+            symbol="TEST",
+            matcher_symbol="TEST"
         )
-        
+
         # handle_get_assets uses pool.acquire() then conn.fetch/fetchrow
         mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
         mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=1))

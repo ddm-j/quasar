@@ -51,6 +51,7 @@ class SymbolInfo(TypedDict):
     provider_id: str | None
     isin: str | None
     symbol: str
+    matcher_symbol: str
     name: str
     exchange: str
     asset_class: AssetClass

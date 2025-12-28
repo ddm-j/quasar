@@ -27,6 +27,8 @@ class UpdateAssetsResponse(BaseModel):
     added_symbols: int = 0
     updated_symbols: int = 0
     failed_symbols: int = 0
+    identity_matched: int = 0      # Assets identified by matcher
+    identity_skipped: int = 0      # Assets skipped (already had ISIN)
     status: int = 200
     error: Optional[str] = None
     message: Optional[str] = None

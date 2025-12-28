@@ -20,8 +20,8 @@ class EODHDProvider(HistoricalDataProvider):
         "NYSE": "XNYS",
         "NYSE ARCA": "ARCX",
         "NYSE MKT": "XASE",
-        "CC": "CRYPTO",
-        "cc": "CRYPTO",
+        "CC": None,
+        "cc": None,
         "FOREX": "XFX"
     }
 
@@ -74,11 +74,13 @@ class EODHDProvider(HistoricalDataProvider):
                 continue
 
             # Currency Information
+            matcher_symbol = e['Code'].split('.')[0]
             base_currency = 'USD'
             quote_currency = None
             currs = None
             if asset_class == AssetClass.CRYPTO.value:
                 currs = e['Code'].split('-')
+                matcher_symbol = currs[0]
             elif asset_class == AssetClass.CURRENCY.value:
                 try:
                     currs = [e['Code'][:3], e['Code'][3:]]
@@ -102,6 +104,7 @@ class EODHDProvider(HistoricalDataProvider):
                 isin=e['Isin'],
                 # Use API-compatible symbol format (e.g., AAPL.US for U.S. stocks)
                 symbol=f"{e['Code']}.{api_symbol_suffix}",
+                matcher_symbol=matcher_symbol,
                 name=e['Name'],
                 exchange=exchange,
                 asset_class=asset_class,

@@ -95,6 +95,7 @@ def validate_symbols(symbols: Sequence[dict], strict: bool = True) -> None:
         "provider",
         "provider_id",
         "symbol",
+        "matcher_symbol",
         "name",
         "exchange",
         "asset_class",

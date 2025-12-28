@@ -22,7 +22,7 @@ from quasar.services.registry.schemas import (
     AssetMappingResponse, AssetMappingUpdate,
     SuggestionsResponse, SuggestionItem
 )
-from quasar.services.registry.matcher import IdentityMatcher
+from quasar.services.registry.matcher import IdentityMatcher, MatchResult
 
 import logging
 logger = logging.getLogger(__name__)
@@ -335,6 +335,54 @@ class Registry(DatabaseHandler, APIHandler):
                         continue
 
         return inserted_count
+
+    async def _apply_identity_matches(self, matches: List[MatchResult]) -> dict:
+        """Apply identity matcher results to assets table.
+
+        Only updates assets where isin IS NULL (never overwrites provider ISINs).
+
+        Args:
+            matches: List of MatchResult from identity matcher.
+
+        Returns:
+            Dict with counts: identified, skipped, failed
+        """
+        if not matches:
+            return {'identified': 0, 'skipped': 0, 'failed': 0}
+
+        update_query = """
+            UPDATE assets
+            SET isin = $2,
+                isin_source = 'matcher',
+                identity_conf = $3,
+                identity_match_type = $4,
+                identity_updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND isin IS NULL
+            RETURNING id
+        """
+
+        stats = {'identified': 0, 'skipped': 0, 'failed': 0}
+
+        async with self.pool.acquire() as conn:
+            for match in matches:
+                try:
+                    result = await conn.fetchval(
+                        update_query,
+                        match.asset_id,
+                        match.isin,
+                        match.confidence,
+                        match.match_type
+                    )
+                    if result:
+                        stats['identified'] += 1
+                    else:
+                        stats['skipped'] += 1
+                except Exception as e:
+                    logger.warning(f"Failed to apply match for asset {match.asset_id}: {e}")
+                    stats['failed'] += 1
+
+        return stats
 
     # API ENDPOINTS
     # ---------------------------------------------------------------------
@@ -675,7 +723,11 @@ class Registry(DatabaseHandler, APIHandler):
         return UpdateAssetsResponse(**stats)
 
     async def handle_update_all_assets(self) -> List[UpdateAssetsResponse]:
-        """Trigger asset updates for all registered providers and brokers."""
+        """Trigger asset updates for all registered providers and brokers.
+
+        After updating assets from each provider, runs a global identity matching
+        pass to identify any remaining unidentified assets across all providers.
+        """
         logger.info("Registry.handle_update_all_assets: Triggering asset update for all registered providers.")
         # Fetch all registered providers
         query_providers = """
@@ -692,13 +744,26 @@ class Registry(DatabaseHandler, APIHandler):
             logger.info("Registry.handle_update_all_assets: No registered providers found.")
             return []
 
-        # Update assets for each provider
+        # Update assets for each provider (identity matching runs per-provider)
         stats_list = []
         for provider in providers:
             class_name = provider['class_name']
             class_type = provider['class_type']
             stats = await self._update_assets_for_provider(class_name, class_type)
             stats_list.append(UpdateAssetsResponse(**stats))
+
+        # Run global identity matching for any remaining unidentified assets
+        # This catches assets that may have been missed by per-provider matching
+        try:
+            all_matches = await self.matcher.identify_all_unidentified_assets()
+            if all_matches:
+                global_stats = await self._apply_identity_matches(all_matches)
+                logger.info(
+                    f"Registry.handle_update_all_assets: Global identity matching complete: "
+                    f"identified={global_stats['identified']}, skipped={global_stats['skipped']}"
+                )
+        except Exception as e:
+            logger.warning(f"Registry.handle_update_all_assets: Global identity matching failed: {e}")
 
         return stats_list
 
@@ -723,6 +788,8 @@ class Registry(DatabaseHandler, APIHandler):
             'added_symbols': 0,
             'updated_symbols': 0,
             'failed_symbols': 0,
+            'identity_matched': 0,
+            'identity_skipped': 0,
             'status': 200
         }
 
@@ -774,14 +841,31 @@ class Registry(DatabaseHandler, APIHandler):
             return stats
 
         # Upsert symbols into the database
+        # When provider supplies ISIN, set isin_source = 'provider'
+        # On conflict: only update ISIN if provider supplies one (preserve matcher ISINs)
+        # Note: $4::TEXT cast required for asyncpg prepared statement type inference
         upsert_query = """
                         INSERT INTO assets (
-                            class_name, class_type, external_id, isin, symbol, 
-                            name, exchange, asset_class, base_currency, quote_currency, country
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            class_name, class_type, external_id, isin, isin_source, symbol, 
+                            matcher_symbol, name, exchange, asset_class, 
+                            base_currency, quote_currency, country
+                        ) VALUES (
+                            $1, $2, $3, $4::TEXT, 
+                            CASE WHEN $4::TEXT IS NOT NULL THEN 'provider' ELSE NULL END,
+                            $5, $6, $7, $8, $9, $10, $11, $12
+                        )
                         ON CONFLICT (class_name, class_type, symbol) DO UPDATE SET
                             external_id = EXCLUDED.external_id,
-                            isin = EXCLUDED.isin,
+                            -- Only update ISIN if provider supplies one (preserve matcher ISINs)
+                            isin = CASE 
+                                WHEN EXCLUDED.isin IS NOT NULL THEN EXCLUDED.isin
+                                ELSE assets.isin 
+                            END,
+                            isin_source = CASE
+                                WHEN EXCLUDED.isin IS NOT NULL THEN 'provider'
+                                ELSE assets.isin_source
+                            END,
+                            matcher_symbol = EXCLUDED.matcher_symbol,
                             name = EXCLUDED.name,
                             exchange = EXCLUDED.exchange,
                             asset_class = EXCLUDED.asset_class,
@@ -789,9 +873,7 @@ class Registry(DatabaseHandler, APIHandler):
                             quote_currency = EXCLUDED.quote_currency,
                             country = EXCLUDED.country
                         RETURNING xmax; 
-                    """      
-                    # May want to add updated_at = CURRENT_TIMESTAMP (later)
-                            # updated_at = CURRENT_TIMESTAMP -- Assuming you have an updated_at column
+                    """
         processed_symbols = set()
         
         async with self.pool.acquire() as conn:
@@ -833,6 +915,7 @@ class Registry(DatabaseHandler, APIHandler):
                         symbol_info.get('provider_id'),
                         symbol_info.get('isin'),
                         symbol,
+                        symbol_info.get('matcher_symbol') or symbol,  # Fallback to symbol if not provided
                         symbol_info.get('name'),
                         symbol_info.get('exchange'),
                         normalized_asset_class,
@@ -865,8 +948,26 @@ class Registry(DatabaseHandler, APIHandler):
         stats['processed_symbols'] = stats['added_symbols'] + \
                                 stats['updated_symbols'] + \
                                 stats['failed_symbols']
-        logger.info(f"Registry._update_assets_for_provider: Asset update summary for {class_name} ({class_type}):" \
+        logger.info(f"Registry._update_assets_for_provider: Asset update summary for {class_name} ({class_type}): " \
                     f"Added={stats['added_symbols']}, Updated={stats['updated_symbols']}, Failed={stats['failed_symbols']}")
+
+        # Run identity matching for unidentified assets
+        try:
+            match_results = await self.matcher.identify_unidentified_assets(
+                class_name, class_type
+            )
+            if match_results:
+                match_stats = await self._apply_identity_matches(match_results)
+                stats['identity_matched'] = match_stats['identified']
+                stats['identity_skipped'] = match_stats['skipped']
+                logger.info(
+                    f"Registry._update_assets_for_provider: Identity matching for {class_name}: "
+                    f"identified={match_stats['identified']}, skipped={match_stats['skipped']}"
+                )
+        except Exception as e:
+            logger.warning(f"Registry._update_assets_for_provider: Identity matching failed for {class_name}: {e}")
+            # Don't fail the whole operation, just log the warning
+
         return stats
 
     async def handle_get_assets(self, params: AssetQueryParams = Depends()) -> AssetResponse:

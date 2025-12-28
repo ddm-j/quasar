@@ -19,6 +19,7 @@ from quasar.lib.common.context import DerivedContext
 #     provider_id: str | None
 #     isin: str | None
 #     symbol: str
+#     matcher_symbol: str
 #     name: str
 #     exchange: str
 #     asset_class: str
@@ -54,7 +55,7 @@ class KrakenProvider(LiveDataProvider):
         asset_class = AssetClass.CRYPTO.value
         country = None
         isin = None
-        exchange = 'CRYPTO'
+        exchange = None
         symbols = []
         for sym, e in result.items():
             if e['quote'] not in ['ZUSD', 'USDC']:
@@ -63,11 +64,14 @@ class KrakenProvider(LiveDataProvider):
             base_currency = e['base']
             if not e.get('wsname') or not e.get('altname'):
                 continue
+
+            # print(f"{e['wsname']} - {e['altname']} -> {e['wsname'].split('/')[0]}")
             symbol = SymbolInfo(
                 provider=self.name,
                 provider_id=e['altname'],
                 isin=isin,
                 symbol=e['wsname'],
+                matcher_symbol=e['wsname'].split('/')[0],
                 name=sym,
                 exchange=exchange,
                 asset_class=asset_class,

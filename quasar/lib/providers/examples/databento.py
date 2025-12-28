@@ -344,6 +344,7 @@ class DatabentoProvider(HistoricalDataProvider):
                 provider_id=str(instrument_id) if instrument_id else raw_symbol,
                 isin=None,  # Databento doesn't provide ISIN
                 symbol=raw_symbol,
+                matcher_symbol=raw_symbol,
                 name=raw_symbol,  # Databento doesn't provide description in definition
                 exchange=exchange,
                 asset_class=asset_class,
