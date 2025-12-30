@@ -283,7 +283,7 @@ class Registry(DatabaseHandler, APIHandler):
         Uses transactions for efficiency and atomicity.
 
         Args:
-            identities: List of identity dicts with keys: isin, symbol, name, exchange
+            identities: List of identity dicts with keys: figi (mapped to primary_id), symbol, name, exchange
             asset_class_group: 'securities' or 'crypto'
             source: Source identifier ('bundled', 'api_upload', etc.)
 
@@ -295,9 +295,9 @@ class Registry(DatabaseHandler, APIHandler):
 
         insert_query = """
             INSERT INTO identity_manifest
-            (isin, symbol, name, exchange, asset_class_group, source)
+            (primary_id, symbol, name, exchange, asset_class_group, source)
             VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (isin, asset_class_group) DO NOTHING
+            ON CONFLICT (primary_id, asset_class_group) DO NOTHING
         """
 
         inserted_count = 0
@@ -306,11 +306,12 @@ class Registry(DatabaseHandler, APIHandler):
                 for identity in identities:
                     try:
                         # Validate required fields
-                        isin = identity.get('isin')
+                        # YAML manifests use 'figi' key which maps to primary_id column
+                        primary_id = identity.get('figi')
                         symbol = identity.get('symbol')
                         name = identity.get('name')
 
-                        if not isin or not symbol or not name:
+                        if not primary_id or not symbol or not name:
                             logger.warning(
                                 f"Skipping identity with missing required fields: {identity}"
                             )
@@ -319,7 +320,7 @@ class Registry(DatabaseHandler, APIHandler):
                         # Insert using conn.execute() following savepoint pattern
                         await conn.execute(
                             insert_query,
-                            isin,
+                            primary_id,
                             symbol,
                             name,
                             identity.get('exchange'),  # Can be None/null
@@ -339,7 +340,7 @@ class Registry(DatabaseHandler, APIHandler):
     async def _apply_identity_matches(self, matches: List[MatchResult]) -> dict:
         """Apply identity matcher results to assets table.
 
-        Only updates assets where isin IS NULL (never overwrites provider ISINs).
+        Only updates assets where primary_id IS NULL (never overwrites provider-supplied IDs).
 
         Args:
             matches: List of MatchResult from identity matcher.
@@ -352,13 +353,13 @@ class Registry(DatabaseHandler, APIHandler):
 
         update_query = """
             UPDATE assets
-            SET isin = $2,
-                isin_source = 'matcher',
+            SET primary_id = $2,
+                primary_id_source = 'matcher',
                 identity_conf = $3,
                 identity_match_type = $4,
                 identity_updated_at = CURRENT_TIMESTAMP
             WHERE id = $1
-              AND isin IS NULL
+              AND primary_id IS NULL
             RETURNING id
         """
 
@@ -370,7 +371,7 @@ class Registry(DatabaseHandler, APIHandler):
                     result = await conn.fetchval(
                         update_query,
                         match.asset_id,
-                        match.isin,
+                        match.primary_id,
                         match.confidence,
                         match.match_type
                     )
@@ -841,12 +842,12 @@ class Registry(DatabaseHandler, APIHandler):
             return stats
 
         # Upsert symbols into the database
-        # When provider supplies ISIN, set isin_source = 'provider'
-        # On conflict: only update ISIN if provider supplies one (preserve matcher ISINs)
+        # When provider supplies primary_id, set primary_id_source = 'provider'
+        # On conflict: only update primary_id if provider supplies one (preserve matcher IDs)
         # Note: $4::TEXT cast required for asyncpg prepared statement type inference
         upsert_query = """
                         INSERT INTO assets (
-                            class_name, class_type, external_id, isin, isin_source, symbol, 
+                            class_name, class_type, external_id, primary_id, primary_id_source, symbol, 
                             matcher_symbol, name, exchange, asset_class, 
                             base_currency, quote_currency, country
                         ) VALUES (
@@ -856,14 +857,14 @@ class Registry(DatabaseHandler, APIHandler):
                         )
                         ON CONFLICT (class_name, class_type, symbol) DO UPDATE SET
                             external_id = EXCLUDED.external_id,
-                            -- Only update ISIN if provider supplies one (preserve matcher ISINs)
-                            isin = CASE 
-                                WHEN EXCLUDED.isin IS NOT NULL THEN EXCLUDED.isin
-                                ELSE assets.isin 
+                            -- Only update primary_id if provider supplies one (preserve matcher IDs)
+                            primary_id = CASE 
+                                WHEN EXCLUDED.primary_id IS NOT NULL THEN EXCLUDED.primary_id
+                                ELSE assets.primary_id 
                             END,
-                            isin_source = CASE
-                                WHEN EXCLUDED.isin IS NOT NULL THEN 'provider'
-                                ELSE assets.isin_source
+                            primary_id_source = CASE
+                                WHEN EXCLUDED.primary_id IS NOT NULL THEN 'provider'
+                                ELSE assets.primary_id_source
                             END,
                             matcher_symbol = EXCLUDED.matcher_symbol,
                             name = EXCLUDED.name,
@@ -913,7 +914,7 @@ class Registry(DatabaseHandler, APIHandler):
                         class_name,
                         class_type,
                         symbol_info.get('provider_id'),
-                        symbol_info.get('isin'),
+                        symbol_info.get('primary_id'),
                         symbol,
                         symbol_info.get('matcher_symbol') or symbol,  # Fallback to symbol if not provided
                         symbol_info.get('name'),
@@ -1054,7 +1055,7 @@ class Registry(DatabaseHandler, APIHandler):
             where_clause = " AND ".join(filters) if filters else "TRUE"
 
             # Build queries
-            select_columns = "id, class_name, class_type, external_id, isin, symbol, name, exchange, asset_class, base_currency, quote_currency, country"
+            select_columns = "id, class_name, class_type, external_id, primary_id, symbol, name, exchange, asset_class, base_currency, quote_currency, country"
             
             data_query = f"""
                 SELECT {select_columns}
@@ -1422,7 +1423,7 @@ class Registry(DatabaseHandler, APIHandler):
 
             # Score expression for use in deduplicated CTE (using column names from matched output)
             score_expr = f"""(
-                CASE WHEN t_isin IS NOT NULL AND s_isin = t_isin THEN 70 ELSE 0 END +
+                CASE WHEN t_primary_id IS NOT NULL AND s_primary_id = t_primary_id THEN 70 ELSE 0 END +
                 CASE WHEN t_ext_id IS NOT NULL AND s_ext_id = t_ext_id THEN 50 ELSE 0 END +
                 CASE WHEN (s_sym_full = t_sym_full OR s_sym_root = t_sym_root) THEN 30 ELSE 0 END +
                 CASE WHEN s_base = t_base AND s_quote = t_quote THEN 10 ELSE 0 END +
@@ -1455,7 +1456,7 @@ class Registry(DatabaseHandler, APIHandler):
                 t.symbol AS target_symbol,
                 t.name AS target_name,
                 s.sym_norm_root,
-                s.isin AS s_isin, t.isin AS t_isin,
+                s.primary_id AS s_primary_id, t.primary_id AS t_primary_id,
                 s.external_id AS s_ext_id, t.external_id AS t_ext_id,
                 s.sym_norm_full AS s_sym_full, t.sym_norm_full AS t_sym_full,
                 s.sym_norm_root AS s_sym_root, t.sym_norm_root AS t_sym_root,
@@ -1478,10 +1479,10 @@ class Registry(DatabaseHandler, APIHandler):
                 WITH src AS ({src_cte}),
                      tgt AS ({tgt_cte}),
                 matched AS (
-                    -- ISIN matches (indexed)
+                    -- Primary ID matches (indexed)
                     SELECT {select_cols}
-                    FROM src s JOIN tgt t ON s.isin = t.isin
-                    WHERE s.isin IS NOT NULL AND {asset_class_clause}
+                    FROM src s JOIN tgt t ON s.primary_id = t.primary_id
+                    WHERE s.primary_id IS NOT NULL AND {asset_class_clause}
 
                     UNION ALL
 
@@ -1509,7 +1510,7 @@ class Registry(DatabaseHandler, APIHandler):
                         source_class, source_type, source_symbol, source_name,
                         target_class, target_type, target_symbol, target_name,
                         sym_norm_root,
-                        COALESCE(t_isin IS NOT NULL AND s_isin = t_isin, FALSE) AS isin_match,
+                        COALESCE(t_primary_id IS NOT NULL AND s_primary_id = t_primary_id, FALSE) AS id_match,
                         COALESCE(t_ext_id IS NOT NULL AND s_ext_id = t_ext_id, FALSE) AS external_id_match,
                         COALESCE(s_sym_full = t_sym_full OR s_sym_root = t_sym_root, FALSE) AS norm_match,
                         COALESCE(s_base = t_base AND s_quote = t_quote, FALSE) AS base_quote_match,
@@ -1576,7 +1577,7 @@ class Registry(DatabaseHandler, APIHandler):
                         source_class, source_type, source_symbol, source_name,
                         target_class, target_type, target_symbol, target_name,
                         target_common_symbol, proposed_common_symbol, score,
-                        isin_match, external_id_match, norm_match,
+                        id_match, external_id_match, norm_match,
                         base_quote_match, exchange_match,
                         sym_root_similarity, name_similarity,
                         target_already_mapped
@@ -1632,7 +1633,7 @@ class Registry(DatabaseHandler, APIHandler):
                 target_common_symbol=target_common_symbol,
                 proposed_common_symbol=proposed_common_symbol,
                 score=float(record["score"]),
-                isin_match=record["isin_match"],
+                id_match=record["id_match"],
                 external_id_match=record["external_id_match"],
                 norm_match=record["norm_match"],
                 base_quote_match=record["base_quote_match"],

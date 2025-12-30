@@ -62,7 +62,7 @@ def make_suggestion_record(
     target_common_symbol=None,
     proposed_common_symbol="aapl",
     score=85.0,
-    isin_match=True,
+    id_match=True,
     external_id_match=False,
     norm_match=True,
     base_quote_match=True,
@@ -84,7 +84,7 @@ def make_suggestion_record(
         target_common_symbol=target_common_symbol,
         proposed_common_symbol=proposed_common_symbol,
         score=score,
-        isin_match=isin_match,
+        id_match=id_match,
         external_id_match=external_id_match,
         norm_match=norm_match,
         base_quote_match=base_quote_match,
@@ -848,7 +848,7 @@ class TestSuggestionsResponse:
         """Verify match criteria flags are included in response."""
         reg = registry_with_mocks
         mock_records = [make_suggestion_record(
-            isin_match=True,
+            id_match=True,
             external_id_match=False,
             norm_match=True,
             base_quote_match=True,
@@ -859,7 +859,7 @@ class TestSuggestionsResponse:
         response = await call_suggestions(reg, source_class="EODHD")
 
         item = response.items[0]
-        assert item.isin_match is True
+        assert item.id_match is True
         assert item.external_id_match is False
         assert item.norm_match is True
         assert item.base_quote_match is True
@@ -1231,11 +1231,11 @@ class TestIdentityManifestSeeding:
         # Create test crypto manifest
         crypto_manifest = manifests_dir / "crypto.yaml"
         crypto_manifest.write_text("""
-- isin: XT4V541JG149
+- figi: KKG00000DV14
   symbol: BTC
   name: Bitcoin
   exchange: null
-- isin: XT81HVG84RM6
+- figi: KKG0000092P5
   symbol: ETH
   name: Ethereum
   exchange: null
@@ -1244,7 +1244,7 @@ class TestIdentityManifestSeeding:
         # Create test securities manifest
         securities_manifest = manifests_dir / "securities.yaml"
         securities_manifest.write_text("""
-- isin: US0378331005
+- figi: BBG000B9XRY4
   symbol: AAPL
   name: Apple Inc
   exchange: XNAS
@@ -1269,9 +1269,9 @@ class TestIdentityManifestSeeding:
 
             # Verify calls included expected data
             calls = mock_asyncpg_conn.execute.call_args_list
-            assert any('XT4V541JG149' in str(call) for call in calls)  # BTC
-            assert any('XT81HVG84RM6' in str(call) for call in calls)  # ETH
-            assert any('US0378331005' in str(call) for call in calls)  # AAPL
+            assert any('KKG00000DV14' in str(call) for call in calls)  # BTC
+            assert any('KKG0000092P5' in str(call) for call in calls)  # ETH
+            assert any('BBG000B9XRY4' in str(call) for call in calls)  # AAPL
 
     @pytest.mark.asyncio
     async def test_start_skips_seeding_when_manifests_exist(
@@ -1351,7 +1351,7 @@ class TestIdentityManifestSeeding:
         # Mock filesystem setup
         manifests_dir = tmp_path / "seeds" / "manifests"
         manifests_dir.mkdir(parents=True)
-        (manifests_dir / "crypto.yaml").write_text("- isin: TEST\n  symbol: TEST\n  name: Test\n")
+        (manifests_dir / "crypto.yaml").write_text("- figi: TEST\n  symbol: TEST\n  name: Test\n")
 
         with patch('quasar.services.registry.core.Path') as mock_path_class:
             mock_file_path = Mock()

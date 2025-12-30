@@ -1,4 +1,4 @@
-"""Identity matching utility for resolving asset ISINs from manifest data."""
+"""Identity matching utility for resolving asset primary identifiers from manifest data."""
 
 import logging
 import time
@@ -23,7 +23,7 @@ FUZZY_BATCH_SIZE = 100
 class MatchResult:
     """Represents a matching result for an asset."""
     asset_id: int
-    isin: str
+    primary_id: str
     identity_symbol: str
     identity_name: str
     confidence: float
@@ -59,7 +59,7 @@ class IdentityMatcher(DatabaseHandler):
             SELECT id, symbol, name, exchange, asset_class_group, matcher_symbol
             FROM assets
             WHERE class_name = $1 AND class_type = $2
-              AND isin IS NULL
+              AND primary_id IS NULL
               AND asset_class_group IS NOT NULL
         """
 
@@ -91,7 +91,7 @@ class IdentityMatcher(DatabaseHandler):
         query = """
             SELECT id, symbol, name, exchange, asset_class_group, matcher_symbol
             FROM assets
-            WHERE isin IS NULL
+            WHERE primary_id IS NULL
               AND asset_class_group IS NOT NULL
         """
 
@@ -165,7 +165,7 @@ class IdentityMatcher(DatabaseHandler):
             )
             SELECT
                 i.id as asset_id,
-                im.isin,
+                im.primary_id,
                 im.symbol as identity_symbol,
                 im.name as identity_name,
                 100.0 as confidence,
@@ -222,7 +222,7 @@ class IdentityMatcher(DatabaseHandler):
                     ai.matcher_symbol,
                     ai.name as asset_name,
                     ai.exchange as asset_exchange,
-                    cand.isin,
+                    cand.primary_id,
                     cand.symbol as identity_symbol,
                     cand.name as identity_name,
                     cand.exchange as identity_exchange,
@@ -230,7 +230,7 @@ class IdentityMatcher(DatabaseHandler):
                 FROM asset_input ai
                 CROSS JOIN LATERAL (
                     SELECT
-                        im.isin,
+                        im.primary_id,
                         im.symbol,
                         im.name,
                         im.exchange,
@@ -244,7 +244,7 @@ class IdentityMatcher(DatabaseHandler):
             scored AS (
                 SELECT
                     asset_id,
-                    isin,
+                    primary_id,
                     identity_symbol,
                     identity_name,
                     (
@@ -262,7 +262,7 @@ class IdentityMatcher(DatabaseHandler):
             ranked AS (
                 SELECT
                     asset_id,
-                    isin,
+                    primary_id,
                     identity_symbol,
                     identity_name,
                     confidence,
@@ -275,7 +275,7 @@ class IdentityMatcher(DatabaseHandler):
             )
             SELECT
                 asset_id,
-                isin,
+                primary_id,
                 identity_symbol,
                 identity_name,
                 confidence,

@@ -19,7 +19,7 @@ class HistoricalStub(HistoricalDataProvider):
             {
                 "provider": self.name,
                 "provider_id": "STUB_AAPL",
-                "isin": "US0378331002",
+                "primary_id": None,  # Provider does not supply FIGI
                 "symbol": "AAPL.STUB",
                 "matcher_symbol": "AAPL",
                 "name": "Apple Inc. Stub",
@@ -67,7 +67,7 @@ class LiveStub(LiveDataProvider):
             {
                 "provider": self.name,
                 "provider_id": "STUB_BTC",
-                "isin": None,
+                "primary_id": None,  # Provider does not supply FIGI
                 "symbol": "BTC-USD.STUB",
                 "matcher_symbol": "BTC-USD",
                 "name": "Bitcoin Stub",

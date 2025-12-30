@@ -49,7 +49,7 @@ class Req(NamedTuple):
 class SymbolInfo(TypedDict):
     provider: str
     provider_id: str | None
-    isin: str | None
+    primary_id: str | None
     symbol: str
     matcher_symbol: str
     name: str

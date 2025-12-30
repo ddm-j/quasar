@@ -33,12 +33,15 @@ def test_devtools_validation_normalizes_alias_and_rejects_invalid():
         {
             "provider": "P",
             "provider_id": "ID",
+            "primary_id": None,
             "symbol": "SYM",
+            "matcher_symbol": "SYM",
             "name": "Name",
             "exchange": "X",
             "asset_class": "stock",  # alias -> equity
             "base_currency": "USD",
             "quote_currency": "USD",
+            "country": "US",
             "interval": "1m",  # should normalize to canonical 1M and be accepted
         }
     ]
@@ -50,12 +53,15 @@ def test_devtools_validation_normalizes_alias_and_rejects_invalid():
         {
             "provider": "P",
             "provider_id": "ID",
+            "primary_id": None,
             "symbol": "SYM",
+            "matcher_symbol": "SYM",
             "name": "Name",
             "exchange": "X",
             "asset_class": "not_real",
             "base_currency": "USD",
             "quote_currency": "USD",
+            "country": "US",
         }
     ]
     with pytest.raises(validation.ValidationError):

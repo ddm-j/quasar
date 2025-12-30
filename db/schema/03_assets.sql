@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS assets (
     class_name TEXT NOT NULL,
     class_type TEXT NOT NULL,
     external_id TEXT,
-    isin TEXT,
-    isin_source TEXT, -- 'provider', 'matcher', 'manual' - tracks ISIN origin
+    primary_id TEXT,
+    primary_id_source TEXT, -- 'provider', 'matcher', 'manual' - tracks primary_id origin
     symbol TEXT NOT NULL,
     matcher_symbol TEXT NOT NULL,
     name TEXT,
@@ -49,13 +49,13 @@ CREATE TABLE IF NOT EXISTS assets (
         FOREIGN KEY (asset_class)
         REFERENCES asset_class (code),
 
-    CONSTRAINT chk_isin_source
-        CHECK (isin_source IN ('provider', 'matcher', 'manual') OR isin_source IS NULL)
+    CONSTRAINT chk_primary_id_source
+        CHECK (primary_id_source IN ('provider', 'matcher', 'manual') OR primary_id_source IS NULL)
 );
 
 -- Indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_assets_identity_group ON assets (asset_class_group) WHERE asset_class_group IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_assets_unidentified ON assets (isin) WHERE isin IS NULL;
-CREATE INDEX IF NOT EXISTS idx_assets_isin ON assets (isin) WHERE isin IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_unidentified ON assets (primary_id) WHERE primary_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_primary_id ON assets (primary_id) WHERE primary_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_assets_matcher_symbol ON assets (matcher_symbol);
-CREATE INDEX IF NOT EXISTS idx_assets_isin_source ON assets (isin_source) WHERE isin_source IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_primary_id_source ON assets (primary_id_source) WHERE primary_id_source IS NOT NULL;

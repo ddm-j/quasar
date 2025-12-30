@@ -28,7 +28,7 @@ class UpdateAssetsResponse(BaseModel):
     updated_symbols: int = 0
     failed_symbols: int = 0
     identity_matched: int = 0      # Assets identified by matcher
-    identity_skipped: int = 0      # Assets skipped (already had ISIN)
+    identity_skipped: int = 0      # Assets skipped (already had primary_id)
     status: int = 200
     error: Optional[str] = None
     message: Optional[str] = None
@@ -79,7 +79,7 @@ class AssetItem(BaseModel):
     class_name: str
     class_type: str
     external_id: Optional[str] = None
-    isin: Optional[str] = None
+    primary_id: Optional[str] = None
     symbol: str
     name: Optional[str] = None
     exchange: Optional[str] = None
@@ -154,7 +154,7 @@ class SuggestionItem(BaseModel):
 
     proposed_common_symbol: str
     score: float
-    isin_match: bool
+    id_match: bool
     external_id_match: bool
     norm_match: bool
     base_quote_match: bool

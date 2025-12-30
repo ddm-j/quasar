@@ -101,7 +101,7 @@ class EODHDProvider(HistoricalDataProvider):
             syminfo = SymbolInfo(
                 provider=self.name,
                 provider_id=None,
-                isin=e['Isin'],
+                primary_id=None,  # Provider does not supply FIGI
                 # Use API-compatible symbol format (e.g., AAPL.US for U.S. stocks)
                 symbol=f"{e['Code']}.{api_symbol_suffix}",
                 matcher_symbol=matcher_symbol,
