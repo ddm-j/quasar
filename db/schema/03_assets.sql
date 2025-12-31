@@ -59,3 +59,9 @@ CREATE INDEX IF NOT EXISTS idx_assets_unidentified ON assets (primary_id) WHERE 
 CREATE INDEX IF NOT EXISTS idx_assets_primary_id ON assets (primary_id) WHERE primary_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_assets_matcher_symbol ON assets (matcher_symbol);
 CREATE INDEX IF NOT EXISTS idx_assets_primary_id_source ON assets (primary_id_source) WHERE primary_id_source IS NOT NULL;
+
+-- Unique constraint: Only one asset per provider can have a given primary_id for securities
+-- This prevents duplicate identity assignments after deduplication
+CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_unique_securities_primary_id 
+ON assets (class_name, class_type, primary_id) 
+WHERE asset_class_group = 'securities' AND primary_id IS NOT NULL;

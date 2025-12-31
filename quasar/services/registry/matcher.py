@@ -23,6 +23,7 @@ FUZZY_BATCH_SIZE = 100
 class MatchResult:
     """Represents a matching result for an asset."""
     asset_id: int
+    symbol: str  # Asset symbol for deduplication heuristic
     primary_id: str
     identity_symbol: str
     identity_name: str
@@ -118,12 +119,73 @@ class IdentityMatcher(DatabaseHandler):
         results = []
 
         if securities_assets:
-            results.extend(await self._run_matching_for_group(securities_assets, 'securities'))
+            securities_results = await self._run_matching_for_group(securities_assets, 'securities')
+            # Deduplicate securities results before merging
+            securities_results = self._deduplicate_securities_results(securities_results)
+            results.extend(securities_results)
 
         if crypto_assets:
             results.extend(await self._run_matching_for_group(crypto_assets, 'crypto'))
 
         return results
+
+    def _deduplicate_securities_results(
+        self,
+        results: List[MatchResult]
+    ) -> List[MatchResult]:
+        """Deduplicate securities MatchResults by primary_id.
+
+        For each group of results sharing the same primary_id, applies the
+        shortest symbol heuristic (with alphabetical tie-breaking) to select
+        a single canonical match. Other matches are rejected.
+
+        Args:
+            results: List of MatchResult objects from securities matching.
+
+        Returns:
+            Deduplicated list containing only canonical MatchResults.
+        """
+        if not results:
+            return results
+
+        from collections import defaultdict
+
+        # Group by primary_id
+        primary_id_groups: dict[str, List[MatchResult]] = defaultdict(list)
+        for match in results:
+            primary_id_groups[match.primary_id].append(match)
+
+        deduplicated: List[MatchResult] = []
+        total_rejected = 0
+        duplicated_primary_ids = 0
+
+        for primary_id, matches in primary_id_groups.items():
+            if len(matches) == 1:
+                deduplicated.append(matches[0])
+            else:
+                # Multiple matches for same primary_id - apply heuristic
+                duplicated_primary_ids += 1
+
+                # Sort by symbol length (ascending), then alphabetically for ties
+                sorted_matches = sorted(matches, key=lambda m: (len(m.symbol), m.symbol))
+                winner = sorted_matches[0]
+                deduplicated.append(winner)
+
+                # Log rejected symbols at DEBUG level
+                rejected_symbols = [m.symbol for m in sorted_matches[1:]]
+                logger.debug(
+                    f"Deduplication for primary_id {primary_id}: "
+                    f"kept '{winner.symbol}', rejected {rejected_symbols}"
+                )
+                total_rejected += len(rejected_symbols)
+
+        if total_rejected > 0:
+            logger.warning(
+                f"IdentityMatcher: Deduplication rejected {total_rejected} identity "
+                f"assignments for {duplicated_primary_ids} primary_ids (securities only)"
+            )
+
+        return deduplicated
 
     async def _run_matching_for_group(
         self,
@@ -165,6 +227,7 @@ class IdentityMatcher(DatabaseHandler):
             )
             SELECT
                 i.id as asset_id,
+                i.matcher_symbol as symbol,
                 im.primary_id,
                 im.symbol as identity_symbol,
                 im.name as identity_name,
@@ -219,7 +282,7 @@ class IdentityMatcher(DatabaseHandler):
             candidates AS (
                 SELECT
                     ai.id as asset_id,
-                    ai.matcher_symbol,
+                    ai.matcher_symbol as symbol,
                     ai.name as asset_name,
                     ai.exchange as asset_exchange,
                     cand.primary_id,
@@ -244,6 +307,7 @@ class IdentityMatcher(DatabaseHandler):
             scored AS (
                 SELECT
                     asset_id,
+                    symbol,
                     primary_id,
                     identity_symbol,
                     identity_name,
@@ -262,6 +326,7 @@ class IdentityMatcher(DatabaseHandler):
             ranked AS (
                 SELECT
                     asset_id,
+                    symbol,
                     primary_id,
                     identity_symbol,
                     identity_name,
@@ -275,6 +340,7 @@ class IdentityMatcher(DatabaseHandler):
             )
             SELECT
                 asset_id,
+                symbol,
                 primary_id,
                 identity_symbol,
                 identity_name,

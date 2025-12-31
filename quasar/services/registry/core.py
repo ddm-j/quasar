@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
 from fastapi.responses import Response
 from urllib.parse import unquote_plus
-from asyncpg.exceptions import UndefinedFunctionError
+from asyncpg.exceptions import UndefinedFunctionError, UniqueViolationError
 import yaml
 
 from quasar.lib.common.database_handler import DatabaseHandler
@@ -346,10 +346,10 @@ class Registry(DatabaseHandler, APIHandler):
             matches: List of MatchResult from identity matcher.
 
         Returns:
-            Dict with counts: identified, skipped, failed
+            Dict with counts: identified, skipped, failed, constraint_rejected
         """
         if not matches:
-            return {'identified': 0, 'skipped': 0, 'failed': 0}
+            return {'identified': 0, 'skipped': 0, 'failed': 0, 'constraint_rejected': 0}
 
         update_query = """
             UPDATE assets
@@ -363,7 +363,7 @@ class Registry(DatabaseHandler, APIHandler):
             RETURNING id
         """
 
-        stats = {'identified': 0, 'skipped': 0, 'failed': 0}
+        stats = {'identified': 0, 'skipped': 0, 'failed': 0, 'constraint_rejected': 0}
 
         async with self.pool.acquire() as conn:
             for match in matches:
@@ -373,12 +373,25 @@ class Registry(DatabaseHandler, APIHandler):
                         match.asset_id,
                         match.primary_id,
                         match.confidence,
-                        match.match_type
+                        match.match_type,
+                        match.identity_symbol
                     )
                     if result:
                         stats['identified'] += 1
                     else:
                         stats['skipped'] += 1
+                except UniqueViolationError as e:
+                    # This is expected when deduplication missed a duplicate or
+                    # when re-attempting identification of previously rejected assets
+                    if 'idx_assets_unique_securities_primary_id' in str(e):
+                        logger.info(
+                            f"Identity rejected by constraint for asset {match.identity_symbol} "
+                            f"(primary_id={match.primary_id}): another asset already has this identity"
+                        )
+                        stats['constraint_rejected'] += 1
+                    else:
+                        logger.warning(f"Unexpected unique violation for asset {match.asset_id}: {e}")
+                        stats['failed'] += 1
                 except Exception as e:
                     logger.warning(f"Failed to apply match for asset {match.asset_id}: {e}")
                     stats['failed'] += 1
