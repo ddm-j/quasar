@@ -134,7 +134,7 @@ const Assets = () => {
     };
 
     // Factory function to create dropdown filter component
-    const createDropdownFilter = (columnKey, options) => {
+    const createDropdownFilter = (columnKey, options, setColumnFilter) => {
         return (columnValues, setFilterValue, currentFilterValue) => {
             const currentLabel = options.find(opt => opt.value === currentFilterValue)?.label || 'All';
 
@@ -148,7 +148,22 @@ const Assets = () => {
                             <CDropdownItem
                                 key={option.value}
                                 active={option.value === currentFilterValue}
-                                onClick={() => setFilterValue(option.value)}
+                                onClick={() => {
+                                    // Update CSmartTable's internal state
+                                    setFilterValue(option.value);
+                                    // Update parent's columnFilter state for API calls
+                                    setColumnFilter(prev => {
+                                        const updated = { ...prev };
+                                        if (option.value === '') {
+                                            // Remove filter when "All" is selected
+                                            delete updated[columnKey];
+                                        } else {
+                                            // Set filter value
+                                            updated[columnKey] = option.value;
+                                        }
+                                        return updated;
+                                    });
+                                }}
                             >
                                 {option.label}
                             </CDropdownItem>
@@ -176,7 +191,7 @@ const Assets = () => {
                 if (config.filterType === FILTER_TYPES.DROPDOWN) {
                     const options = getDropdownOptions(config.key);
                     if (options) {
-                        column.filter = createDropdownFilter(config.key, options);
+                        column.filter = createDropdownFilter(config.key, options, setColumnFilter);
                     }
                     column.sorter = false; // Dropdowns typically don't sort
                 } else if (config.filterType === FILTER_TYPES.NONE) {
@@ -186,7 +201,7 @@ const Assets = () => {
 
                 return column;
             });
-    }, [visibleColumns, columnFilter]);
+    }, [visibleColumns, columnFilter, setColumnFilter]);
 
     // Generate scoped columns for custom rendering
     const scopedColumns = useMemo(() => {
