@@ -1005,8 +1005,11 @@ class Registry(DatabaseHandler, APIHandler):
             sort_order_str = params.sort_order
 
             valid_sort_columns = [
-                'class_name', 'class_type', 'symbol', 'name', 
-                'exchange', 'asset_class', 'base_currency', 'quote_currency', 'country'
+                'id', 'class_name', 'class_type', 'symbol', 'name', 'exchange',
+                'asset_class', 'base_currency', 'quote_currency', 'country',
+                'primary_id', 'primary_id_source', 'matcher_symbol', 'identity_conf',
+                'identity_match_type', 'identity_updated_at', 'asset_class_group',
+                'sym_norm_full', 'sym_norm_root', 'external_id'
             ]
             
             sort_by_cols = [col.strip() for col in sort_by_str.split(',')]
@@ -1065,10 +1068,22 @@ class Registry(DatabaseHandler, APIHandler):
             add_filter('name', params.name_like, partial_match=True)
             add_filter('exchange', params.exchange_like, partial_match=True)
 
+            # New identity field filters
+            add_filter('primary_id', params.primary_id_like, partial_match=True)
+            add_filter('primary_id_source', params.primary_id_source)
+            add_filter('matcher_symbol', params.matcher_symbol_like, partial_match=True)
+            add_filter('identity_match_type', params.identity_match_type)
+            add_filter('asset_class_group', params.asset_class_group)
+
             where_clause = " AND ".join(filters) if filters else "TRUE"
 
             # Build queries
-            select_columns = "id, class_name, class_type, external_id, primary_id, symbol, name, exchange, asset_class, base_currency, quote_currency, country"
+            select_columns = """
+                id, class_name, class_type, external_id, primary_id, primary_id_source,
+                symbol, matcher_symbol, name, exchange, asset_class, base_currency,
+                quote_currency, country, identity_conf, identity_match_type,
+                identity_updated_at, asset_class_group, sym_norm_full, sym_norm_root
+            """
             
             data_query = f"""
                 SELECT {select_columns}

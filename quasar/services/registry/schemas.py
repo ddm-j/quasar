@@ -2,6 +2,7 @@
 Registry-specific Pydantic schemas for API request/response models.
 """
 from typing import Optional, List, Literal, Dict, Any, Union
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 from quasar.lib.enums import AssetClass
@@ -71,6 +72,13 @@ class AssetQueryParams(BaseModel):
     name_like: Optional[str] = Field(default=None, description="Partial match for name")
     exchange_like: Optional[str] = Field(default=None, description="Partial match for exchange")
 
+    # New identity field filters
+    primary_id_like: Optional[str] = Field(default=None, description="Partial match for primary_id")
+    primary_id_source: Optional[str] = Field(default=None, description="Exact match: 'provider', 'matcher', 'manual'")
+    matcher_symbol_like: Optional[str] = Field(default=None, description="Partial match for matcher_symbol")
+    identity_match_type: Optional[str] = Field(default=None, description="Exact match: 'exact_alias', 'fuzzy_symbol'")
+    asset_class_group: Optional[str] = Field(default=None, description="Exact match: 'securities', 'crypto'")
+
 
 # Asset Item
 class AssetItem(BaseModel):
@@ -80,13 +88,23 @@ class AssetItem(BaseModel):
     class_type: str
     external_id: Optional[str] = None
     primary_id: Optional[str] = None
+    primary_id_source: Optional[str] = None  # NEW
     symbol: str
+    matcher_symbol: Optional[str] = None  # NEW
     name: Optional[str] = None
     exchange: Optional[str] = None
     asset_class: Optional[AssetClass] = None
     base_currency: Optional[str] = None
     quote_currency: Optional[str] = None
     country: Optional[str] = None
+    # Identity matching fields
+    identity_conf: Optional[float] = None  # NEW
+    identity_match_type: Optional[str] = None  # NEW
+    identity_updated_at: Optional[datetime] = None  # NEW
+    # Generated columns
+    asset_class_group: Optional[str] = None  # NEW
+    sym_norm_full: Optional[str] = None  # NEW
+    sym_norm_root: Optional[str] = None  # NEW
 
 
 # Asset Response
