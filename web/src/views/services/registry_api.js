@@ -370,3 +370,92 @@ export const getAssets = async (params = {}) => {
 
   return data; // Expected format: { items: [], total_items: X, limit: Y, offset: Z, ... }
 };
+
+/**
+ * Fetches provider configuration preferences.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Provider preferences response.
+ */
+export const getProviderConfig = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Updates provider configuration preferences.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @param {object} config - Configuration update object.
+ * @returns {Promise<object>} - Updated provider preferences response.
+ */
+export const updateProviderConfig = async (classType, className, config) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config?${params.toString()}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Fetches available quote currencies for a provider's crypto assets.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Available quote currencies response.
+ */
+export const getAvailableQuoteCurrencies = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config/available-quote-currencies?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};

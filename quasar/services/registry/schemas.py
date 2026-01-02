@@ -184,7 +184,7 @@ class SuggestionItem(BaseModel):
 
 class SuggestionsResponse(BaseModel):
     """Response payload for suggestions endpoint with cursor-based pagination.
-    
+
     Cursor pagination provides consistent, efficient paging through large result sets.
     Use `next_cursor` for subsequent requests instead of incrementing offset.
     """
@@ -196,3 +196,35 @@ class SuggestionsResponse(BaseModel):
     next_cursor: Optional[str] = None  # Opaque cursor for next page
     has_more: bool = False  # True if more results available
 
+
+# Provider Configuration Schemas
+class CryptoPreferences(BaseModel):
+    """Crypto-specific trading preferences."""
+    preferred_quote_currency: Optional[str] = Field(
+        default=None,
+        description="Preferred quote currency for crypto pairs (e.g., USDC, USDT, USD)"
+    )
+
+
+class ProviderPreferences(BaseModel):
+    """Provider configuration preferences."""
+    crypto: Optional[CryptoPreferences] = Field(default=None)
+
+
+class ProviderPreferencesResponse(BaseModel):
+    """Response model for provider preferences endpoint."""
+    class_name: str
+    class_type: str
+    preferences: ProviderPreferences
+
+
+class ProviderPreferencesUpdate(BaseModel):
+    """Request model for updating provider preferences (partial update)."""
+    crypto: Optional[CryptoPreferences] = Field(default=None)
+
+
+class AvailableQuoteCurrenciesResponse(BaseModel):
+    """Response model for available quote currencies endpoint."""
+    class_name: str
+    class_type: str
+    available_quote_currencies: List[str]

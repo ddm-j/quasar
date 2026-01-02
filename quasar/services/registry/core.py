@@ -20,7 +20,10 @@ from quasar.services.registry.schemas import (
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
     AssetMappingCreate, AssetMappingCreateRequest, AssetMappingCreateResponse,
     AssetMappingResponse, AssetMappingUpdate,
-    SuggestionsResponse, SuggestionItem
+    SuggestionsResponse, SuggestionItem,
+    ProviderPreferences, ProviderPreferencesResponse,
+    ProviderPreferencesUpdate, AvailableQuoteCurrenciesResponse,
+    CryptoPreferences
 )
 from quasar.services.registry.matcher import IdentityMatcher, MatchResult
 
@@ -171,6 +174,26 @@ class Registry(DatabaseHandler, APIHandler):
             self.handle_get_asset_mapping_suggestions,
             methods=['GET'],
             response_model=SuggestionsResponse
+        )
+
+        # Provider Configuration Routes (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/config',
+            self.handle_get_provider_config,
+            methods=['GET'],
+            response_model=ProviderPreferencesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config',
+            self.handle_update_provider_config,
+            methods=['PUT'],
+            response_model=ProviderPreferencesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config/available-quote-currencies',
+            self.handle_get_available_quote_currencies,
+            methods=['GET'],
+            response_model=AvailableQuoteCurrenciesResponse
         )
 
     # OBJECT LIFECYCLE
@@ -1848,3 +1871,172 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.error(f"Registry.handle_delete_asset_mapping: Unexpected error deleting asset mapping: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+    # # PROVIDER CONFIGURATION
+    async def handle_get_provider_config(
+        self,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> ProviderPreferencesResponse:
+        """Get provider configuration preferences.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            ProviderPreferencesResponse: Current preferences for the provider.
+        """
+        logger.info(f"Registry.handle_get_provider_config: Getting config for {class_name}/{class_type}")
+
+        # First verify provider exists
+        exists_query = """
+            SELECT 1 FROM code_registry WHERE class_name = $1 AND class_type = $2
+        """
+        preferences_query = """
+            SELECT preferences
+            FROM code_registry
+            WHERE class_name = $1 AND class_type = $2
+        """
+
+        try:
+            exists = await self.pool.fetchval(exists_query, class_name, class_type)
+            if not exists:
+                logger.warning(f"Registry.handle_get_provider_config: Provider {class_name}/{class_type} not found")
+                raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+            preferences_data = await self.pool.fetchval(preferences_query, class_name, class_type)
+
+            # Convert JSONB to ProviderPreferences model, defaulting to empty if null
+            if preferences_data:
+                # Handle both dict (parsed JSONB) and string (raw JSONB) cases
+                if isinstance(preferences_data, str):
+                    preferences_data = json.loads(preferences_data)
+                preferences = ProviderPreferences(**preferences_data)
+            else:
+                preferences = ProviderPreferences()
+
+            logger.info(f"Registry.handle_get_provider_config: Retrieved config for {class_name}/{class_type}")
+            return ProviderPreferencesResponse(
+                class_name=class_name,
+                class_type=class_type,
+                preferences=preferences
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_provider_config: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving provider config")
+
+    async def handle_update_provider_config(
+        self,
+        update: ProviderPreferencesUpdate,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> ProviderPreferencesResponse:
+        """Update provider configuration preferences.
+
+        Args:
+            update (ProviderPreferencesUpdate): Preferences to update.
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            ProviderPreferencesResponse: Updated preferences for the provider.
+        """
+        logger.info(f"Registry.handle_update_provider_config: Updating config for {class_name}/{class_type}")
+
+        # First verify provider exists
+        exists_query = """
+            SELECT 1 FROM code_registry WHERE class_name = $1 AND class_type = $2
+        """
+        exists = await self.pool.fetchval(exists_query, class_name, class_type)
+        if not exists:
+            logger.warning(f"Registry.handle_update_provider_config: Provider {class_name}/{class_type} not found")
+            raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+        # Update preferences using JSONB merge
+        update_query = """
+            UPDATE code_registry
+            SET preferences = jsonb_strip_nulls(COALESCE(preferences, '{}'::jsonb) || $3::jsonb)
+            WHERE class_name = $1 AND class_type = $2
+            RETURNING preferences
+        """
+
+        try:
+            # Convert update model to dict, removing None values
+            update_dict = update.model_dump(exclude_unset=True, exclude_none=True)
+            if not update_dict:
+                logger.warning(f"Registry.handle_update_provider_config: No updates provided for {class_name}/{class_type}")
+                raise HTTPException(status_code=400, detail="No preferences provided for update")
+
+            # Convert dict to JSON string for asyncpg JSONB parameter
+            update_json = json.dumps(update_dict)
+
+            updated_preferences = await self.pool.fetchval(
+                update_query,
+                class_name,
+                class_type,
+                update_json
+            )
+
+            # Convert back to ProviderPreferences model
+            if updated_preferences:
+                # Handle both dict (parsed JSONB) and string (raw JSONB) cases
+                if isinstance(updated_preferences, str):
+                    updated_preferences = json.loads(updated_preferences)
+                preferences = ProviderPreferences(**updated_preferences)
+            else:
+                preferences = ProviderPreferences()
+
+            logger.info(f"Registry.handle_update_provider_config: Updated config for {class_name}/{class_type}")
+            return ProviderPreferencesResponse(
+                class_name=class_name,
+                class_type=class_type,
+                preferences=preferences
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_update_provider_config: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while updating provider config")
+
+    async def handle_get_available_quote_currencies(
+        self,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> AvailableQuoteCurrenciesResponse:
+        """Get available quote currencies for crypto assets of a provider.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            AvailableQuoteCurrenciesResponse: List of available quote currencies.
+        """
+        logger.info(f"Registry.handle_get_available_quote_currencies: Getting quote currencies for {class_name}/{class_type}")
+
+        query = """
+            SELECT DISTINCT quote_currency
+            FROM assets
+            WHERE class_name = $1
+              AND class_type = $2
+              AND asset_class_group = 'crypto'
+              AND quote_currency IS NOT NULL
+            ORDER BY quote_currency
+        """
+
+        try:
+            records = await self.pool.fetch(query, class_name, class_type)
+            quote_currencies = [record['quote_currency'] for record in records]
+
+            logger.info(f"Registry.handle_get_available_quote_currencies: Found {len(quote_currencies)} quote currencies for {class_name}/{class_type}")
+            return AvailableQuoteCurrenciesResponse(
+                class_name=class_name,
+                class_type=class_type,
+                available_quote_currencies=quote_currencies
+            )
+        except Exception as e:
+            logger.error(f"Registry.handle_get_available_quote_currencies: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving available quote currencies")

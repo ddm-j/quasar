@@ -15,16 +15,18 @@ import {
  } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 // Import icons you'll use in this card
-import { 
-  cilStorage, 
-  cilCode, 
-  cilCash, 
-  cilLibraryBuilding, 
+import {
+  cilStorage,
+  cilCode,
+  cilCash,
+  cilLibraryBuilding,
   cilWarning,
   cilTrash,
-  cilSync, 
-  cilCheckCircle } from '@coreui/icons'
+  cilSync,
+  cilCheckCircle,
+  cilSettings } from '@coreui/icons'
 import { updateAssetsForClass, deleteRegisteredClass } from '../services/registry_api'
+import ProviderConfigModal from './ProviderConfigModal'
 
 // Helper to choose an icon based on class_type
 const getIconForType = (classType) => {
@@ -43,6 +45,7 @@ const ClassSummaryCard = ({ class_summary, displayToast, onAssetsRefreshed }) =>
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false)
+    const [isConfigModalVisible, setIsConfigModalVisible] = useState(false)
 
     const handleRefresh = async () => {
         setIsRefreshing(true)
@@ -153,6 +156,17 @@ const ClassSummaryCard = ({ class_summary, displayToast, onAssetsRefreshed }) =>
               </CButton>
               <CButton
                 variant="ghost"
+                color="body"
+                size="sm"
+                onClick={() => setIsConfigModalVisible(true)}
+                disabled={isRefreshing || isDeleting}
+                className="p-1 me-2"
+                title="Provider Settings"
+              >
+                <CIcon icon={cilSettings} className="sm" />
+              </CButton>
+              <CButton
+                variant="ghost"
                 color="danger" // Make it red
                 size="sm"
                 onClick={openDeleteModal}
@@ -209,6 +223,14 @@ const ClassSummaryCard = ({ class_summary, displayToast, onAssetsRefreshed }) =>
           </CButton>
         </CModalFooter>
       </CModal>
+
+      <ProviderConfigModal
+        visible={isConfigModalVisible}
+        onClose={() => setIsConfigModalVisible(false)}
+        classType={class_summary.class_type}
+        className={class_summary.class_name}
+        displayToast={displayToast}
+      />
     </>
   )
 }
