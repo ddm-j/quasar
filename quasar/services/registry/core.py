@@ -26,6 +26,7 @@ from quasar.services.registry.schemas import (
     CryptoPreferences
 )
 from quasar.services.registry.matcher import IdentityMatcher, MatchResult
+from quasar.services.registry.mapper import AutomatedMapper, MappingCandidate
 
 import logging
 logger = logging.getLogger(__name__)
@@ -97,6 +98,9 @@ class Registry(DatabaseHandler, APIHandler):
 
         # Initialize Matcher
         self.matcher = IdentityMatcher(dsn=dsn, pool=pool)
+
+        # Initialize AutomatedMapper
+        self.mapper = AutomatedMapper(dsn=dsn, pool=pool)
 
 
     def _setup_routes(self) -> None:
@@ -208,6 +212,7 @@ class Registry(DatabaseHandler, APIHandler):
         # Start Database
         await self.init_pool()
         self.matcher._pool = self.pool  # Share the initialized pool with the matcher
+        self.mapper._pool = self.pool  # Share the initialized pool with the mapper
         await self._run_enum_guard()
         await self._seed_identity_manifests()
 
@@ -827,6 +832,9 @@ class Registry(DatabaseHandler, APIHandler):
             'failed_symbols': 0,
             'identity_matched': 0,
             'identity_skipped': 0,
+            'mappings_created': 0,
+            'mappings_skipped': 0,
+            'mappings_failed': 0,
             'status': 200
         }
 
@@ -1004,6 +1012,100 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.warning(f"Registry._update_assets_for_provider: Identity matching failed for {class_name}: {e}")
             # Don't fail the whole operation, just log the warning
+
+        # Run automated mapping for newly identified assets
+        try:
+            logger.info(
+                f"Registry._update_assets_for_provider: Starting automated mapping "
+                f"for {class_name} ({class_type})"
+            )
+
+            mapping_candidates = await self.mapper.generate_mapping_candidates_for_provider(
+                class_name, class_type
+            )
+
+            if mapping_candidates:
+                mapping_stats = await self._apply_automated_mappings(mapping_candidates)
+                stats['mappings_created'] = mapping_stats['created']
+                stats['mappings_skipped'] = mapping_stats['skipped']
+                stats['mappings_failed'] = mapping_stats['failed']
+
+                logger.info(
+                    f"Registry._update_assets_for_provider: Automated mapping complete "
+                    f"for {class_name}: created={mapping_stats['created']}, "
+                    f"skipped={mapping_stats['skipped']}, failed={mapping_stats['failed']}"
+                )
+            else:
+                logger.info(
+                    f"Registry._update_assets_for_provider: No mapping candidates "
+                    f"generated for {class_name} ({class_type})"
+                )
+        except Exception as e:
+            logger.warning(
+                f"Registry._update_assets_for_provider: Automated mapping failed "
+                f"for {class_name}: {e}"
+            )
+            # Don't fail the whole operation, just log the warning
+
+        return stats
+
+    async def _apply_automated_mappings(
+        self,
+        candidates: List[MappingCandidate]
+    ) -> Dict[str, int]:
+        """Bulk insert mapping candidates using prepared statements and savepoints.
+
+        Args:
+            candidates: List of MappingCandidate objects to insert
+
+        Returns:
+            Dict with 'created', 'skipped', 'failed' counts
+        """
+        stats = {'created': 0, 'skipped': 0, 'failed': 0}
+
+        if not candidates:
+            return stats
+
+        mapping_insert_query = """
+            INSERT INTO asset_mapping (common_symbol, class_name, class_type, class_symbol, is_active)
+            VALUES ($1, $2, $3, $4, true)
+            ON CONFLICT (class_name, class_type, class_symbol) DO NOTHING
+            RETURNING common_symbol;
+        """
+
+        async with self.pool.acquire() as conn:
+            prepared_insert = await conn.prepare(mapping_insert_query)
+            savepoint_counter = 0
+            async with conn.transaction():
+                async def _exec_savepoint(cmd: str) -> None:
+                    """Execute savepoint commands without aborting transaction."""
+                    try:
+                        await conn.execute(cmd)
+                    except Exception as exc:
+                        logger.warning(f"Registry._apply_automated_mappings: Savepoint command '{cmd}' failed: {exc}", exc_info=True)
+
+                for candidate in candidates:
+                    savepoint_name = f"mapping_insert_{savepoint_counter}"
+                    savepoint_counter += 1
+                    await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+
+                    try:
+                        result = await prepared_insert.fetchrow(
+                            candidate.common_symbol,
+                            candidate.class_name,
+                            candidate.class_type,
+                            candidate.class_symbol
+                        )
+                        if result:
+                            stats['created'] += 1
+                        else:
+                            # ON CONFLICT DO NOTHING - mapping already exists
+                            stats['skipped'] += 1
+                        await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
+                    except Exception as e:
+                        logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
+                        stats['failed'] += 1
+                        await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
 
         return stats
 

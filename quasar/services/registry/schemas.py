@@ -30,6 +30,9 @@ class UpdateAssetsResponse(BaseModel):
     failed_symbols: int = 0
     identity_matched: int = 0      # Assets identified by matcher
     identity_skipped: int = 0      # Assets skipped (already had primary_id)
+    mappings_created: int = 0      # Automated mappings created
+    mappings_skipped: int = 0      # Automated mappings skipped (already exist)
+    mappings_failed: int = 0       # Automated mappings that failed to create
     status: int = 200
     error: Optional[str] = None
     message: Optional[str] = None
