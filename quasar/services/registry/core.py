@@ -23,7 +23,7 @@ from quasar.services.registry.schemas import (
     SuggestionsResponse, SuggestionItem,
     ProviderPreferences, ProviderPreferencesResponse,
     ProviderPreferencesUpdate, AvailableQuoteCurrenciesResponse,
-    CryptoPreferences
+    CryptoPreferences, CommonSymbolQueryParams, CommonSymbolItem, CommonSymbolResponse
 )
 from quasar.services.registry.matcher import IdentityMatcher, MatchResult
 from quasar.services.registry.mapper import AutomatedMapper, MappingCandidate
@@ -170,6 +170,20 @@ class Registry(DatabaseHandler, APIHandler):
             self.handle_delete_asset_mapping,
             methods=['DELETE'],
             status_code=204
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/{common_symbol}',
+            self.handle_get_asset_mappings_for_symbol,
+            methods=['GET'],
+            response_model=List[AssetMappingResponse]
+        )
+
+        # Common Symbols Routes (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/common-symbols',
+            self.handle_get_common_symbols,
+            methods=['GET'],
+            response_model=CommonSymbolResponse
         )
 
         # Asset Mapping Suggestions (public API)
@@ -1255,6 +1269,121 @@ class Registry(DatabaseHandler, APIHandler):
             logger.error(f"Registry.handle_get_assets: Error fetching assets: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching assets")
 
+    async def handle_get_common_symbols(self, params: CommonSymbolQueryParams = Depends()) -> CommonSymbolResponse:
+        """Return common symbols with optional filtering, sorting, and pagination.
+
+        Args:
+            params (CommonSymbolQueryParams): Query parameters parsed by FastAPI.
+
+        Returns:
+            CommonSymbolResponse: Paginated common symbol list and counts.
+        """
+        logger.info("Registry.handle_get_common_symbols: Received request for common symbols.")
+
+        try:
+            # Pagination (already validated by Pydantic)
+            limit = params.limit
+            offset = params.offset
+
+            # Sorting
+            sort_by_str = params.sort_by
+            sort_order_str = params.sort_order
+
+            valid_sort_columns = ['common_symbol', 'provider_count']
+
+            sort_by_cols = [col.strip() for col in sort_by_str.split(',')]
+            sort_orders = [order.strip().lower() for order in sort_order_str.split(',')]
+
+            if not all(col in valid_sort_columns for col in sort_by_cols):
+                raise HTTPException(status_code=400, detail="Invalid sort_by column")
+            if not all(order in ['asc', 'desc'] for order in sort_orders):
+                raise HTTPException(status_code=400, detail="Invalid sort_order value")
+
+            if len(sort_orders) == 1 and len(sort_by_cols) > 1: # Apply single order to all sort columns
+                sort_orders = [sort_orders[0]] * len(sort_by_cols)
+            elif len(sort_orders) != len(sort_by_cols):
+                raise HTTPException(status_code=400, detail="Mismatch between sort_by and sort_order counts")
+
+            order_by_clauses = [f"{col} {order.upper()}" for col, order in zip(sort_by_cols, sort_orders)]
+            order_by_sql = ", ".join(order_by_clauses)
+
+            # Filtering
+            filters = []
+            db_params: List[Any] = []
+            param_idx = 1
+
+            def add_filter(column: str, value: Optional[str], partial_match: bool = False, is_list: bool = False):
+                nonlocal param_idx
+                if value is not None and value.strip() != "":
+                    decoded_value = unquote_plus(value.strip())
+                    if is_list:
+                        # Assuming comma-separated list for IN clause
+                        list_values = [v.strip() for v in decoded_value.split(',')]
+                        if list_values:
+                            placeholders = ', '.join([f'${param_idx + i}' for i in range(len(list_values))])
+                            filters.append(f"{column} IN ({placeholders})")
+                            db_params.extend(list_values)
+                            param_idx += len(list_values)
+                    elif partial_match:
+                        filters.append(f"LOWER({column}) LIKE LOWER(${param_idx})")
+                        db_params.append(f"%{decoded_value}%")
+                        param_idx += 1
+                    else: # Exact match
+                        filters.append(f"{column} = ${param_idx}")
+                        db_params.append(decoded_value)
+                        param_idx += 1
+
+            add_filter('common_symbol', params.common_symbol_like, partial_match=True)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+
+            # Build queries
+            data_query = f"""
+                SELECT common_symbol, COUNT(DISTINCT (class_name, class_type)) as provider_count
+                FROM asset_mapping
+                WHERE {where_clause}
+                GROUP BY common_symbol
+                ORDER BY {order_by_sql}
+                LIMIT ${param_idx} OFFSET ${param_idx + 1};
+            """
+            count_query = f"""
+                SELECT COUNT(DISTINCT common_symbol) as total_items
+                FROM asset_mapping
+                WHERE {where_clause};
+            """
+
+            data_params = db_params + [limit, offset]
+            count_params = db_params # Count query doesn't use limit/offset
+
+            async with self.pool.acquire() as conn:
+                logger.debug(f"Executing data query: {data_query} with params: {data_params}")
+                common_symbol_records = await conn.fetch(data_query, *data_params)
+
+                logger.debug(f"Executing count query: {count_query} with params: {count_params}")
+                total_items_record = await conn.fetchrow(count_query, *count_params)
+
+            common_symbol_items = [CommonSymbolItem(**dict(record)) for record in common_symbol_records]
+            total_items = total_items_record['total_items'] if total_items_record else 0
+
+            logger.info(f"Registry.handle_get_common_symbols: Returning {len(common_symbol_items)} common symbols out of {total_items} total matching criteria.")
+            return CommonSymbolResponse(
+                items=common_symbol_items,
+                total_items=total_items,
+                limit=limit,
+                offset=offset,
+                page=(offset // limit) + 1 if limit > 0 else 1,
+                total_pages=(total_items + limit - 1) // limit if limit > 0 else 1
+            )
+
+        except HTTPException:
+            raise
+        except ValueError as ve:
+            logger.warning(f"Registry.handle_get_common_symbols: Invalid input value: {ve}")
+            raise HTTPException(status_code=400, detail=f"Invalid input value: {ve}")
+        except Exception as e:
+            logger.error(f"Registry.handle_get_common_symbols: Error fetching common symbols: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while fetching common symbols")
+
     # # GET REGISTERED CLASSES
     async def handle_get_classes_summary(self) -> List[ClassSummaryItem]:
         """Return summary information for registered providers and brokers."""
@@ -1471,6 +1600,56 @@ class Registry(DatabaseHandler, APIHandler):
 
         except Exception as e:
             logger.error(f"Registry.handle_get_asset_mappings: Error fetching asset mappings: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while fetching asset mappings")
+
+    async def handle_get_asset_mappings_for_symbol(
+        self,
+        common_symbol: str
+    ) -> List[AssetMappingResponse]:
+        """Get all asset mappings for a specific common symbol, including asset details.
+
+        Args:
+            common_symbol (str): The common symbol to filter by.
+
+        Returns:
+            List[AssetMappingResponse]: All mappings for the specified common symbol with asset details.
+        """
+        logger.info(f"Registry.handle_get_asset_mappings_for_symbol: Received request for asset mappings with common_symbol='{common_symbol}'.")
+
+        query = """
+            SELECT
+                am.common_symbol,
+                am.class_name,
+                am.class_type,
+                am.class_symbol,
+                am.is_active,
+                a.primary_id,
+                a.asset_class
+            FROM asset_mapping am
+            LEFT JOIN assets a ON am.class_name = a.class_name
+                               AND am.class_type = a.class_type
+                               AND am.class_symbol = a.symbol
+            WHERE am.common_symbol = $1
+            ORDER BY am.class_name, am.class_type, am.class_symbol
+        """
+
+        try:
+            mappings_records = await self.pool.fetch(query, common_symbol)
+
+            # Convert records to dict and handle potential None values
+            mappings_list = []
+            for record in mappings_records:
+                record_dict = dict(record)
+                # Ensure asset_class is properly handled (it might be None)
+                if record_dict.get('asset_class') is None:
+                    record_dict['asset_class'] = None
+                mappings_list.append(AssetMappingResponse(**record_dict))
+
+            logger.info(f"Registry.handle_get_asset_mappings_for_symbol: Returning {len(mappings_list)} asset mappings for common_symbol='{common_symbol}'.")
+            return mappings_list
+
+        except Exception as e:
+            logger.error(f"Registry.handle_get_asset_mappings_for_symbol: Error fetching asset mappings for common_symbol='{common_symbol}': {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching asset mappings")
 
     async def handle_get_asset_mapping_suggestions(

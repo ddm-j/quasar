@@ -1,5 +1,4 @@
-// Basic, empty component for now
-import { React, useState, useEffect, useRef } from 'react';
+﻿import { React, useState, useEffect, useRef } from 'react';
 import { 
     CCard, 
     CCardBody, 
@@ -13,6 +12,9 @@ import {
     CToast,
     CToastHeader,
     CToastBody,
+    CNav,
+    CNavItem,
+    CNavLink,
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react'
 import { 
@@ -26,6 +28,8 @@ import MappingAddModal from './MappingAddModal';
 import MappingEditModal from './MappingEditModal';
 // Suggest Mappings Modal
 import SuggestMappingsModal from './SuggestMappingsModal';
+// Common Symbols Tab
+import CommonSymbolsTab from './CommonSymbolsTab';
 
 // API Imports
 import { 
@@ -44,6 +48,9 @@ const Mappings = () => {
   const [currentMapping, setCurrentMapping] = useState(null);
   const [toastToShow, setToastToShow] = useState(null);
   const toasterRef = useRef(null);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('mappings');
 
   const pushToast = ({ title, body, color = 'danger', icon = null }) => {
     const toast = (
@@ -64,7 +71,6 @@ const Mappings = () => {
     setError(null);
     try {
       const data = await getAssetMappings();
-      console.log('Fetched Mappings:', data); // Debugging log
       setMappings(data);
     } catch (err) {
       setError(err.message || 'Failed to fetch mappings');
@@ -73,15 +79,17 @@ const Mappings = () => {
     }
   }
   useEffect(() => {
-    fetchMappings();
-  }, []);
+    if (activeTab === 'mappings') {
+      fetchMappings();
+    }
+  }, [activeTab]);
 
   // Define columns for CSmartTable
   const columns = [
-    { key: 'common_symbol', label: "Common Symbol", _props: { className: 'fw-semibold' } },
-    { key: 'class_symbol', label: "Class Symbol" },
-    { key: 'class_name', label: "Class Name" },
-    { key: 'class_type', label: "Class Type" },
+    { key: 'common_symbol', label: 'Common Symbol', _props: { className: 'fw-semibold' } },
+    { key: 'class_symbol', label: 'Class Symbol' },
+    { key: 'class_name', label: 'Class Name' },
+    { key: 'class_type', label: 'Class Type' },
     {
       key: 'is_active',
       label: 'Active',
@@ -91,26 +99,26 @@ const Mappings = () => {
       _props: { className: 'text-center' }
     },
     {
-        key: 'actions',
-        label: 'Actions',
-        _style: { width: '15%' },
-        filter: false,
-        sorter: false,
-        _props: { className: 'text-center' },
+      key: 'actions',
+      label: 'Actions',
+      _style: { width: '15%' },
+      filter: false,
+      sorter: false,
+      _props: { className: 'text-center' },
     }
   ]
 
 
   const getClassBadge = (class_type) => {
-  switch (class_type) {
+    switch (class_type) {
       case 'provider': {
-      return 'primary'
+        return 'primary'
       }
       case 'broker': {
-      return 'secondary'
+        return 'secondary'
       }
       default: {
-      return 'primary'
+        return 'primary'
       }
     }
   }
@@ -120,7 +128,7 @@ const Mappings = () => {
 
   const handleDelete = async (item) => {
     // Confirm deletion
-    const confirmMessage = `Are you sure you want to delete the mapping for "${item.common_symbol}" (${item.class_name}/${item.class_symbol})?`;
+    const confirmMessage = `Are you sure you want to delete the mapping for ${item.common_symbol} (${item.class_name}/${item.class_type})?`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -128,12 +136,10 @@ const Mappings = () => {
     try {
       await deleteAssetMapping(item.class_name, item.class_type, item.class_symbol);
       // Refresh list after successful deletion
-      // Log out arguments to the deleteAssetMapping function
-      console.log('Delete arguments:', item.class_name, item.class_type, item.class_symbol);
       await fetchMappings();
     } catch (err) {
       setError(err.message || 'Failed to delete mapping');
-      alert(`Error deleting mapping: ${err.message || 'Unknown error'}`);
+      alert(`Error deleting mapping: ${err.message}`);
     }
   };
 
@@ -142,118 +148,141 @@ const Mappings = () => {
     setIsEditModalVisible(true);
   };
   const handleAdd = () => {
-    // setCurrentItem(null); // For a new item
     setIsAddModalVisible(true);
-    console.log('Add new mapping');
   }
 
   return (
     <>
-        <CToaster ref={toasterRef} push={toastToShow} placement="top-end" />
-        <CRow>
+      <CToaster ref={toasterRef} push={toastToShow} placement="top-end" />
+      <CRow>
         <CCol xs={12}>
+          {/* Tab Navigation */}
+          <CNav variant="tabs" className="mb-3">
+            <CNavItem>
+              <CNavLink
+                active={activeTab === 'mappings'}
+                onClick={() => setActiveTab('mappings')}
+                style={{ cursor: 'pointer' }}
+              >
+                Mappings
+              </CNavLink>
+            </CNavItem>
+            <CNavItem>
+              <CNavLink
+                active={activeTab === 'common-symbols'}
+                onClick={() => setActiveTab('common-symbols')}
+                style={{ cursor: 'pointer' }}
+              >
+                Common Symbols
+              </CNavLink>
+            </CNavItem>
+          </CNav>
+
+          {/* Tab Content - Use conditional rendering to prevent mounting inactive tabs */}
+          {activeTab === 'mappings' && (
             <CCard>
-            <CCardHeader>
+              <CCardHeader>
                 <CRow className="align-items-center">
-                <CCol xs={6} md={8} xl={9} className="text-start">
+                  <CCol xs={6} md={8} xl={9} className="text-start">
                     <h5>Mappings</h5>
-                </CCol>
-                <CCol xs={6} md={4} xl={3} className="d-flex justify-content-end gap-2">
+                  </CCol>
+                  <CCol xs={6} md={4} xl={3} className="d-flex justify-content-end gap-2">
                     <CButton color="primary" onClick={handleAdd}>
-                    Add Mapping
+                      Add Mapping
                     </CButton>
                     <CButton color="success" onClick={() => setIsSuggestModalVisible(true)}>
-                    Suggest Mappings
+                      Suggest Mappings
                     </CButton>
-                </CCol>
+                  </CCol>
                 </CRow>
-            </CCardHeader>
-            <CCardBody>
+              </CCardHeader>
+              <CCardBody>
                 <CSmartTable
-                loading={loading}
-                activePage={1}
-                cleaner
-                clickableRows
-                columns={columns}
-                columnFilter
-                columnSorter
-                items={mappings}
-                itemsPerPageSelect
-                itemsPerPage={10}
-                pagination
-                scopedColumns={{
+                  loading={loading}
+                  activePage={1}
+                  cleaner
+                  clickableRows
+                  columns={columns}
+                  columnFilter
+                  columnSorter
+                  items={mappings}
+                  itemsPerPageSelect
+                  itemsPerPage={10}
+                  pagination
+                  scopedColumns={{
                     class_type: (item) => (
-                        <td className="text-center">
-                            {/* Class Type Badge */}
-                            <CBadge color={getClassBadge(item.class_type)}>
-                                {item.class_type.charAt(0).toUpperCase() + item.class_type.slice(1)}
-                            </CBadge>
-                        </td>
+                      <td className="text-center">
+                        <CBadge color={getClassBadge(item.class_type)}>
+                          {item.class_type.charAt(0).toUpperCase() + item.class_type.slice(1)}
+                        </CBadge>
+                      </td>
                     ),
                     is_active: (item) => (
-                        <td className="text-center">
-                            {/* Yes/No Badge for Boolean */}
-                            <CBadge color={getActiveBadge(item.is_active)}>
-                                {item.is_active ? 'Yes' : 'No'}
-                            </CBadge>
-                        </td>
+                      <td className="text-center">
+                        <CBadge color={getActiveBadge(item.is_active)}>
+                          {item.is_active ? 'Yes' : 'No'}
+                        </CBadge>
+                      </td>
                     ),
                     actions: (item) => (
                       <td className="text-center">
                         <CButton
-                            variant="ghost"
-                            color="body"
-                            size="sm"
-                            onClick={() => handleEdit(item)}
-                            className="p-1 me-2"
-                            title="Edit Mapping"
+                          variant="ghost"
+                          color="body"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          className="p-1 me-2"
+                          title="Edit Mapping"
                         >
-                            <CIcon icon={cilPencil} className="sm" />
+                          <CIcon icon={cilPencil} className="sm" />
                         </CButton>
                         <CButton
-                            variant="ghost"
-                            color="danger"
-                            size="sm"
-                            onClick={() => handleDelete(item)}
-                            className="p-1 me-2"
-                            title="Delete Mapping"
+                          variant="ghost"
+                          color="danger"
+                          size="sm"
+                          onClick={() => handleDelete(item)}
+                          className="p-1 me-2"
+                          title="Delete Mapping"
                         >
-                            <CIcon icon={cilTrash} className="sm" />
+                          <CIcon icon={cilTrash} className="sm" />
                         </CButton>
                       </td>
                     ),
-                }}
-                tableProps={{
+                  }}
+                  tableProps={{
                     striped: true,
                     hover: true,
                     responsive: true,
-                }}
+                  }}
                 />
-            </CCardBody>
+              </CCardBody>
             </CCard>
+          )}
+
+          {activeTab === 'common-symbols' && <CommonSymbolsTab />}
         </CCol>
-        </CRow>
-        <MappingAddModal
-            visible={isAddModalVisible}
-            onClose={() => setIsAddModalVisible(false)}
-            onSuccess={() => fetchMappings()}
-            pushToast={pushToast}
-        />
-        <MappingEditModal
-            visible={isEditModalVisible}
-            onClose={() => {
-              setIsEditModalVisible(false);
-              setCurrentMapping(null);
-            }}
-            onSuccess={() => fetchMappings()}
-            mapping={currentMapping}
-        />
-        <SuggestMappingsModal
-            visible={isSuggestModalVisible}
-            onClose={() => setIsSuggestModalVisible(false)}
-            onSuccess={() => fetchMappings()}
-            pushToast={pushToast}
-        />
+      </CRow>
+      <MappingAddModal
+        visible={isAddModalVisible}
+        onClose={() => setIsAddModalVisible(false)}
+        onSuccess={() => fetchMappings()}
+        pushToast={pushToast}
+      />
+      <MappingEditModal
+        visible={isEditModalVisible}
+        onClose={() => {
+          setIsEditModalVisible(false);
+          setCurrentMapping(null);
+        }}
+        onSuccess={() => fetchMappings()}
+        mapping={currentMapping}
+      />
+      <SuggestMappingsModal
+        visible={isSuggestModalVisible}
+        onClose={() => setIsSuggestModalVisible(false)}
+        onSuccess={() => fetchMappings()}
+        pushToast={pushToast}
+      />
     </>
   );
 }

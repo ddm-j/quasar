@@ -83,6 +83,16 @@ class AssetQueryParams(BaseModel):
     asset_class_group: Optional[str] = Field(default=None, description="Exact match: 'securities', 'crypto'")
 
 
+# Common Symbol Query Parameters
+class CommonSymbolQueryParams(BaseModel):
+    """Query parameters for GET /api/registry/common-symbols endpoint."""
+    limit: int = Field(default=25, ge=1, le=100, description="Number of items per page")
+    offset: int = Field(default=0, ge=0, description="Starting index")
+    sort_by: str = Field(default="common_symbol", description="Column(s) to sort by, comma-separated")
+    sort_order: str = Field(default="asc", description="Sort order ('asc' or 'desc'), comma-separated if multiple sort_by")
+    common_symbol_like: Optional[str] = Field(default=None, description="Partial match for common_symbol")
+
+
 # Asset Item
 class AssetItem(BaseModel):
     """Single asset item."""
@@ -110,10 +120,28 @@ class AssetItem(BaseModel):
     sym_norm_root: Optional[str] = None  # NEW
 
 
+# Common Symbol Item
+class CommonSymbolItem(BaseModel):
+    """Single common symbol item with provider count."""
+    common_symbol: str
+    provider_count: int
+
+
 # Asset Response
 class AssetResponse(BaseModel):
     """Response model for GET /internal/assets endpoint."""
     items: List[AssetItem]
+    total_items: int
+    limit: int
+    offset: int
+    page: int
+    total_pages: int
+
+
+# Common Symbol Response
+class CommonSymbolResponse(BaseModel):
+    """Response model for GET /api/registry/common-symbols endpoint."""
+    items: List[CommonSymbolItem]
     total_items: int
     limit: int
     offset: int
@@ -139,6 +167,8 @@ class AssetMappingResponse(BaseModel):
     class_type: str
     class_symbol: str
     is_active: bool
+    primary_id: Optional[str] = None
+    asset_class: Optional[str] = None  # Changed from AssetClass to str for simplicity
 
 
 # Asset Mapping Create/Response (batch-capable)
