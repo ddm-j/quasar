@@ -19,7 +19,7 @@ from quasar.services.registry.schemas import (
     ClassType, FileUploadResponse, UpdateAssetsResponse, ClassSummaryItem,
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
     AssetMappingCreate, AssetMappingCreateRequest, AssetMappingCreateResponse,
-    AssetMappingResponse, AssetMappingUpdate,
+    AssetMappingResponse, AssetMappingUpdate, AssetMappingQueryParams, AssetMappingPaginatedResponse,
     SuggestionsResponse, SuggestionItem,
     ProviderPreferences, ProviderPreferencesResponse,
     ProviderPreferencesUpdate, AvailableQuoteCurrenciesResponse,
@@ -157,7 +157,7 @@ class Registry(DatabaseHandler, APIHandler):
             '/api/registry/asset-mappings',
             self.handle_get_asset_mappings,
             methods=['GET'],
-            response_model=List[AssetMappingResponse]
+            response_model=AssetMappingPaginatedResponse
         )
         self._api_app.router.add_api_route(
             '/api/registry/asset-mappings',
@@ -1539,65 +1539,133 @@ class Registry(DatabaseHandler, APIHandler):
 
     async def handle_get_asset_mappings(
         self,
-        common_symbol: Optional[str] = Query(None),
-        class_name: Optional[str] = Query(None),
-        class_type: Optional[ClassType] = Query(None),
-        class_symbol: Optional[str] = Query(None),
-        is_active: Optional[bool] = Query(None)
-    ) -> List[AssetMappingResponse]:
-        """List asset mappings with optional filters.
+        params: AssetMappingQueryParams = Depends()
+    ) -> AssetMappingPaginatedResponse:
+        """Return asset mappings with optional filtering, sorting, and pagination.
 
         Args:
-            common_symbol (str | None): Common symbol filter.
-            class_name (str | None): Provider/broker name filter.
-            class_type (ClassType | None): Provider or broker filter.
-            class_symbol (str | None): Provider-specific symbol filter.
-            is_active (bool | None): Active flag filter.
+            params (AssetMappingQueryParams): Query parameters parsed by FastAPI.
 
         Returns:
-            list[AssetMappingResponse]: Matching mappings.
+            AssetMappingPaginatedResponse: Paginated asset mapping list and counts.
         """
         logger.info("Registry.handle_get_asset_mappings: Received request for asset mappings.")
 
-        # Build the query
-        query_base = "SELECT common_symbol, class_name, class_type, class_symbol, is_active FROM asset_mapping"
-        conditions = []
-        params = []
-        param_idx = 1
-
-        if common_symbol is not None:
-            conditions.append(f"common_symbol = ${param_idx}")
-            params.append(common_symbol)
-            param_idx += 1
-        if class_name is not None:
-            conditions.append(f"class_name = ${param_idx}")
-            params.append(class_name)
-            param_idx += 1
-        if class_type is not None:
-            conditions.append(f"class_type = ${param_idx}")
-            params.append(class_type)
-            param_idx += 1
-        if class_symbol is not None:
-            conditions.append(f"class_symbol = ${param_idx}")
-            params.append(class_symbol)
-            param_idx += 1
-        if is_active is not None:
-            conditions.append(f"is_active = ${param_idx}")
-            params.append(is_active)
-            param_idx += 1
-
-        if conditions:
-            query_base += " WHERE " + " AND ".join(conditions)
-        
-        query_base += " ORDER BY class_name, class_type, common_symbol, class_symbol;"
-
         try:
-            mappings_records = await self.pool.fetch(query_base, *params)
-            mappings_list = [AssetMappingResponse(**dict(record)) for record in mappings_records]
-            
-            logger.info(f"Registry.handle_get_asset_mappings: Returning {len(mappings_list)} asset mappings.")
-            return mappings_list
+            # Pagination (already validated by Pydantic)
+            limit = params.limit
+            offset = params.offset
 
+            # Sorting
+            sort_by_str = params.sort_by
+            sort_order_str = params.sort_order
+
+            valid_sort_columns = ['common_symbol', 'class_name', 'class_type', 'class_symbol', 'is_active']
+
+            sort_by_cols = [col.strip() for col in sort_by_str.split(',')]
+            sort_orders = [order.strip().lower() for order in sort_order_str.split(',')]
+
+            if not all(col in valid_sort_columns for col in sort_by_cols):
+                raise HTTPException(status_code=400, detail="Invalid sort_by column")
+            if not all(order in ['asc', 'desc'] for order in sort_orders):
+                raise HTTPException(status_code=400, detail="Invalid sort_order value")
+
+            if len(sort_orders) == 1 and len(sort_by_cols) > 1: # Apply single order to all sort columns
+                sort_orders = [sort_orders[0]] * len(sort_by_cols)
+            elif len(sort_orders) != len(sort_by_cols):
+                raise HTTPException(status_code=400, detail="Mismatch between sort_by and sort_order counts")
+
+            order_by_clauses = [f"{col} {order.upper()}" for col, order in zip(sort_by_cols, sort_orders)]
+            order_by_sql = ", ".join(order_by_clauses)
+
+            # Filtering
+            filters = []
+            db_params: List[Any] = []
+            param_idx = 1
+
+            def add_filter(column: str, value, partial_match: bool = False, is_list: bool = False):
+                nonlocal param_idx
+                if value is not None and str(value).strip() != "":
+                    if isinstance(value, bool):
+                        # Boolean values don't need URL decoding or stripping
+                        filters.append(f"{column} = ${param_idx}")
+                        db_params.append(value)
+                        param_idx += 1
+                    else:
+                        # String values need URL decoding and stripping
+                        decoded_value = unquote_plus(str(value).strip())
+                        if is_list:
+                            # Assuming comma-separated list for IN clause
+                            list_values = [v.strip() for v in decoded_value.split(',')]
+                            if list_values:
+                                placeholders = ', '.join([f'${param_idx + i}' for i in range(len(list_values))])
+                                filters.append(f"{column} IN ({placeholders})")
+                                db_params.extend(list_values)
+                                param_idx += len(list_values)
+                        elif partial_match:
+                            filters.append(f"LOWER({column}) LIKE LOWER(${param_idx})")
+                            db_params.append(f"%{decoded_value}%")
+                            param_idx += 1
+                        else: # Exact match
+                            filters.append(f"{column} = ${param_idx}")
+                            db_params.append(decoded_value)
+                            param_idx += 1
+
+            add_filter('common_symbol', params.common_symbol)
+            add_filter('common_symbol', params.common_symbol_like, partial_match=True)
+            add_filter('class_name', params.class_name)
+            add_filter('class_name', params.class_name_like, partial_match=True)
+            add_filter('class_type', params.class_type)
+            add_filter('class_symbol', params.class_symbol)
+            add_filter('class_symbol', params.class_symbol_like, partial_match=True)
+            add_filter('is_active', params.is_active)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+
+            # Build queries
+            select_columns = "common_symbol, class_name, class_type, class_symbol, is_active"
+
+            data_query = f"""
+                SELECT {select_columns}
+                FROM asset_mapping
+                WHERE {where_clause}
+                ORDER BY {order_by_sql}
+                LIMIT ${param_idx} OFFSET ${param_idx + 1};
+            """
+            count_query = f"""
+                SELECT COUNT(*) as total_items
+                FROM asset_mapping
+                WHERE {where_clause};
+            """
+
+            data_params = db_params + [limit, offset]
+            count_params = db_params # Count query doesn't use limit/offset
+
+            async with self.pool.acquire() as conn:
+                logger.debug(f"Executing data query: {data_query} with params: {data_params}")
+                mapping_records = await conn.fetch(data_query, *data_params)
+
+                logger.debug(f"Executing count query: {count_query} with params: {count_params}")
+                total_items_record = await conn.fetchrow(count_query, *count_params)
+
+            mappings_list = [AssetMappingResponse(**dict(record)) for record in mapping_records]
+            total_items = total_items_record['total_items'] if total_items_record else 0
+
+            logger.info(f"Registry.handle_get_asset_mappings: Returning {len(mappings_list)} asset mappings out of {total_items} total matching criteria.")
+            return AssetMappingPaginatedResponse(
+                items=mappings_list,
+                total_items=total_items,
+                limit=limit,
+                offset=offset,
+                page=(offset // limit) + 1 if limit > 0 else 1,
+                total_pages=(total_items + limit - 1) // limit if limit > 0 else 1
+            )
+
+        except HTTPException:
+            raise
+        except ValueError as ve:
+            logger.warning(f"Registry.handle_get_asset_mappings: Invalid input value: {ve}")
+            raise HTTPException(status_code=400, detail=f"Invalid input value: {ve}")
         except Exception as e:
             logger.error(f"Registry.handle_get_asset_mappings: Error fetching asset mappings: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching asset mappings")

@@ -145,8 +145,20 @@ export const deleteRegisteredClass = async (classType, className) => {
                        // or throws an error with { error: "..." }
 };
 
-export const getAssetMappings = async () => {
-  const response = await fetch(`${API_BASE}asset-mappings`, {
+export const getAssetMappings = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  // Add only defined parameters to the query string
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${API_BASE}asset-mappings${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -156,12 +168,11 @@ export const getAssetMappings = async () => {
   const data = await response.json();
 
   if (!response.ok) {
-    // Use message from responseData if available, otherwise use a generic error
     const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
     throw new Error(errorMessage);
   }
 
-  return data;
+  return data; // Now returns { items: [], total_items: X, limit: Y, offset: Z, page: P, total_pages: Q }
 }
 
 /**

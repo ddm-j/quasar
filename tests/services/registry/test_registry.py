@@ -12,6 +12,7 @@ from asyncpg.exceptions import UndefinedFunctionError
 from quasar.services.registry.core import Registry, _encode_cursor, _decode_cursor
 from quasar.services.registry.schemas import (
     AssetMappingCreate, AssetMappingUpdate, AssetQueryParams,
+    AssetMappingQueryParams, AssetMappingPaginatedResponse, AssetMappingResponse,
     ClassType
 )
 
@@ -670,25 +671,318 @@ class TestRegistryAssetMappings:
         txn.__aexit__.assert_awaited()
     
     @pytest.mark.asyncio
-    async def test_handle_get_asset_mappings_all(
-        self, registry_with_mocks, mock_asyncpg_pool
+    async def test_handle_get_asset_mappings_with_default_pagination(
+        self, registry_with_mocks, mock_asyncpg_conn
     ):
-        """Test that handle_get_asset_mappings returns all mappings."""
+        """Test that handle_get_asset_mappings works with default pagination."""
         reg = registry_with_mocks
 
         mock_record = MockRecord(
             common_symbol="BTCUSD", class_name="TestProvider",
             class_type="provider", class_symbol="BTC-USD", is_active=True
         )
-        
-        # handle_get_asset_mappings uses pool.fetch() directly
-        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
-        
-        mappings = await reg.handle_get_asset_mappings()
-        
-        assert len(mappings) == 1
-        assert mappings[0].common_symbol == "BTCUSD"
-    
+
+        # handle_get_asset_mappings uses pool.acquire() then conn.fetch/fetchrow
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=1))
+
+        params = AssetMappingQueryParams()
+        response = await reg.handle_get_asset_mappings(params)
+
+        assert isinstance(response, AssetMappingPaginatedResponse)
+        assert len(response.items) == 1
+        assert response.items[0].common_symbol == "BTCUSD"
+        assert response.total_items == 1
+        assert response.limit == 25  # default
+        assert response.offset == 0
+        assert response.page == 1
+        assert response.total_pages == 1
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_with_pagination(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that handle_get_asset_mappings handles pagination."""
+        reg = registry_with_mocks
+
+        mock_record = MockRecord(
+            common_symbol="BTCUSD", class_name="TestProvider",
+            class_type="provider", class_symbol="BTC-USD", is_active=True
+        )
+
+        # handle_get_asset_mappings uses pool.acquire() then conn.fetch/fetchrow
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=1))
+
+        params = AssetMappingQueryParams(limit=10, offset=0)
+        response = await reg.handle_get_asset_mappings(params)
+
+        assert len(response.items) == 1
+        assert response.total_items == 1
+        assert response.limit == 10
+        assert response.offset == 0
+        assert response.page == 1
+        assert response.total_pages == 1
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_with_sorting(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that handle_get_asset_mappings handles sorting."""
+        reg = registry_with_mocks
+
+        # Create records in "unsorted" order for testing
+        unsorted_records = [
+            MockRecord(
+                common_symbol="ETHUSD", class_name="TestProvider2",
+                class_type="provider", class_symbol="ETH-USD", is_active=False
+            ),
+            MockRecord(
+                common_symbol="BTCUSD", class_name="TestProvider1",
+                class_type="provider", class_symbol="BTC-USD", is_active=True
+            )
+        ]
+
+        # Records sorted by common_symbol ascending (BTCUSD, ETHUSD)
+        asc_sorted_records = [
+            MockRecord(
+                common_symbol="BTCUSD", class_name="TestProvider1",
+                class_type="provider", class_symbol="BTC-USD", is_active=True
+            ),
+            MockRecord(
+                common_symbol="ETHUSD", class_name="TestProvider2",
+                class_type="provider", class_symbol="ETH-USD", is_active=False
+            )
+        ]
+
+        # Records sorted by common_symbol descending (ETHUSD, BTCUSD)
+        desc_sorted_records = [
+            MockRecord(
+                common_symbol="ETHUSD", class_name="TestProvider2",
+                class_type="provider", class_symbol="ETH-USD", is_active=False
+            ),
+            MockRecord(
+                common_symbol="BTCUSD", class_name="TestProvider1",
+                class_type="provider", class_symbol="BTC-USD", is_active=True
+            )
+        ]
+
+        # Test single column ascending sort
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=asc_sorted_records)
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=2))
+
+        params = AssetMappingQueryParams(sort_by="common_symbol", sort_order="asc")
+        response = await reg.handle_get_asset_mappings(params)
+
+        assert len(response.items) == 2
+        assert response.items[0].common_symbol == "BTCUSD"
+        assert response.items[1].common_symbol == "ETHUSD"
+
+        # Test single column descending sort
+        mock_asyncpg_conn.fetch.reset_mock()
+        mock_asyncpg_conn.fetchrow.reset_mock()
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=desc_sorted_records)
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=2))
+
+        params = AssetMappingQueryParams(sort_by="common_symbol", sort_order="desc")
+        response = await reg.handle_get_asset_mappings(params)
+
+        assert len(response.items) == 2
+        assert response.items[0].common_symbol == "ETHUSD"
+        assert response.items[1].common_symbol == "BTCUSD"
+
+        # Test multiple column sort (by class_name, then common_symbol)
+        mock_asyncpg_conn.fetch.reset_mock()
+        mock_asyncpg_conn.fetchrow.reset_mock()
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=asc_sorted_records)  # TestProvider1 (BTCUSD), TestProvider2 (ETHUSD)
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=2))
+
+        params = AssetMappingQueryParams(sort_by="class_name,common_symbol", sort_order="asc")
+        response = await reg.handle_get_asset_mappings(params)
+
+        assert len(response.items) == 2
+        assert response.items[0].class_name == "TestProvider1"
+        assert response.items[1].class_name == "TestProvider2"
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_invalid_sort_parameters(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test error handling for invalid sort parameters."""
+        reg = registry_with_mocks
+
+        # Test invalid sort column
+        params = AssetMappingQueryParams(sort_by="invalid_column", sort_order="asc")
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_asset_mappings(params)
+        assert exc_info.value.status_code == 400
+        assert "Invalid sort_by column" in str(exc_info.value.detail)
+
+        # Test invalid sort order
+        params = AssetMappingQueryParams(sort_by="common_symbol", sort_order="invalid")
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_asset_mappings(params)
+        assert exc_info.value.status_code == 400
+        assert "Invalid sort_order value" in str(exc_info.value.detail)
+
+        # Test mismatched sort_by and sort_order counts
+        params = AssetMappingQueryParams(sort_by="class_name,common_symbol", sort_order="asc,desc,asc")
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_asset_mappings(params)
+        assert exc_info.value.status_code == 400
+        assert "Mismatch between sort_by and sort_order counts" in str(exc_info.value.detail)
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_with_filtering(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that handle_get_asset_mappings handles filtering."""
+        reg = registry_with_mocks
+
+        # Mock no results for filtering tests
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=0))
+
+        # Test exact match filters
+        params = AssetMappingQueryParams(common_symbol="BTCUSD")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        params = AssetMappingQueryParams(class_name="TestProvider")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        params = AssetMappingQueryParams(class_type="provider")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        params = AssetMappingQueryParams(class_symbol="BTC-USD")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        params = AssetMappingQueryParams(is_active=True)
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        # Test partial match filters
+        params = AssetMappingQueryParams(common_symbol_like="BTC")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        params = AssetMappingQueryParams(class_name_like="Test")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        params = AssetMappingQueryParams(class_symbol_like="USD")
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+        # Test combined filters
+        params = AssetMappingQueryParams(
+            common_symbol="BTCUSD",
+            class_type="provider",
+            is_active=True
+        )
+        response = await reg.handle_get_asset_mappings(params)
+        assert response.total_items == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_empty_results(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test behavior when no records match filters."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=0))
+
+        # Use filters that won't match any records
+        params = AssetMappingQueryParams(common_symbol="NONEXISTENT")
+        response = await reg.handle_get_asset_mappings(params)
+
+        assert response.items == []
+        assert response.total_items == 0
+        assert response.page == 1
+        assert response.total_pages == 0  # or 1 depending on implementation
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_large_dataset(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test pagination with large result sets."""
+        reg = registry_with_mocks
+
+        # Create multiple mock records (5 records)
+        mock_records = [
+            MockRecord(common_symbol=f"ASSET{i}", class_name=f"Provider{i}",
+                      class_type="provider", class_symbol=f"ASSET{i}-USD", is_active=True)
+            for i in range(1, 6)
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=mock_records)
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=100))
+
+        params = AssetMappingQueryParams(limit=10, offset=0)
+        response = await reg.handle_get_asset_mappings(params)
+
+        # Verify only limit number of items returned
+        assert len(response.items) == 5  # limit is 10, but we only have 5 records
+        # Verify total_items reflects full dataset size
+        assert response.total_items == 100
+        # Verify total_pages calculation is correct (100 / 10 = 10 pages)
+        assert response.total_pages == 10
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_response_structure(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Verify response structure matches schema."""
+        reg = registry_with_mocks
+
+        mock_record = MockRecord(
+            common_symbol="BTCUSD", class_name="TestProvider",
+            class_type="provider", class_symbol="BTC-USD", is_active=True
+        )
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=1))
+
+        params = AssetMappingQueryParams()
+        response = await reg.handle_get_asset_mappings(params)
+
+        # Verify response is instance of AssetMappingPaginatedResponse
+        assert isinstance(response, AssetMappingPaginatedResponse)
+
+        # Verify all required fields exist
+        assert hasattr(response, 'items')
+        assert hasattr(response, 'total_items')
+        assert hasattr(response, 'limit')
+        assert hasattr(response, 'offset')
+        assert hasattr(response, 'page')
+        assert hasattr(response, 'total_pages')
+
+        # Verify items is a list
+        assert isinstance(response.items, list)
+        assert len(response.items) == 1
+
+        # Verify each item is instance of AssetMappingResponse
+        assert isinstance(response.items[0], AssetMappingResponse)
+
+        # Verify all items have required fields
+        item = response.items[0]
+        assert hasattr(item, 'common_symbol')
+        assert hasattr(item, 'class_name')
+        assert hasattr(item, 'class_type')
+        assert hasattr(item, 'class_symbol')
+        assert hasattr(item, 'is_active')
+
+        # Verify actual values
+        assert item.common_symbol == "BTCUSD"
+        assert item.class_name == "TestProvider"
+        assert item.class_type == "provider"
+        assert item.class_symbol == "BTC-USD"
+        assert item.is_active is True
+
     @pytest.mark.asyncio
     async def test_handle_update_asset_mapping_success(
         self, registry_with_mocks, mock_asyncpg_pool
