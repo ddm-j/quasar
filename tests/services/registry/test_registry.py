@@ -755,6 +755,215 @@ class TestRegistryAssetMappings:
         
         assert exc_info.value.status_code == 404
 
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_success(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol returns mappings with complete asset data."""
+        reg = registry_with_mocks
+
+        # Mock the LEFT JOIN result with all fields populated
+        mock_record = MockRecord(
+            common_symbol="BTCUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="BTC-USD",
+            is_active=True,
+            primary_id="12345",
+            asset_class="crypto"
+        )
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("BTCUSD")
+
+        assert len(mappings) == 1
+        assert mappings[0].common_symbol == "BTCUSD"
+        assert mappings[0].class_name == "TestProvider"
+        assert mappings[0].class_type == "provider"
+        assert mappings[0].class_symbol == "BTC-USD"
+        assert mappings[0].is_active is True
+        assert mappings[0].primary_id == "12345"
+        assert mappings[0].asset_class == "crypto"
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_with_null_asset_data(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol handles NULL asset data gracefully."""
+        reg = registry_with_mocks
+
+        # Mock LEFT JOIN result where asset data is NULL
+        mock_record = MockRecord(
+            common_symbol="ETHUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="ETH-USD",
+            is_active=True,
+            primary_id=None,
+            asset_class=None
+        )
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("ETHUSD")
+
+        assert len(mappings) == 1
+        assert mappings[0].common_symbol == "ETHUSD"
+        assert mappings[0].primary_id is None
+        assert mappings[0].asset_class is None
+        # Required fields should still be present
+        assert mappings[0].class_name == "TestProvider"
+        assert mappings[0].is_active is True
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_multiple_providers(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol returns all mappings across multiple providers."""
+        reg = registry_with_mocks
+
+        # Mock multiple mappings from different providers
+        mock_records = [
+            MockRecord(
+                common_symbol="AAPL",
+                class_name="ProviderA",
+                class_type="provider",
+                class_symbol="AAPL",
+                is_active=True,
+                primary_id="AAPL123",
+                asset_class="equity"
+            ),
+            MockRecord(
+                common_symbol="AAPL",
+                class_name="BrokerB",
+                class_type="broker",
+                class_symbol="AAPL.US",
+                is_active=True,
+                primary_id="AAPL456",
+                asset_class="equity"
+            ),
+            MockRecord(
+                common_symbol="AAPL",
+                class_name="ProviderC",
+                class_type="provider",
+                class_symbol="AAPL",
+                is_active=False,
+                primary_id="AAPL789",
+                asset_class="equity"
+            )
+        ]
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=mock_records)
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("AAPL")
+
+        assert len(mappings) == 3
+        # All mappings should have the same common_symbol
+        assert all(m.common_symbol == "AAPL" for m in mappings)
+        # Should include all expected providers
+        class_names = {m.class_name for m in mappings}
+        assert class_names == {"ProviderA", "BrokerB", "ProviderC"}
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_no_mappings(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol returns empty list when no mappings exist."""
+        reg = registry_with_mocks
+
+        # Mock empty result
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("NONEXISTENT")
+
+        assert mappings == []
+        assert len(mappings) == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_database_error(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol handles database errors appropriately."""
+        reg = registry_with_mocks
+
+        # Mock database error
+        mock_asyncpg_pool.fetch = AsyncMock(side_effect=Exception("Database connection failed"))
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_asset_mappings_for_symbol("BTCUSD")
+
+        assert exc_info.value.status_code == 500
+        assert "Database error" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_special_characters(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol handles common symbols with special characters."""
+        reg = registry_with_mocks
+
+        # Mock result for symbol with special characters
+        mock_record = MockRecord(
+            common_symbol="BTC/USD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="BTC-USD",
+            is_active=True,
+            primary_id="12345",
+            asset_class="crypto"
+        )
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("BTC/USD")
+
+        assert len(mappings) == 1
+        assert mappings[0].common_symbol == "BTC/USD"
+
+    async def test_asset_mapping_response_schema_with_optional_fields(self):
+        """Test that AssetMappingResponse schema accepts optional fields correctly."""
+        from quasar.services.registry.schemas import AssetMappingResponse
+
+        # Test with all fields populated
+        response1 = AssetMappingResponse(
+            common_symbol="BTCUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="BTC-USD",
+            is_active=True,
+            primary_id="12345",
+            asset_class="crypto"
+        )
+        assert response1.primary_id == "12345"
+        assert response1.asset_class == "crypto"
+
+        # Test with null optional fields
+        response2 = AssetMappingResponse(
+            common_symbol="ETHUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="ETH-USD",
+            is_active=True,
+            primary_id=None,
+            asset_class=None
+        )
+        assert response2.primary_id is None
+        assert response2.asset_class is None
+
+        # Test with one optional field populated, one null
+        response3 = AssetMappingResponse(
+            common_symbol="ADAUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="ADA-USD",
+            is_active=True,
+            primary_id="ADA123",
+            asset_class=None
+        )
+        assert response3.primary_id == "ADA123"
+        assert response3.asset_class is None
+
 
 class TestRegistryLifecycleMethods:
     """Tests for Registry lifecycle methods."""
