@@ -93,6 +93,24 @@ class CommonSymbolQueryParams(BaseModel):
     common_symbol_like: Optional[str] = Field(default=None, description="Partial match for common_symbol")
 
 
+# Asset Mapping Query Parameters
+class AssetMappingQueryParams(BaseModel):
+    """Query parameters for GET /api/registry/asset-mappings endpoint."""
+    limit: int = Field(default=25, ge=1, le=100, description="Number of items per page")
+    offset: int = Field(default=0, ge=0, description="Starting index")
+    sort_by: str = Field(default="class_name,common_symbol", description="Column(s) to sort by, comma-separated")
+    sort_order: str = Field(default="asc", description="Sort order ('asc' or 'desc'), comma-separated if multiple sort_by")
+    # Filter parameters (matching current endpoint signature)
+    common_symbol: Optional[str] = Field(default=None, description="Exact match for common_symbol")
+    common_symbol_like: Optional[str] = Field(default=None, description="Partial match for common_symbol")
+    class_name: Optional[str] = Field(default=None, description="Exact match for class_name")
+    class_name_like: Optional[str] = Field(default=None, description="Partial match for class_name")
+    class_type: Optional[ClassType] = Field(default=None, description="Exact match for class_type ('provider' or 'broker')")
+    class_symbol: Optional[str] = Field(default=None, description="Exact match for class_symbol")
+    class_symbol_like: Optional[str] = Field(default=None, description="Partial match for class_symbol")
+    is_active: Optional[bool] = Field(default=None, description="Exact match for is_active")
+
+
 # Asset Item
 class AssetItem(BaseModel):
     """Single asset item."""
@@ -169,6 +187,17 @@ class AssetMappingResponse(BaseModel):
     is_active: bool
     primary_id: Optional[str] = None
     asset_class: Optional[str] = None  # Changed from AssetClass to str for simplicity
+
+
+# Asset Mapping Paginated Response
+class AssetMappingPaginatedResponse(BaseModel):
+    """Response model for GET /api/registry/asset-mappings endpoint (paginated)."""
+    items: List[AssetMappingResponse]
+    total_items: int
+    limit: int
+    offset: int
+    page: int
+    total_pages: int
 
 
 # Asset Mapping Create/Response (batch-capable)
