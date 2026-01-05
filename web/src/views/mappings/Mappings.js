@@ -1,11 +1,14 @@
-﻿import { React, useState, useEffect, useRef } from 'react';
-import { 
-    CCard, 
-    CCardBody, 
-    CCardHeader, 
-    CCol, 
+﻿import { React, useState, useEffect, useRef, useMemo } from 'react';
+import {
+    CCard,
+    CCardBody,
+    CCardHeader,
+    CCol,
     CRow,
     CSmartTable,
+    CSmartPagination,
+    CFormSelect,
+    CAlert,
     CButton,
     CBadge,
     CToaster,
@@ -52,6 +55,17 @@ const Mappings = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState('mappings');
 
+  // Pagination state
+  const [totalItems, setTotalItems] = useState(0);
+  const [activePage, setActivePage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sorter, setSorter] = useState({});
+  const [columnFilter, setColumnFilter] = useState({});
+  const [liveTextInputFilters, setLiveTextInputFilters] = useState({});
+
+  // Get text filter keys for mappings (columns that support LIKE filtering)
+  const textInputFilterKeys = useMemo(() => ['common_symbol', 'class_symbol', 'class_name'], []);
+
   const pushToast = ({ title, body, color = 'danger', icon = null }) => {
     const toast = (
       <CToast autohide={false} color={color}>
@@ -69,33 +83,83 @@ const Mappings = () => {
   const fetchMappings = async () => {
     setLoading(true);
     setError(null);
+
+    const apiParams = {
+      limit: itemsPerPage,
+      offset: (activePage - 1) * itemsPerPage,
+    };
+
+    // Add sorting parameters
+    if (sorter && sorter.column) {
+      apiParams.sort_by = sorter.column;
+      apiParams.sort_order = sorter.direction || 'asc';
+    }
+
+    // Add filter parameters
+    for (const key in columnFilter) {
+      if (columnFilter[key]) {
+        if (textInputFilterKeys.includes(key)) {
+          apiParams[`${key}_like`] = columnFilter[key];
+        } else {
+          apiParams[key] = columnFilter[key];
+        }
+      }
+    }
+
     try {
-      const data = await getAssetMappings();
-      setMappings(data);
+      const data = await getAssetMappings(apiParams);
+      setMappings(data.items || []);
+      setTotalItems(data.total_items || 0);
     } catch (err) {
       setError(err.message || 'Failed to fetch mappings');
+      setMappings([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  // useEffect for debouncing live text input filters
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setColumnFilter(prevMainFilters => {
+        const newMainFilters = { ...prevMainFilters };
+
+        textInputFilterKeys.forEach(key => {
+          if (liveTextInputFilters[key]) {
+            newMainFilters[key] = liveTextInputFilters[key];
+          } else {
+            delete newMainFilters[key];
+          }
+        });
+        return newMainFilters;
+      });
+    }, 300); // 300ms debounce
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [liveTextInputFilters, textInputFilterKeys]);
+
   useEffect(() => {
     if (activeTab === 'mappings') {
+      setError(null);
       fetchMappings();
     }
-  }, [activeTab]);
+  }, [activeTab, activePage, itemsPerPage, sorter, columnFilter]);
 
   // Define columns for CSmartTable
   const columns = [
-    { key: 'common_symbol', label: 'Common Symbol', _props: { className: 'fw-semibold' } },
-    { key: 'class_symbol', label: 'Class Symbol' },
-    { key: 'class_name', label: 'Class Name' },
-    { key: 'class_type', label: 'Class Type' },
+    { key: 'common_symbol', label: 'Common Symbol', _props: { className: 'fw-semibold' }, sorter: true },
+    { key: 'class_symbol', label: 'Class Symbol', sorter: true },
+    { key: 'class_name', label: 'Class Name', sorter: true },
+    { key: 'class_type', label: 'Class Type', sorter: true },
     {
       key: 'is_active',
       label: 'Active',
       _style: { width: '10%' },
-      sorter: false, // Sorting boolean might be tricky, handle server-side if needed
-      filter: false, // Filtering boolean might be tricky
+      sorter: true,  // Enable server-side sorting
+      filter: false, // Keep filter disabled (boolean handled differently)
       _props: { className: 'text-center' }
     },
     {
@@ -151,6 +215,39 @@ const Mappings = () => {
     setIsAddModalVisible(true);
   }
 
+  const handleItemsPerPageChange = (event) => {
+    const newSize = parseInt(event.target.value, 10);
+    setActivePage(1); // Reset to first page when changing page size
+    setItemsPerPage(newSize);
+  };
+
+  const handleSorterChange = (sorterData) => {
+    // CSmartTable provides SorterValue: { column: string, state: 'asc' | 'desc' | 0 }
+    // When resetable=true, state can be 0 (null/cleared) on third click
+
+    if (!sorterData) {
+      // No sorting - clear state
+      setSorter({});
+      setActivePage(1);
+      return;
+    }
+
+    // Handle single sorter (non-multiple mode)
+    if (sorterData.column && sorterData.state !== 0) {
+      setSorter({
+        column: sorterData.column,
+        direction: sorterData.state  // Map 'state' to 'direction' for API
+      });
+      setActivePage(1); // Reset to first page when sorting changes
+    } else {
+      // State is 0 (cleared) or invalid
+      setSorter({});
+      setActivePage(1);
+    }
+  };
+
+  const calculatedPages = totalItems > 0 ? Math.ceil(totalItems / itemsPerPage) : 1;
+
   return (
     <>
       <CToaster ref={toasterRef} push={toastToShow} placement="top-end" />
@@ -199,16 +296,14 @@ const Mappings = () => {
               <CCardBody>
                 <CSmartTable
                   loading={loading}
-                  activePage={1}
-                  cleaner
-                  clickableRows
-                  columns={columns}
-                  columnFilter
-                  columnSorter
                   items={mappings}
-                  itemsPerPageSelect
-                  itemsPerPage={10}
-                  pagination
+                  columns={columns}
+                  pagination={false}  // Disable built-in pagination
+                  columnSorter={{ external: true, resetable: true }}  // External sorting
+                  onSorterChange={handleSorterChange}  // Custom sorter handler
+                  columnFilter  // Enable filtering
+                  columnFilterValue={liveTextInputFilters}
+                  onColumnFilterChange={setLiveTextInputFilters}
                   scopedColumns={{
                     class_type: (item) => (
                       <td className="text-center">
@@ -255,6 +350,36 @@ const Mappings = () => {
                     responsive: true,
                   }}
                 />
+
+                {error && <CAlert color="danger" className="mb-3">{error}</CAlert>}
+
+                <CRow className="mb-3 align-items-center justify-content-center">
+                  {calculatedPages > 1 && (
+                    <CCol xs="auto">
+                      <CSmartPagination
+                        activePage={activePage}
+                        pages={calculatedPages}
+                        onActivePageChange={setActivePage}
+                      />
+                    </CCol>
+                  )}
+                  <CCol xs="auto" className="me-2">
+                    <label htmlFor="itemsPerPageSelect" className="col-form-label">Items per page:</label>
+                  </CCol>
+                  <CCol xs="auto">
+                    <CFormSelect
+                      id="itemsPerPageSelect"
+                      value={itemsPerPage}
+                      onChange={handleItemsPerPageChange}
+                      options={[
+                        { label: '5', value: 5 },
+                        { label: '10', value: 10 },
+                        { label: '25', value: 25 },
+                        { label: '50', value: 50 },
+                      ]}
+                    />
+                  </CCol>
+                </CRow>
               </CCardBody>
             </CCard>
           )}
@@ -265,7 +390,10 @@ const Mappings = () => {
       <MappingAddModal
         visible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
-        onSuccess={() => fetchMappings()}
+        onSuccess={() => {
+          setActivePage(1); // Reset to first page after add
+          fetchMappings();
+        }}
         pushToast={pushToast}
       />
       <MappingEditModal
@@ -274,13 +402,19 @@ const Mappings = () => {
           setIsEditModalVisible(false);
           setCurrentMapping(null);
         }}
-        onSuccess={() => fetchMappings()}
+        onSuccess={() => {
+          setActivePage(1); // Reset to first page after edit
+          fetchMappings();
+        }}
         mapping={currentMapping}
       />
       <SuggestMappingsModal
         visible={isSuggestModalVisible}
         onClose={() => setIsSuggestModalVisible(false)}
-        onSuccess={() => fetchMappings()}
+        onSuccess={() => {
+          setActivePage(1); // Reset to first page after suggest
+          fetchMappings();
+        }}
         pushToast={pushToast}
       />
     </>
