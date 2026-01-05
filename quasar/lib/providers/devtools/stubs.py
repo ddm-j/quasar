@@ -15,7 +15,21 @@ class HistoricalStub(HistoricalDataProvider):
     name = "DEV_HIST_STUB"
 
     async def get_available_symbols(self) -> list[SymbolInfo]:  # pragma: no cover - unused in tests
-        return []
+        return [
+            {
+                "provider": self.name,
+                "provider_id": "STUB_AAPL",
+                "primary_id": None,  # Provider does not supply FIGI
+                "symbol": "AAPL.STUB",
+                "matcher_symbol": "AAPL",
+                "name": "Apple Inc. Stub",
+                "exchange": "XNAS",
+                "asset_class": "equity",
+                "base_currency": "USD",
+                "quote_currency": "USD",
+                "country": "US",
+            }
+        ]
 
     async def get_history(
         self, sym: str, start: date, end: date, interval: Interval
@@ -49,7 +63,22 @@ class LiveStub(LiveDataProvider):
         return 0
 
     async def get_available_symbols(self) -> list[SymbolInfo]:  # pragma: no cover - unused
-        return []
+        return [
+            {
+                "provider": self.name,
+                "provider_id": "STUB_BTC",
+                "primary_id": None,  # Provider does not supply FIGI
+                "symbol": "BTC-USD.STUB",
+                "matcher_symbol": "BTC-USD",
+                "name": "Bitcoin Stub",
+                "exchange": "CRYPTO",
+                "asset_class": "crypto",
+                "base_currency": "BTC",
+                "quote_currency": "USD",
+                "country": None,
+            }
+        ]
+
 
     async def get_live(self, interval: Interval, symbols: list[str], timeout: int | None = None):
         now = datetime.now(timezone.utc)

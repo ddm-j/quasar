@@ -409,7 +409,7 @@ class TestDataHubAPIEndpoints:
         
         # Mock provider loading
         mock_provider = Mock()
-        mock_provider.get_available_symbols = AsyncMock(return_value=[{"symbol": "TEST"}])
+        mock_provider.get_available_symbols = AsyncMock(return_value=[{"symbol": "TEST", "matcher_symbol": "TEST"}])
         
         async def mock_load_provider(name):
             hub._providers[name] = mock_provider

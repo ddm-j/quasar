@@ -47,8 +47,9 @@ class MyHistorical(HistoricalDataProvider):
             SymbolInfo(
                 provider=self.name,
                 provider_id="AAPL",
-                isin=None,
+                primary_id=None,  # Set to None unless your provider supplies FIGI
                 symbol="AAPL",
+                matcher_symbol="AAPL",
                 name="Apple Inc",
                 exchange="NASDAQ",
                 asset_class=AssetClass.EQUITY.value,

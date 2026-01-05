@@ -3,10 +3,12 @@
 from typing import Optional, List, Dict, Any, Union
 import os, asyncpg, base64, hashlib, json
 import aiohttp
+from pathlib import Path
 from fastapi import HTTPException, UploadFile, File, Form, Depends, Query, Body
 from fastapi.responses import Response
 from urllib.parse import unquote_plus
-from asyncpg.exceptions import UndefinedFunctionError
+from asyncpg.exceptions import UndefinedFunctionError, UniqueViolationError
+import yaml
 
 from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
@@ -18,8 +20,13 @@ from quasar.services.registry.schemas import (
     DeleteClassResponse, AssetQueryParams, AssetResponse, AssetItem,
     AssetMappingCreate, AssetMappingCreateRequest, AssetMappingCreateResponse,
     AssetMappingResponse, AssetMappingUpdate,
-    SuggestionsResponse, SuggestionItem
+    SuggestionsResponse, SuggestionItem,
+    ProviderPreferences, ProviderPreferencesResponse,
+    ProviderPreferencesUpdate, AvailableQuoteCurrenciesResponse,
+    CryptoPreferences, CommonSymbolQueryParams, CommonSymbolItem, CommonSymbolResponse
 )
+from quasar.services.registry.matcher import IdentityMatcher, MatchResult
+from quasar.services.registry.mapper import AutomatedMapper, MappingCandidate
 
 import logging
 logger = logging.getLogger(__name__)
@@ -88,6 +95,12 @@ class Registry(DatabaseHandler, APIHandler):
         # Initialize Supers
         DatabaseHandler.__init__(self, dsn=dsn, pool=pool)
         APIHandler.__init__(self, api_host=api_host, api_port=api_port) 
+
+        # Initialize Matcher
+        self.matcher = IdentityMatcher(dsn=dsn, pool=pool)
+
+        # Initialize AutomatedMapper
+        self.mapper = AutomatedMapper(dsn=dsn, pool=pool)
 
 
     def _setup_routes(self) -> None:
@@ -158,6 +171,20 @@ class Registry(DatabaseHandler, APIHandler):
             methods=['DELETE'],
             status_code=204
         )
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/{common_symbol}',
+            self.handle_get_asset_mappings_for_symbol,
+            methods=['GET'],
+            response_model=List[AssetMappingResponse]
+        )
+
+        # Common Symbols Routes (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/common-symbols',
+            self.handle_get_common_symbols,
+            methods=['GET'],
+            response_model=CommonSymbolResponse
+        )
 
         # Asset Mapping Suggestions (public API)
         self._api_app.router.add_api_route(
@@ -165,6 +192,26 @@ class Registry(DatabaseHandler, APIHandler):
             self.handle_get_asset_mapping_suggestions,
             methods=['GET'],
             response_model=SuggestionsResponse
+        )
+
+        # Provider Configuration Routes (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/config',
+            self.handle_get_provider_config,
+            methods=['GET'],
+            response_model=ProviderPreferencesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config',
+            self.handle_update_provider_config,
+            methods=['PUT'],
+            response_model=ProviderPreferencesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config/available-quote-currencies',
+            self.handle_get_available_quote_currencies,
+            methods=['GET'],
+            response_model=AvailableQuoteCurrenciesResponse
         )
 
     # OBJECT LIFECYCLE
@@ -178,7 +225,10 @@ class Registry(DatabaseHandler, APIHandler):
 
         # Start Database
         await self.init_pool()
+        self.matcher._pool = self.pool  # Share the initialized pool with the matcher
+        self.mapper._pool = self.pool  # Share the initialized pool with the mapper
         await self._run_enum_guard()
+        await self._seed_identity_manifests()
 
     async def stop(self) -> None:
         """
@@ -198,6 +248,197 @@ class Registry(DatabaseHandler, APIHandler):
             return
         strict = mode == "strict"
         await validate_enums(self.pool, strict=strict)
+
+    async def _seed_identity_manifests(self) -> None:
+        """Seed identity_manifest table with bundled manifests if empty.
+
+        Loads YAML manifests from quasar/seeds/manifests/ and bulk inserts
+        into the database. Idempotent - only seeds if table is empty.
+        Uses prepared statements and transactions for efficiency.
+        """
+        try:
+            # Check if table is already seeded
+            count = await self.pool.fetchval("SELECT COUNT(*) FROM identity_manifest")
+            if count > 0:
+                logger.info("Identity manifests already seeded, skipping.")
+                return
+
+            # Locate manifests directory relative to this file
+            manifests_dir = Path(__file__).parent.parent.parent / "seeds" / "manifests"
+            if not manifests_dir.exists():
+                logger.warning(f"Manifests directory not found: {manifests_dir}")
+                return
+
+            total_seeded = 0
+
+            # Process each manifest file
+            for manifest_file in sorted(manifests_dir.glob("*.yaml")):
+                asset_class_group = manifest_file.stem  # 'crypto' or 'securities'
+
+                if asset_class_group not in ['crypto', 'securities']:
+                    logger.warning(f"Skipping unknown manifest file: {manifest_file.name}")
+                    continue
+
+                logger.info(f"Seeding {asset_class_group} manifest from {manifest_file}")
+
+                try:
+                    # Load YAML file
+                    with open(manifest_file, 'r', encoding='utf-8') as f:
+                        identities = yaml.safe_load(f) or []
+
+                    if not isinstance(identities, list):
+                        logger.error(f"Invalid manifest format in {manifest_file.name}: expected list")
+                        continue
+
+                    # Bulk insert using prepared statement
+                    seeded_count = await self._bulk_insert_manifest(
+                        identities,
+                        asset_class_group,
+                        source='bundled'
+                    )
+                    total_seeded += seeded_count
+                    logger.info(f"Seeded {seeded_count} {asset_class_group} identities from {manifest_file.name}")
+
+                except yaml.YAMLError as e:
+                    logger.error(f"YAML parsing error in {manifest_file.name}: {e}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Failed to seed {asset_class_group} manifest: {e}", exc_info=True)
+                    continue
+
+            logger.info(f"Identity manifest seeding complete. Total identities seeded: {total_seeded}")
+
+        except Exception as e:
+            logger.error(f"Error during identity manifest seeding: {e}", exc_info=True)
+            # Don't fail startup for seeding errors - manifests are optional
+            pass
+
+    async def _bulk_insert_manifest(
+        self,
+        identities: List[Dict],
+        asset_class_group: str,
+        source: str
+    ) -> int:
+        """Bulk insert identities into identity_manifest table.
+
+        Uses conn.execute() directly following the savepoint pattern.
+        Uses transactions for efficiency and atomicity.
+
+        Args:
+            identities: List of identity dicts with keys: figi (mapped to primary_id), symbol, name, exchange
+            asset_class_group: 'securities' or 'crypto'
+            source: Source identifier ('bundled', 'api_upload', etc.)
+
+        Returns:
+            Number of identities successfully inserted
+        """
+        if not identities:
+            return 0
+
+        insert_query = """
+            INSERT INTO identity_manifest
+            (primary_id, symbol, name, exchange, asset_class_group, source)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (primary_id, asset_class_group) DO NOTHING
+        """
+
+        inserted_count = 0
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                for identity in identities:
+                    try:
+                        # Validate required fields
+                        # YAML manifests use 'figi' key which maps to primary_id column
+                        primary_id = identity.get('figi')
+                        symbol = identity.get('symbol')
+                        name = identity.get('name')
+
+                        if not primary_id or not symbol or not name:
+                            logger.warning(
+                                f"Skipping identity with missing required fields: {identity}"
+                            )
+                            continue
+
+                        # Insert using conn.execute() following savepoint pattern
+                        await conn.execute(
+                            insert_query,
+                            primary_id,
+                            symbol,
+                            name,
+                            identity.get('exchange'),  # Can be None/null
+                            asset_class_group,
+                            source
+                        )
+                        inserted_count += 1
+
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to insert identity {identity.get('symbol', 'unknown')}: {e}"
+                        )
+                        continue
+
+        return inserted_count
+
+    async def _apply_identity_matches(self, matches: List[MatchResult]) -> dict:
+        """Apply identity matcher results to assets table.
+
+        Only updates assets where primary_id IS NULL (never overwrites provider-supplied IDs).
+
+        Args:
+            matches: List of MatchResult from identity matcher.
+
+        Returns:
+            Dict with counts: identified, skipped, failed, constraint_rejected
+        """
+        if not matches:
+            return {'identified': 0, 'skipped': 0, 'failed': 0, 'constraint_rejected': 0}
+
+        update_query = """
+            UPDATE assets
+            SET primary_id = $2,
+                primary_id_source = 'matcher',
+                identity_conf = $3,
+                identity_match_type = $4,
+                identity_updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND primary_id IS NULL
+            RETURNING id
+        """
+
+        stats = {'identified': 0, 'skipped': 0, 'failed': 0, 'constraint_rejected': 0}
+
+        async with self.pool.acquire() as conn:
+            for match in matches:
+                try:
+                    result = await conn.fetchval(
+                        update_query,
+                        match.asset_id,
+                        match.primary_id,
+                        match.confidence,
+                        match.match_type,
+                        match.identity_symbol
+                    )
+                    if result:
+                        stats['identified'] += 1
+                    else:
+                        stats['skipped'] += 1
+                except UniqueViolationError as e:
+                    # This is expected when deduplication missed a duplicate or
+                    # when re-attempting identification of previously rejected assets
+                    if 'idx_assets_unique_securities_primary_id' in str(e):
+                        logger.info(
+                            f"Identity rejected by constraint for asset {match.identity_symbol} "
+                            f"(primary_id={match.primary_id}): another asset already has this identity"
+                        )
+                        stats['constraint_rejected'] += 1
+                    else:
+                        logger.warning(f"Unexpected unique violation for asset {match.asset_id}: {e}")
+                        stats['failed'] += 1
+                except Exception as e:
+                    logger.warning(f"Failed to apply match for asset {match.asset_id}: {e}")
+                    stats['failed'] += 1
+
+        return stats
 
     # API ENDPOINTS
     # ---------------------------------------------------------------------
@@ -538,7 +779,11 @@ class Registry(DatabaseHandler, APIHandler):
         return UpdateAssetsResponse(**stats)
 
     async def handle_update_all_assets(self) -> List[UpdateAssetsResponse]:
-        """Trigger asset updates for all registered providers and brokers."""
+        """Trigger asset updates for all registered providers and brokers.
+
+        After updating assets from each provider, runs a global identity matching
+        pass to identify any remaining unidentified assets across all providers.
+        """
         logger.info("Registry.handle_update_all_assets: Triggering asset update for all registered providers.")
         # Fetch all registered providers
         query_providers = """
@@ -555,13 +800,26 @@ class Registry(DatabaseHandler, APIHandler):
             logger.info("Registry.handle_update_all_assets: No registered providers found.")
             return []
 
-        # Update assets for each provider
+        # Update assets for each provider (identity matching runs per-provider)
         stats_list = []
         for provider in providers:
             class_name = provider['class_name']
             class_type = provider['class_type']
             stats = await self._update_assets_for_provider(class_name, class_type)
             stats_list.append(UpdateAssetsResponse(**stats))
+
+        # Run global identity matching for any remaining unidentified assets
+        # This catches assets that may have been missed by per-provider matching
+        try:
+            all_matches = await self.matcher.identify_all_unidentified_assets()
+            if all_matches:
+                global_stats = await self._apply_identity_matches(all_matches)
+                logger.info(
+                    f"Registry.handle_update_all_assets: Global identity matching complete: "
+                    f"identified={global_stats['identified']}, skipped={global_stats['skipped']}"
+                )
+        except Exception as e:
+            logger.warning(f"Registry.handle_update_all_assets: Global identity matching failed: {e}")
 
         return stats_list
 
@@ -586,6 +844,11 @@ class Registry(DatabaseHandler, APIHandler):
             'added_symbols': 0,
             'updated_symbols': 0,
             'failed_symbols': 0,
+            'identity_matched': 0,
+            'identity_skipped': 0,
+            'mappings_created': 0,
+            'mappings_skipped': 0,
+            'mappings_failed': 0,
             'status': 200
         }
 
@@ -637,14 +900,31 @@ class Registry(DatabaseHandler, APIHandler):
             return stats
 
         # Upsert symbols into the database
+        # When provider supplies primary_id, set primary_id_source = 'provider'
+        # On conflict: only update primary_id if provider supplies one (preserve matcher IDs)
+        # Note: $4::TEXT cast required for asyncpg prepared statement type inference
         upsert_query = """
                         INSERT INTO assets (
-                            class_name, class_type, external_id, isin, symbol, 
-                            name, exchange, asset_class, base_currency, quote_currency, country
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            class_name, class_type, external_id, primary_id, primary_id_source, symbol, 
+                            matcher_symbol, name, exchange, asset_class, 
+                            base_currency, quote_currency, country
+                        ) VALUES (
+                            $1, $2, $3, $4::TEXT, 
+                            CASE WHEN $4::TEXT IS NOT NULL THEN 'provider' ELSE NULL END,
+                            $5, $6, $7, $8, $9, $10, $11, $12
+                        )
                         ON CONFLICT (class_name, class_type, symbol) DO UPDATE SET
                             external_id = EXCLUDED.external_id,
-                            isin = EXCLUDED.isin,
+                            -- Only update primary_id if provider supplies one (preserve matcher IDs)
+                            primary_id = CASE 
+                                WHEN EXCLUDED.primary_id IS NOT NULL THEN EXCLUDED.primary_id
+                                ELSE assets.primary_id 
+                            END,
+                            primary_id_source = CASE
+                                WHEN EXCLUDED.primary_id IS NOT NULL THEN 'provider'
+                                ELSE assets.primary_id_source
+                            END,
+                            matcher_symbol = EXCLUDED.matcher_symbol,
                             name = EXCLUDED.name,
                             exchange = EXCLUDED.exchange,
                             asset_class = EXCLUDED.asset_class,
@@ -652,9 +932,7 @@ class Registry(DatabaseHandler, APIHandler):
                             quote_currency = EXCLUDED.quote_currency,
                             country = EXCLUDED.country
                         RETURNING xmax; 
-                    """      
-                    # May want to add updated_at = CURRENT_TIMESTAMP (later)
-                            # updated_at = CURRENT_TIMESTAMP -- Assuming you have an updated_at column
+                    """
         processed_symbols = set()
         
         async with self.pool.acquire() as conn:
@@ -694,8 +972,9 @@ class Registry(DatabaseHandler, APIHandler):
                         class_name,
                         class_type,
                         symbol_info.get('provider_id'),
-                        symbol_info.get('isin'),
+                        symbol_info.get('primary_id'),
                         symbol,
+                        symbol_info.get('matcher_symbol') or symbol,  # Fallback to symbol if not provided
                         symbol_info.get('name'),
                         symbol_info.get('exchange'),
                         normalized_asset_class,
@@ -728,8 +1007,120 @@ class Registry(DatabaseHandler, APIHandler):
         stats['processed_symbols'] = stats['added_symbols'] + \
                                 stats['updated_symbols'] + \
                                 stats['failed_symbols']
-        logger.info(f"Registry._update_assets_for_provider: Asset update summary for {class_name} ({class_type}):" \
+        logger.info(f"Registry._update_assets_for_provider: Asset update summary for {class_name} ({class_type}): " \
                     f"Added={stats['added_symbols']}, Updated={stats['updated_symbols']}, Failed={stats['failed_symbols']}")
+
+        # Run identity matching for unidentified assets
+        try:
+            match_results = await self.matcher.identify_unidentified_assets(
+                class_name, class_type
+            )
+            if match_results:
+                match_stats = await self._apply_identity_matches(match_results)
+                stats['identity_matched'] = match_stats['identified']
+                stats['identity_skipped'] = match_stats['skipped']
+                logger.info(
+                    f"Registry._update_assets_for_provider: Identity matching for {class_name}: "
+                    f"identified={match_stats['identified']}, skipped={match_stats['skipped']}"
+                )
+        except Exception as e:
+            logger.warning(f"Registry._update_assets_for_provider: Identity matching failed for {class_name}: {e}")
+            # Don't fail the whole operation, just log the warning
+
+        # Run automated mapping for newly identified assets
+        try:
+            logger.info(
+                f"Registry._update_assets_for_provider: Starting automated mapping "
+                f"for {class_name} ({class_type})"
+            )
+
+            mapping_candidates = await self.mapper.generate_mapping_candidates_for_provider(
+                class_name, class_type
+            )
+
+            if mapping_candidates:
+                mapping_stats = await self._apply_automated_mappings(mapping_candidates)
+                stats['mappings_created'] = mapping_stats['created']
+                stats['mappings_skipped'] = mapping_stats['skipped']
+                stats['mappings_failed'] = mapping_stats['failed']
+
+                logger.info(
+                    f"Registry._update_assets_for_provider: Automated mapping complete "
+                    f"for {class_name}: created={mapping_stats['created']}, "
+                    f"skipped={mapping_stats['skipped']}, failed={mapping_stats['failed']}"
+                )
+            else:
+                logger.info(
+                    f"Registry._update_assets_for_provider: No mapping candidates "
+                    f"generated for {class_name} ({class_type})"
+                )
+        except Exception as e:
+            logger.warning(
+                f"Registry._update_assets_for_provider: Automated mapping failed "
+                f"for {class_name}: {e}"
+            )
+            # Don't fail the whole operation, just log the warning
+
+        return stats
+
+    async def _apply_automated_mappings(
+        self,
+        candidates: List[MappingCandidate]
+    ) -> Dict[str, int]:
+        """Bulk insert mapping candidates using prepared statements and savepoints.
+
+        Args:
+            candidates: List of MappingCandidate objects to insert
+
+        Returns:
+            Dict with 'created', 'skipped', 'failed' counts
+        """
+        stats = {'created': 0, 'skipped': 0, 'failed': 0}
+
+        if not candidates:
+            return stats
+
+        mapping_insert_query = """
+            INSERT INTO asset_mapping (common_symbol, class_name, class_type, class_symbol, is_active)
+            VALUES ($1, $2, $3, $4, true)
+            ON CONFLICT (class_name, class_type, class_symbol) DO NOTHING
+            RETURNING common_symbol;
+        """
+
+        async with self.pool.acquire() as conn:
+            prepared_insert = await conn.prepare(mapping_insert_query)
+            savepoint_counter = 0
+            async with conn.transaction():
+                async def _exec_savepoint(cmd: str) -> None:
+                    """Execute savepoint commands without aborting transaction."""
+                    try:
+                        await conn.execute(cmd)
+                    except Exception as exc:
+                        logger.warning(f"Registry._apply_automated_mappings: Savepoint command '{cmd}' failed: {exc}", exc_info=True)
+
+                for candidate in candidates:
+                    savepoint_name = f"mapping_insert_{savepoint_counter}"
+                    savepoint_counter += 1
+                    await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+
+                    try:
+                        result = await prepared_insert.fetchrow(
+                            candidate.common_symbol,
+                            candidate.class_name,
+                            candidate.class_type,
+                            candidate.class_symbol
+                        )
+                        if result:
+                            stats['created'] += 1
+                        else:
+                            # ON CONFLICT DO NOTHING - mapping already exists
+                            stats['skipped'] += 1
+                        await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
+                    except Exception as e:
+                        logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
+                        stats['failed'] += 1
+                        await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+
         return stats
 
     async def handle_get_assets(self, params: AssetQueryParams = Depends()) -> AssetResponse:
@@ -753,8 +1144,11 @@ class Registry(DatabaseHandler, APIHandler):
             sort_order_str = params.sort_order
 
             valid_sort_columns = [
-                'class_name', 'class_type', 'symbol', 'name', 
-                'exchange', 'asset_class', 'base_currency', 'quote_currency', 'country'
+                'id', 'class_name', 'class_type', 'symbol', 'name', 'exchange',
+                'asset_class', 'base_currency', 'quote_currency', 'country',
+                'primary_id', 'primary_id_source', 'matcher_symbol', 'identity_conf',
+                'identity_match_type', 'identity_updated_at', 'asset_class_group',
+                'sym_norm_full', 'sym_norm_root', 'external_id'
             ]
             
             sort_by_cols = [col.strip() for col in sort_by_str.split(',')]
@@ -813,10 +1207,22 @@ class Registry(DatabaseHandler, APIHandler):
             add_filter('name', params.name_like, partial_match=True)
             add_filter('exchange', params.exchange_like, partial_match=True)
 
+            # New identity field filters
+            add_filter('primary_id', params.primary_id_like, partial_match=True)
+            add_filter('primary_id_source', params.primary_id_source)
+            add_filter('matcher_symbol', params.matcher_symbol_like, partial_match=True)
+            add_filter('identity_match_type', params.identity_match_type)
+            add_filter('asset_class_group', params.asset_class_group)
+
             where_clause = " AND ".join(filters) if filters else "TRUE"
 
             # Build queries
-            select_columns = "id, class_name, class_type, external_id, isin, symbol, name, exchange, asset_class, base_currency, quote_currency, country"
+            select_columns = """
+                id, class_name, class_type, external_id, primary_id, primary_id_source,
+                symbol, matcher_symbol, name, exchange, asset_class, base_currency,
+                quote_currency, country, identity_conf, identity_match_type,
+                identity_updated_at, asset_class_group, sym_norm_full, sym_norm_root
+            """
             
             data_query = f"""
                 SELECT {select_columns}
@@ -862,6 +1268,121 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.error(f"Registry.handle_get_assets: Error fetching assets: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching assets")
+
+    async def handle_get_common_symbols(self, params: CommonSymbolQueryParams = Depends()) -> CommonSymbolResponse:
+        """Return common symbols with optional filtering, sorting, and pagination.
+
+        Args:
+            params (CommonSymbolQueryParams): Query parameters parsed by FastAPI.
+
+        Returns:
+            CommonSymbolResponse: Paginated common symbol list and counts.
+        """
+        logger.info("Registry.handle_get_common_symbols: Received request for common symbols.")
+
+        try:
+            # Pagination (already validated by Pydantic)
+            limit = params.limit
+            offset = params.offset
+
+            # Sorting
+            sort_by_str = params.sort_by
+            sort_order_str = params.sort_order
+
+            valid_sort_columns = ['common_symbol', 'provider_count']
+
+            sort_by_cols = [col.strip() for col in sort_by_str.split(',')]
+            sort_orders = [order.strip().lower() for order in sort_order_str.split(',')]
+
+            if not all(col in valid_sort_columns for col in sort_by_cols):
+                raise HTTPException(status_code=400, detail="Invalid sort_by column")
+            if not all(order in ['asc', 'desc'] for order in sort_orders):
+                raise HTTPException(status_code=400, detail="Invalid sort_order value")
+
+            if len(sort_orders) == 1 and len(sort_by_cols) > 1: # Apply single order to all sort columns
+                sort_orders = [sort_orders[0]] * len(sort_by_cols)
+            elif len(sort_orders) != len(sort_by_cols):
+                raise HTTPException(status_code=400, detail="Mismatch between sort_by and sort_order counts")
+
+            order_by_clauses = [f"{col} {order.upper()}" for col, order in zip(sort_by_cols, sort_orders)]
+            order_by_sql = ", ".join(order_by_clauses)
+
+            # Filtering
+            filters = []
+            db_params: List[Any] = []
+            param_idx = 1
+
+            def add_filter(column: str, value: Optional[str], partial_match: bool = False, is_list: bool = False):
+                nonlocal param_idx
+                if value is not None and value.strip() != "":
+                    decoded_value = unquote_plus(value.strip())
+                    if is_list:
+                        # Assuming comma-separated list for IN clause
+                        list_values = [v.strip() for v in decoded_value.split(',')]
+                        if list_values:
+                            placeholders = ', '.join([f'${param_idx + i}' for i in range(len(list_values))])
+                            filters.append(f"{column} IN ({placeholders})")
+                            db_params.extend(list_values)
+                            param_idx += len(list_values)
+                    elif partial_match:
+                        filters.append(f"LOWER({column}) LIKE LOWER(${param_idx})")
+                        db_params.append(f"%{decoded_value}%")
+                        param_idx += 1
+                    else: # Exact match
+                        filters.append(f"{column} = ${param_idx}")
+                        db_params.append(decoded_value)
+                        param_idx += 1
+
+            add_filter('common_symbol', params.common_symbol_like, partial_match=True)
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+
+            # Build queries
+            data_query = f"""
+                SELECT common_symbol, COUNT(DISTINCT (class_name, class_type)) as provider_count
+                FROM asset_mapping
+                WHERE {where_clause}
+                GROUP BY common_symbol
+                ORDER BY {order_by_sql}
+                LIMIT ${param_idx} OFFSET ${param_idx + 1};
+            """
+            count_query = f"""
+                SELECT COUNT(DISTINCT common_symbol) as total_items
+                FROM asset_mapping
+                WHERE {where_clause};
+            """
+
+            data_params = db_params + [limit, offset]
+            count_params = db_params # Count query doesn't use limit/offset
+
+            async with self.pool.acquire() as conn:
+                logger.debug(f"Executing data query: {data_query} with params: {data_params}")
+                common_symbol_records = await conn.fetch(data_query, *data_params)
+
+                logger.debug(f"Executing count query: {count_query} with params: {count_params}")
+                total_items_record = await conn.fetchrow(count_query, *count_params)
+
+            common_symbol_items = [CommonSymbolItem(**dict(record)) for record in common_symbol_records]
+            total_items = total_items_record['total_items'] if total_items_record else 0
+
+            logger.info(f"Registry.handle_get_common_symbols: Returning {len(common_symbol_items)} common symbols out of {total_items} total matching criteria.")
+            return CommonSymbolResponse(
+                items=common_symbol_items,
+                total_items=total_items,
+                limit=limit,
+                offset=offset,
+                page=(offset // limit) + 1 if limit > 0 else 1,
+                total_pages=(total_items + limit - 1) // limit if limit > 0 else 1
+            )
+
+        except HTTPException:
+            raise
+        except ValueError as ve:
+            logger.warning(f"Registry.handle_get_common_symbols: Invalid input value: {ve}")
+            raise HTTPException(status_code=400, detail=f"Invalid input value: {ve}")
+        except Exception as e:
+            logger.error(f"Registry.handle_get_common_symbols: Error fetching common symbols: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while fetching common symbols")
 
     # # GET REGISTERED CLASSES
     async def handle_get_classes_summary(self) -> List[ClassSummaryItem]:
@@ -1081,6 +1602,56 @@ class Registry(DatabaseHandler, APIHandler):
             logger.error(f"Registry.handle_get_asset_mappings: Error fetching asset mappings: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while fetching asset mappings")
 
+    async def handle_get_asset_mappings_for_symbol(
+        self,
+        common_symbol: str
+    ) -> List[AssetMappingResponse]:
+        """Get all asset mappings for a specific common symbol, including asset details.
+
+        Args:
+            common_symbol (str): The common symbol to filter by.
+
+        Returns:
+            List[AssetMappingResponse]: All mappings for the specified common symbol with asset details.
+        """
+        logger.info(f"Registry.handle_get_asset_mappings_for_symbol: Received request for asset mappings with common_symbol='{common_symbol}'.")
+
+        query = """
+            SELECT
+                am.common_symbol,
+                am.class_name,
+                am.class_type,
+                am.class_symbol,
+                am.is_active,
+                a.primary_id,
+                a.asset_class
+            FROM asset_mapping am
+            LEFT JOIN assets a ON am.class_name = a.class_name
+                               AND am.class_type = a.class_type
+                               AND am.class_symbol = a.symbol
+            WHERE am.common_symbol = $1
+            ORDER BY am.class_name, am.class_type, am.class_symbol
+        """
+
+        try:
+            mappings_records = await self.pool.fetch(query, common_symbol)
+
+            # Convert records to dict and handle potential None values
+            mappings_list = []
+            for record in mappings_records:
+                record_dict = dict(record)
+                # Ensure asset_class is properly handled (it might be None)
+                if record_dict.get('asset_class') is None:
+                    record_dict['asset_class'] = None
+                mappings_list.append(AssetMappingResponse(**record_dict))
+
+            logger.info(f"Registry.handle_get_asset_mappings_for_symbol: Returning {len(mappings_list)} asset mappings for common_symbol='{common_symbol}'.")
+            return mappings_list
+
+        except Exception as e:
+            logger.error(f"Registry.handle_get_asset_mappings_for_symbol: Error fetching asset mappings for common_symbol='{common_symbol}': {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while fetching asset mappings")
+
     async def handle_get_asset_mapping_suggestions(
         self,
         source_class: str = Query(..., description="Provider/broker to suggest mappings for"),
@@ -1184,7 +1755,7 @@ class Registry(DatabaseHandler, APIHandler):
 
             # Score expression for use in deduplicated CTE (using column names from matched output)
             score_expr = f"""(
-                CASE WHEN t_isin IS NOT NULL AND s_isin = t_isin THEN 70 ELSE 0 END +
+                CASE WHEN t_primary_id IS NOT NULL AND s_primary_id = t_primary_id THEN 70 ELSE 0 END +
                 CASE WHEN t_ext_id IS NOT NULL AND s_ext_id = t_ext_id THEN 50 ELSE 0 END +
                 CASE WHEN (s_sym_full = t_sym_full OR s_sym_root = t_sym_root) THEN 30 ELSE 0 END +
                 CASE WHEN s_base = t_base AND s_quote = t_quote THEN 10 ELSE 0 END +
@@ -1217,7 +1788,7 @@ class Registry(DatabaseHandler, APIHandler):
                 t.symbol AS target_symbol,
                 t.name AS target_name,
                 s.sym_norm_root,
-                s.isin AS s_isin, t.isin AS t_isin,
+                s.primary_id AS s_primary_id, t.primary_id AS t_primary_id,
                 s.external_id AS s_ext_id, t.external_id AS t_ext_id,
                 s.sym_norm_full AS s_sym_full, t.sym_norm_full AS t_sym_full,
                 s.sym_norm_root AS s_sym_root, t.sym_norm_root AS t_sym_root,
@@ -1240,10 +1811,10 @@ class Registry(DatabaseHandler, APIHandler):
                 WITH src AS ({src_cte}),
                      tgt AS ({tgt_cte}),
                 matched AS (
-                    -- ISIN matches (indexed)
+                    -- Primary ID matches (indexed)
                     SELECT {select_cols}
-                    FROM src s JOIN tgt t ON s.isin = t.isin
-                    WHERE s.isin IS NOT NULL AND {asset_class_clause}
+                    FROM src s JOIN tgt t ON s.primary_id = t.primary_id
+                    WHERE s.primary_id IS NOT NULL AND {asset_class_clause}
 
                     UNION ALL
 
@@ -1271,7 +1842,7 @@ class Registry(DatabaseHandler, APIHandler):
                         source_class, source_type, source_symbol, source_name,
                         target_class, target_type, target_symbol, target_name,
                         sym_norm_root,
-                        COALESCE(t_isin IS NOT NULL AND s_isin = t_isin, FALSE) AS isin_match,
+                        COALESCE(t_primary_id IS NOT NULL AND s_primary_id = t_primary_id, FALSE) AS id_match,
                         COALESCE(t_ext_id IS NOT NULL AND s_ext_id = t_ext_id, FALSE) AS external_id_match,
                         COALESCE(s_sym_full = t_sym_full OR s_sym_root = t_sym_root, FALSE) AS norm_match,
                         COALESCE(s_base = t_base AND s_quote = t_quote, FALSE) AS base_quote_match,
@@ -1338,7 +1909,7 @@ class Registry(DatabaseHandler, APIHandler):
                         source_class, source_type, source_symbol, source_name,
                         target_class, target_type, target_symbol, target_name,
                         target_common_symbol, proposed_common_symbol, score,
-                        isin_match, external_id_match, norm_match,
+                        id_match, external_id_match, norm_match,
                         base_quote_match, exchange_match,
                         sym_root_similarity, name_similarity,
                         target_already_mapped
@@ -1394,7 +1965,7 @@ class Registry(DatabaseHandler, APIHandler):
                 target_common_symbol=target_common_symbol,
                 proposed_common_symbol=proposed_common_symbol,
                 score=float(record["score"]),
-                isin_match=record["isin_match"],
+                id_match=record["id_match"],
                 external_id_match=record["external_id_match"],
                 norm_match=record["norm_match"],
                 base_quote_match=record["base_quote_match"],
@@ -1581,3 +2152,172 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.error(f"Registry.handle_delete_asset_mapping: Unexpected error deleting asset mapping: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+    # # PROVIDER CONFIGURATION
+    async def handle_get_provider_config(
+        self,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> ProviderPreferencesResponse:
+        """Get provider configuration preferences.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            ProviderPreferencesResponse: Current preferences for the provider.
+        """
+        logger.info(f"Registry.handle_get_provider_config: Getting config for {class_name}/{class_type}")
+
+        # First verify provider exists
+        exists_query = """
+            SELECT 1 FROM code_registry WHERE class_name = $1 AND class_type = $2
+        """
+        preferences_query = """
+            SELECT preferences
+            FROM code_registry
+            WHERE class_name = $1 AND class_type = $2
+        """
+
+        try:
+            exists = await self.pool.fetchval(exists_query, class_name, class_type)
+            if not exists:
+                logger.warning(f"Registry.handle_get_provider_config: Provider {class_name}/{class_type} not found")
+                raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+            preferences_data = await self.pool.fetchval(preferences_query, class_name, class_type)
+
+            # Convert JSONB to ProviderPreferences model, defaulting to empty if null
+            if preferences_data:
+                # Handle both dict (parsed JSONB) and string (raw JSONB) cases
+                if isinstance(preferences_data, str):
+                    preferences_data = json.loads(preferences_data)
+                preferences = ProviderPreferences(**preferences_data)
+            else:
+                preferences = ProviderPreferences()
+
+            logger.info(f"Registry.handle_get_provider_config: Retrieved config for {class_name}/{class_type}")
+            return ProviderPreferencesResponse(
+                class_name=class_name,
+                class_type=class_type,
+                preferences=preferences
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_provider_config: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving provider config")
+
+    async def handle_update_provider_config(
+        self,
+        update: ProviderPreferencesUpdate,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> ProviderPreferencesResponse:
+        """Update provider configuration preferences.
+
+        Args:
+            update (ProviderPreferencesUpdate): Preferences to update.
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            ProviderPreferencesResponse: Updated preferences for the provider.
+        """
+        logger.info(f"Registry.handle_update_provider_config: Updating config for {class_name}/{class_type}")
+
+        # First verify provider exists
+        exists_query = """
+            SELECT 1 FROM code_registry WHERE class_name = $1 AND class_type = $2
+        """
+        exists = await self.pool.fetchval(exists_query, class_name, class_type)
+        if not exists:
+            logger.warning(f"Registry.handle_update_provider_config: Provider {class_name}/{class_type} not found")
+            raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+        # Update preferences using JSONB merge
+        update_query = """
+            UPDATE code_registry
+            SET preferences = jsonb_strip_nulls(COALESCE(preferences, '{}'::jsonb) || $3::jsonb)
+            WHERE class_name = $1 AND class_type = $2
+            RETURNING preferences
+        """
+
+        try:
+            # Convert update model to dict, removing None values
+            update_dict = update.model_dump(exclude_unset=True, exclude_none=True)
+            if not update_dict:
+                logger.warning(f"Registry.handle_update_provider_config: No updates provided for {class_name}/{class_type}")
+                raise HTTPException(status_code=400, detail="No preferences provided for update")
+
+            # Convert dict to JSON string for asyncpg JSONB parameter
+            update_json = json.dumps(update_dict)
+
+            updated_preferences = await self.pool.fetchval(
+                update_query,
+                class_name,
+                class_type,
+                update_json
+            )
+
+            # Convert back to ProviderPreferences model
+            if updated_preferences:
+                # Handle both dict (parsed JSONB) and string (raw JSONB) cases
+                if isinstance(updated_preferences, str):
+                    updated_preferences = json.loads(updated_preferences)
+                preferences = ProviderPreferences(**updated_preferences)
+            else:
+                preferences = ProviderPreferences()
+
+            logger.info(f"Registry.handle_update_provider_config: Updated config for {class_name}/{class_type}")
+            return ProviderPreferencesResponse(
+                class_name=class_name,
+                class_type=class_type,
+                preferences=preferences
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_update_provider_config: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while updating provider config")
+
+    async def handle_get_available_quote_currencies(
+        self,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> AvailableQuoteCurrenciesResponse:
+        """Get available quote currencies for crypto assets of a provider.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            AvailableQuoteCurrenciesResponse: List of available quote currencies.
+        """
+        logger.info(f"Registry.handle_get_available_quote_currencies: Getting quote currencies for {class_name}/{class_type}")
+
+        query = """
+            SELECT DISTINCT quote_currency
+            FROM assets
+            WHERE class_name = $1
+              AND class_type = $2
+              AND asset_class_group = 'crypto'
+              AND quote_currency IS NOT NULL
+            ORDER BY quote_currency
+        """
+
+        try:
+            records = await self.pool.fetch(query, class_name, class_type)
+            quote_currencies = [record['quote_currency'] for record in records]
+
+            logger.info(f"Registry.handle_get_available_quote_currencies: Found {len(quote_currencies)} quote currencies for {class_name}/{class_type}")
+            return AvailableQuoteCurrenciesResponse(
+                class_name=class_name,
+                class_type=class_type,
+                available_quote_currencies=quote_currencies
+            )
+        except Exception as e:
+            logger.error(f"Registry.handle_get_available_quote_currencies: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving available quote currencies")

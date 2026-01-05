@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS code_registry (
     file_hash BYTEA NOT NULL UNIQUE,
     nonce BYTEA NOT NULL,
     ciphertext BYTEA NOT NULL,
+    preferences JSONB DEFAULT '{}',
     CONSTRAINT eq_class_name_type UNIQUE (class_name, class_type)
 );
 CREATE INDEX IF NOT EXISTS idx_code_registry_class_name_type ON code_registry (

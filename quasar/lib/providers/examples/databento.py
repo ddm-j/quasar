@@ -3,6 +3,7 @@
 from quasar.lib.enums import AssetClass, Interval
 from quasar.lib.providers.core import HistoricalDataProvider, Bar, SymbolInfo, Req
 from quasar.lib.providers import register_provider
+from quasar.lib.common.calendar import TradingCalendar
 from datetime import date, datetime, timezone, timedelta
 from typing import AsyncIterator, Iterable
 import aiohttp
@@ -285,10 +286,25 @@ class DatabentoProvider(HistoricalDataProvider):
         available_start, available_end = await self._get_dataset_range()
         
         # Request definitions for a single day
-        # Note: available_end is exclusive, so subtract 1 day to get the last valid date
-        # The definition schema returns ALL active instruments for that date,
-        # so multiple days are unnecessary and only increase data costs
-        query_date = available_end - timedelta(days=1)
+        # Use trading calendar to find the most recent valid trading day (search through last 10 days)
+        query_date = None
+        candidate_date = available_end - timedelta(days=1)
+
+        for _ in range(10):  # Check last 10 days
+            if candidate_date < available_start:
+                break  # Don't go before available data starts
+
+            if TradingCalendar.is_session('XNYS', candidate_date):
+                query_date = candidate_date
+                break  # Found the most recent trading day
+            
+            candidate_date -= timedelta(days=1)
+
+        if query_date is None:
+            # Fallback: use the original logic if no trading day found
+            query_date = available_end - timedelta(days=1)
+            logger.warning(f"No recent trading day found in available range, using {query_date}")
+
         start_date = query_date
         end_date = query_date
         
@@ -342,8 +358,9 @@ class DatabentoProvider(HistoricalDataProvider):
             syminfo = SymbolInfo(
                 provider=self.name,
                 provider_id=str(instrument_id) if instrument_id else raw_symbol,
-                isin=None,  # Databento doesn't provide ISIN
+                primary_id=None,  # Provider does not supply FIGI
                 symbol=raw_symbol,
+                matcher_symbol=raw_symbol,
                 name=raw_symbol,  # Databento doesn't provide description in definition
                 exchange=exchange,
                 asset_class=asset_class,

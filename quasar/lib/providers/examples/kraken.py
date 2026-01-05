@@ -14,18 +14,6 @@ import urllib.parse
 
 from quasar.lib.common.context import DerivedContext
 
-# class SymbolInfo(TypedDict):
-#     provider: str
-#     provider_id: str | None
-#     isin: str | None
-#     symbol: str
-#     name: str
-#     exchange: str
-#     asset_class: str
-#     base_currency: str
-#     quote_currency: str
-#     country: str | None
-
 @register_provider
 class KrakenProvider(LiveDataProvider):
     name = 'KRAKEN'
@@ -53,8 +41,7 @@ class KrakenProvider(LiveDataProvider):
         # These Values are the same for all symbols from Kraken
         asset_class = AssetClass.CRYPTO.value
         country = None
-        isin = None
-        exchange = 'CRYPTO'
+        exchange = None
         symbols = []
         for sym, e in result.items():
             if e['quote'] not in ['ZUSD', 'USDC']:
@@ -63,11 +50,14 @@ class KrakenProvider(LiveDataProvider):
             base_currency = e['base']
             if not e.get('wsname') or not e.get('altname'):
                 continue
+
+            # print(f"{e['wsname']} - {e['altname']} -> {e['wsname'].split('/')[0]}")
             symbol = SymbolInfo(
                 provider=self.name,
                 provider_id=e['altname'],
-                isin=isin,
+                primary_id=None,  # Provider does not supply FIGI
                 symbol=e['wsname'],
+                matcher_symbol=e['wsname'].split('/')[0],
                 name=sym,
                 exchange=exchange,
                 asset_class=asset_class,

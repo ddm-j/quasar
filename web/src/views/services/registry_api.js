@@ -370,3 +370,159 @@ export const getAssets = async (params = {}) => {
 
   return data; // Expected format: { items: [], total_items: X, limit: Y, offset: Z, ... }
 };
+
+/**
+ * Fetches provider configuration preferences.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Provider preferences response.
+ */
+export const getProviderConfig = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Updates provider configuration preferences.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @param {object} config - Configuration update object.
+ * @returns {Promise<object>} - Updated provider preferences response.
+ */
+export const updateProviderConfig = async (classType, className, config) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config?${params.toString()}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Fetches available quote currencies for a provider's crypto assets.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Available quote currencies response.
+ */
+export const getAvailableQuoteCurrencies = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config/available-quote-currencies?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+
+/**
+ * Fetches common symbols with server-side pagination, sorting, and filtering.
+ * @param {object} params - Query parameters.
+ * @param {number} [params.limit=25] - Number of items per page (max 100).
+ * @param {number} [params.offset=0] - Starting index.
+ * @param {string} [params.sort_by='common_symbol'] - Column to sort by.
+ * @param {string} [params.sort_order='asc'] - Sort order ('asc' or 'desc').
+ * @param {string} [params.common_symbol_like] - Partial match filter for common_symbol.
+ * @returns {Promise<object>} - Common symbols response: { items, total_items, limit, offset, page, total_pages }
+ */
+export const getCommonSymbols = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  // Add only defined parameters to the query string
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${API_BASE}common-symbols${queryString ? `?${queryString}` : ''}`;
+
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.error || data.message || `HTTP error! status: ${response.status}`;
+    console.error('Error fetching common symbols:', errorMessage, 'Response data:', data);
+    throw new Error(errorMessage);
+  }
+
+  return data; // Expected format: { items: [], total_items: X, limit: Y, offset: Z, ... }
+};
+
+/**
+ * Fetches asset mappings for a specific common symbol.
+ * @param {string} commonSymbol - The common symbol to filter by.
+ * @returns {Promise<object[]>} - Array of asset mapping objects.
+ */
+export const getAssetMappingsForSymbol = async (commonSymbol) => {
+  const response = await fetch(`${API_BASE}asset-mappings/${encodeURIComponent(commonSymbol)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    console.error('Error fetching asset mappings for symbol:', errorMessage, 'Response data:', data);
+    throw new Error(errorMessage);
+  }
+
+  return data; // Expected format: [{ common_symbol, class_name, class_type, class_symbol, is_active }, ...]
+};

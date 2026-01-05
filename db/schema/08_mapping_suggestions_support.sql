@@ -12,8 +12,8 @@ CREATE INDEX IF NOT EXISTS idx_assets_sym_norm_root
 ON assets (sym_norm_root);
 
 -- Partial indexes for nullable join columns (faster lookups on non-null values)
-CREATE INDEX IF NOT EXISTS idx_assets_isin 
-ON assets (isin) WHERE isin IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_assets_primary_id 
+ON assets (primary_id) WHERE primary_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_assets_external_id 
 ON assets (external_id) WHERE external_id IS NOT NULL;

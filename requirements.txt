@@ -7,6 +7,7 @@ boto3==1.38.8
 cryptography==45.0.2
 fastapi>=0.115.0
 python-multipart>=0.0.9
+PyYAML>=6.0
 Requests==2.32.3
 uvicorn[standard]>=0.30.0
 websockets==15.0.1

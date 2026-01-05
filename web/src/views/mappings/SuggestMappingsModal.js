@@ -67,8 +67,8 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
     return { color: 'secondary', textColor: 'white' };  // Grey - white text is fine for secondary
   };
 
-  // Helper for ISIN match badge styling
-  const getIsinBadgeStyle = (isMatch) => {
+  // Helper for ID match badge styling
+  const getIdMatchBadgeStyle = (isMatch) => {
     if (isMatch) {
       return { color: 'success', textColor: 'white' };  // Green - white text
     }
@@ -452,7 +452,7 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                               <CTableHeaderCell style={{ width: '15%' }}>Source Name</CTableHeaderCell>
                               <CTableHeaderCell style={{ width: '12%' }}>Target Symbol</CTableHeaderCell>
                               <CTableHeaderCell style={{ width: '15%' }}>Target Name</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '8%' }} className="text-center">ISIN</CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '8%' }} className="text-center">ID Match</CTableHeaderCell>
                               <CTableHeaderCell style={{ width: '8%' }} className="text-center">Score</CTableHeaderCell>
                               <CTableHeaderCell style={{ width: '18%' }}>Common Symbol</CTableHeaderCell>
                               <CTableHeaderCell style={{ width: '12%' }} className="text-center">Actions</CTableHeaderCell>
@@ -460,7 +460,7 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                           </CTableHead>
                           <CTableBody>
                             {suggestions.map((item, index) => {
-                              const isinStyle = getIsinBadgeStyle(item.isin_match);
+                              const idMatchStyle = getIdMatchBadgeStyle(item.id_match);
                               const scoreStyle = getScoreBadgeStyle(item.score);
                               const isCreating = creatingRows[index];
                               const isCreated = createdRows[index];
@@ -492,8 +492,8 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                                   </CTableDataCell>
                                   <CTableDataCell>{item.target_name || '-'}</CTableDataCell>
                                   <CTableDataCell className="text-center">
-                                    <CBadge color={isinStyle.color} textColor={isinStyle.textColor}>
-                                      {item.isin_match ? 'Yes' : 'No'}
+                                    <CBadge color={idMatchStyle.color} textColor={idMatchStyle.textColor}>
+                                      {item.id_match ? 'Yes' : 'No'}
                                     </CBadge>
                                   </CTableDataCell>
                                   <CTableDataCell className="text-center">

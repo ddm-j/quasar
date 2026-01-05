@@ -62,7 +62,7 @@ def make_suggestion_record(
     target_common_symbol=None,
     proposed_common_symbol="aapl",
     score=85.0,
-    isin_match=True,
+    id_match=True,
     external_id_match=False,
     norm_match=True,
     base_quote_match=True,
@@ -84,7 +84,7 @@ def make_suggestion_record(
         target_common_symbol=target_common_symbol,
         proposed_common_symbol=proposed_common_symbol,
         score=score,
-        isin_match=isin_match,
+        id_match=id_match,
         external_id_match=external_id_match,
         norm_match=norm_match,
         base_quote_match=base_quote_match,
@@ -294,6 +294,7 @@ class TestRegistryUpdateAssets:
         mock_aiohttp_session["response"].json = AsyncMock(return_value=[
             {
                 "symbol": "TEST",
+                "matcher_symbol": "TEST",
                 "name": "Test Asset",
                 "provider_id": "TEST_ID"
             }
@@ -355,6 +356,96 @@ class TestRegistryUpdateAssets:
             responses = await reg.handle_update_all_assets()
             
             assert len(responses) == 2
+
+    @pytest.mark.asyncio
+    async def test_update_assets_response_includes_identity_stats(
+        self, registry_with_mocks, mock_asyncpg_conn, mock_aiohttp_session
+    ):
+        """Test that UpdateAssetsResponse includes identity_matched and identity_skipped."""
+        reg = registry_with_mocks
+        
+        with patch.object(reg, '_update_assets_for_provider', new_callable=AsyncMock) as mock_update:
+            mock_update.return_value = {
+                "class_name": "TestProvider",
+                "class_type": "provider",
+                "status": 200,
+                "added_symbols": 5,
+                "updated_symbols": 2,
+                "failed_symbols": 0,
+                "identity_matched": 3,
+                "identity_skipped": 1
+            }
+            
+            response = await reg.handle_update_assets("provider", "TestProvider")
+            
+            assert response.identity_matched == 3
+            assert response.identity_skipped == 1
+
+    @pytest.mark.asyncio
+    async def test_handle_update_all_assets_runs_global_matching(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that handle_update_all_assets runs global identity matching after providers."""
+        reg = registry_with_mocks
+        
+        mock_record = MockRecord(class_name="Provider1", class_type="provider")
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
+        
+        with patch.object(reg, '_update_assets_for_provider', new_callable=AsyncMock) as mock_update, \
+             patch.object(reg.matcher, 'identify_all_unidentified_assets', new_callable=AsyncMock) as mock_global_match, \
+             patch.object(reg, '_apply_identity_matches', new_callable=AsyncMock) as mock_apply:
+            
+            mock_update.return_value = {
+                "class_name": "Provider1",
+                "class_type": "provider",
+                "status": 200
+            }
+            
+            # Global matching finds some assets
+            from quasar.services.registry.matcher import MatchResult
+            mock_global_match.return_value = [
+                MatchResult(
+                    asset_id=10, symbol="LATE", primary_id="FIGI_LATE",
+                    identity_symbol="LATE", identity_name="Late Match",
+                    confidence=85.0, match_type="fuzzy_symbol"
+                )
+            ]
+            mock_apply.return_value = {'identified': 1, 'skipped': 0, 'failed': 0, 'constraint_rejected': 0}
+            
+            await reg.handle_update_all_assets()
+            
+            # Global matching should have been called
+            mock_global_match.assert_called_once()
+            # Apply should have been called with the global matches
+            mock_apply.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_update_all_assets_gracefully_handles_global_match_failure(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that global matching failure doesn't break the overall response."""
+        reg = registry_with_mocks
+        
+        mock_record = MockRecord(class_name="Provider1", class_type="provider")
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
+        
+        with patch.object(reg, '_update_assets_for_provider', new_callable=AsyncMock) as mock_update, \
+             patch.object(reg.matcher, 'identify_all_unidentified_assets', new_callable=AsyncMock) as mock_global_match:
+            
+            mock_update.return_value = {
+                "class_name": "Provider1",
+                "class_type": "provider",
+                "status": 200
+            }
+            
+            # Global matching throws an error
+            mock_global_match.side_effect = Exception("Global matching failed")
+            
+            # Should not raise - returns successfully
+            responses = await reg.handle_update_all_assets()
+            
+            assert len(responses) == 1
+            assert responses[0].class_name == "Provider1"
     
     @pytest.mark.asyncio
     async def test_handle_update_all_assets_empty_registry(
@@ -382,12 +473,13 @@ class TestRegistryGetAssets:
 
         # AssetItem requires: id, class_name, class_type, symbol (and optional fields)
         mock_record = MockRecord(
-            id=1, 
-            class_name="TestProvider", 
+            id=1,
+            class_name="TestProvider",
             class_type="provider",
-            symbol="TEST"
+            symbol="TEST",
+            matcher_symbol="TEST"
         )
-        
+
         # handle_get_assets uses pool.acquire() then conn.fetch/fetchrow
         mock_asyncpg_conn.fetch = AsyncMock(return_value=[mock_record])
         mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total_items=1))
@@ -663,6 +755,215 @@ class TestRegistryAssetMappings:
         
         assert exc_info.value.status_code == 404
 
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_success(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol returns mappings with complete asset data."""
+        reg = registry_with_mocks
+
+        # Mock the LEFT JOIN result with all fields populated
+        mock_record = MockRecord(
+            common_symbol="BTCUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="BTC-USD",
+            is_active=True,
+            primary_id="12345",
+            asset_class="crypto"
+        )
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("BTCUSD")
+
+        assert len(mappings) == 1
+        assert mappings[0].common_symbol == "BTCUSD"
+        assert mappings[0].class_name == "TestProvider"
+        assert mappings[0].class_type == "provider"
+        assert mappings[0].class_symbol == "BTC-USD"
+        assert mappings[0].is_active is True
+        assert mappings[0].primary_id == "12345"
+        assert mappings[0].asset_class == "crypto"
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_with_null_asset_data(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol handles NULL asset data gracefully."""
+        reg = registry_with_mocks
+
+        # Mock LEFT JOIN result where asset data is NULL
+        mock_record = MockRecord(
+            common_symbol="ETHUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="ETH-USD",
+            is_active=True,
+            primary_id=None,
+            asset_class=None
+        )
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("ETHUSD")
+
+        assert len(mappings) == 1
+        assert mappings[0].common_symbol == "ETHUSD"
+        assert mappings[0].primary_id is None
+        assert mappings[0].asset_class is None
+        # Required fields should still be present
+        assert mappings[0].class_name == "TestProvider"
+        assert mappings[0].is_active is True
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_multiple_providers(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol returns all mappings across multiple providers."""
+        reg = registry_with_mocks
+
+        # Mock multiple mappings from different providers
+        mock_records = [
+            MockRecord(
+                common_symbol="AAPL",
+                class_name="ProviderA",
+                class_type="provider",
+                class_symbol="AAPL",
+                is_active=True,
+                primary_id="AAPL123",
+                asset_class="equity"
+            ),
+            MockRecord(
+                common_symbol="AAPL",
+                class_name="BrokerB",
+                class_type="broker",
+                class_symbol="AAPL.US",
+                is_active=True,
+                primary_id="AAPL456",
+                asset_class="equity"
+            ),
+            MockRecord(
+                common_symbol="AAPL",
+                class_name="ProviderC",
+                class_type="provider",
+                class_symbol="AAPL",
+                is_active=False,
+                primary_id="AAPL789",
+                asset_class="equity"
+            )
+        ]
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=mock_records)
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("AAPL")
+
+        assert len(mappings) == 3
+        # All mappings should have the same common_symbol
+        assert all(m.common_symbol == "AAPL" for m in mappings)
+        # Should include all expected providers
+        class_names = {m.class_name for m in mappings}
+        assert class_names == {"ProviderA", "BrokerB", "ProviderC"}
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_no_mappings(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol returns empty list when no mappings exist."""
+        reg = registry_with_mocks
+
+        # Mock empty result
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("NONEXISTENT")
+
+        assert mappings == []
+        assert len(mappings) == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_database_error(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol handles database errors appropriately."""
+        reg = registry_with_mocks
+
+        # Mock database error
+        mock_asyncpg_pool.fetch = AsyncMock(side_effect=Exception("Database connection failed"))
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_asset_mappings_for_symbol("BTCUSD")
+
+        assert exc_info.value.status_code == 500
+        assert "Database error" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_handle_get_asset_mappings_for_symbol_special_characters(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_get_asset_mappings_for_symbol handles common symbols with special characters."""
+        reg = registry_with_mocks
+
+        # Mock result for symbol with special characters
+        mock_record = MockRecord(
+            common_symbol="BTC/USD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="BTC-USD",
+            is_active=True,
+            primary_id="12345",
+            asset_class="crypto"
+        )
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[mock_record])
+
+        mappings = await reg.handle_get_asset_mappings_for_symbol("BTC/USD")
+
+        assert len(mappings) == 1
+        assert mappings[0].common_symbol == "BTC/USD"
+
+    async def test_asset_mapping_response_schema_with_optional_fields(self):
+        """Test that AssetMappingResponse schema accepts optional fields correctly."""
+        from quasar.services.registry.schemas import AssetMappingResponse
+
+        # Test with all fields populated
+        response1 = AssetMappingResponse(
+            common_symbol="BTCUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="BTC-USD",
+            is_active=True,
+            primary_id="12345",
+            asset_class="crypto"
+        )
+        assert response1.primary_id == "12345"
+        assert response1.asset_class == "crypto"
+
+        # Test with null optional fields
+        response2 = AssetMappingResponse(
+            common_symbol="ETHUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="ETH-USD",
+            is_active=True,
+            primary_id=None,
+            asset_class=None
+        )
+        assert response2.primary_id is None
+        assert response2.asset_class is None
+
+        # Test with one optional field populated, one null
+        response3 = AssetMappingResponse(
+            common_symbol="ADAUSD",
+            class_name="TestProvider",
+            class_type="provider",
+            class_symbol="ADA-USD",
+            is_active=True,
+            primary_id="ADA123",
+            asset_class=None
+        )
+        assert response3.primary_id == "ADA123"
+        assert response3.asset_class is None
+
 
 class TestRegistryLifecycleMethods:
     """Tests for Registry lifecycle methods."""
@@ -846,7 +1147,7 @@ class TestSuggestionsResponse:
         """Verify match criteria flags are included in response."""
         reg = registry_with_mocks
         mock_records = [make_suggestion_record(
-            isin_match=True,
+            id_match=True,
             external_id_match=False,
             norm_match=True,
             base_quote_match=True,
@@ -857,7 +1158,7 @@ class TestSuggestionsResponse:
         response = await call_suggestions(reg, source_class="EODHD")
 
         item = response.items[0]
-        assert item.isin_match is True
+        assert item.id_match is True
         assert item.external_id_match is False
         assert item.norm_match is True
         assert item.base_quote_match is True
@@ -1202,3 +1503,615 @@ class TestSuggestionsErrors:
         # Should default to 0.0
         assert response.items[0].sym_root_similarity == 0.0
         assert response.items[0].name_similarity == 0.0
+
+
+# =============================================================================
+# Identity Manifest Seeding Tests
+# =============================================================================
+
+
+class TestIdentityManifestSeeding:
+    """Test identity manifest seeding behavior on Registry startup."""
+
+    @pytest.mark.asyncio
+    async def test_start_seeds_identity_manifests_when_empty(
+        self, registry_with_mocks, mock_asyncpg_conn, tmp_path
+    ):
+        """Test that Registry seeds identity manifests on startup when table is empty."""
+        reg = registry_with_mocks
+
+        # Mock empty table check
+        reg.pool.fetchval = AsyncMock(return_value=0)
+
+        # Mock manifest directory structure
+        manifests_dir = tmp_path / "seeds" / "manifests"
+        manifests_dir.mkdir(parents=True)
+
+        # Create test crypto manifest
+        crypto_manifest = manifests_dir / "crypto.yaml"
+        crypto_manifest.write_text("""
+- figi: KKG00000DV14
+  symbol: BTC
+  name: Bitcoin
+  exchange: null
+- figi: KKG0000092P5
+  symbol: ETH
+  name: Ethereum
+  exchange: null
+""")
+
+        # Create test securities manifest
+        securities_manifest = manifests_dir / "securities.yaml"
+        securities_manifest.write_text("""
+- figi: BBG000B9XRY4
+  symbol: AAPL
+  name: Apple Inc
+  exchange: XNAS
+""")
+
+        # Mock filesystem path resolution
+        with patch('quasar.services.registry.core.Path') as mock_path_class:
+            # Mock the path chain: Path(__file__).parent.parent.parent resolves to tmp_path
+            # So Path(__file__).parent.parent.parent / "seeds" / "manifests" = tmp_path / "seeds" / "manifests"
+            mock_file_path = Mock()
+            mock_file_path.parent.parent.parent = tmp_path
+            mock_path_class.return_value = mock_file_path
+
+            # Mock database execution
+            mock_asyncpg_conn.execute = AsyncMock()
+
+            # Call seeding
+            await reg._seed_identity_manifests()
+
+            # Verify correct number of inserts (3 total identities)
+            assert mock_asyncpg_conn.execute.call_count == 3
+
+            # Verify calls included expected data
+            calls = mock_asyncpg_conn.execute.call_args_list
+            assert any('KKG00000DV14' in str(call) for call in calls)  # BTC
+            assert any('KKG0000092P5' in str(call) for call in calls)  # ETH
+            assert any('BBG000B9XRY4' in str(call) for call in calls)  # AAPL
+
+    @pytest.mark.asyncio
+    async def test_start_skips_seeding_when_manifests_exist(
+        self, registry_with_mocks
+    ):
+        """Test that Registry skips seeding when identity manifests already exist."""
+        reg = registry_with_mocks
+
+        # Mock non-empty table (15,000 existing records)
+        reg.pool.fetchval = AsyncMock(return_value=15000)
+
+        # Call seeding - should return early
+        await reg._seed_identity_manifests()
+
+        # Verify no database operations occurred
+        reg.pool.acquire.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_start_handles_missing_manifest_directory(
+        self, registry_with_mocks
+    ):
+        """Test graceful handling when manifest directory doesn't exist."""
+        reg = registry_with_mocks
+
+        # Mock empty table
+        reg.pool.fetchval = AsyncMock(return_value=0)
+
+        # Mock missing directory
+        with patch('quasar.services.registry.core.Path') as mock_path:
+            mock_path_instance = Mock()
+            mock_path_instance.exists.return_value = False
+            mock_path.return_value.parent.parent.parent = mock_path_instance
+
+            # Should not raise exception
+            await reg._seed_identity_manifests()
+
+            # Should not attempt database operations
+            reg.pool.acquire.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_start_handles_invalid_yaml_gracefully(
+        self, registry_with_mocks, tmp_path
+    ):
+        """Test that invalid YAML doesn't crash seeding process."""
+        reg = registry_with_mocks
+
+        reg.pool.fetchval = AsyncMock(return_value=0)
+
+        manifests_dir = tmp_path / "seeds" / "manifests"
+        manifests_dir.mkdir(parents=True)
+
+        # Create invalid YAML
+        crypto_manifest = manifests_dir / "crypto.yaml"
+        crypto_manifest.write_text("invalid: yaml: content: [\n")
+
+        # Mock path resolution
+        with patch('quasar.services.registry.core.Path') as mock_path:
+            mock_path_instance = Mock()
+            mock_path_instance.parent.parent.parent = tmp_path / "seeds" / "manifests"
+            mock_path.return_value.parent.parent.parent = mock_path_instance
+
+            # Should catch YAML error and continue without database operations
+            await reg._seed_identity_manifests()
+
+            # Should not have attempted database operations
+            reg.pool.acquire.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_start_handles_database_errors_gracefully(
+        self, registry_with_mocks, mock_asyncpg_conn, tmp_path
+    ):
+        """Test that database errors don't crash Registry startup."""
+        reg = registry_with_mocks
+
+        reg.pool.fetchval = AsyncMock(return_value=0)
+
+        # Mock filesystem setup
+        manifests_dir = tmp_path / "seeds" / "manifests"
+        manifests_dir.mkdir(parents=True)
+        (manifests_dir / "crypto.yaml").write_text("- figi: TEST\n  symbol: TEST\n  name: Test\n")
+
+        with patch('quasar.services.registry.core.Path') as mock_path_class:
+            mock_file_path = Mock()
+            mock_file_path.parent.parent.parent = tmp_path
+            mock_path_class.return_value = mock_file_path
+
+            # Mock database connection failure
+            reg.pool.acquire = AsyncMock(side_effect=Exception("Connection failed"))
+
+            # Should not raise exception - startup should continue
+            await reg._seed_identity_manifests()
+
+            # Verify database acquire was attempted (and failed)
+            reg.pool.acquire.assert_called_once()
+
+
+# =============================================================================
+# Apply Identity Matches Tests
+# =============================================================================
+
+
+class TestApplyIdentityMatches:
+    """Tests for _apply_identity_matches behavior including constraint handling."""
+
+    @pytest.mark.asyncio
+    async def test_empty_matches_returns_zero_stats(
+        self, registry_with_mocks
+    ):
+        """Empty matches list returns zero stats without DB calls."""
+        reg = registry_with_mocks
+        
+        result = await reg._apply_identity_matches([])
+        
+        assert result == {
+            'identified': 0,
+            'skipped': 0,
+            'failed': 0,
+            'constraint_rejected': 0
+        }
+        # No DB operations should occur
+        reg.pool.acquire.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_successful_update_increments_identified(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Successful identity application increments 'identified' stat."""
+        from quasar.services.registry.matcher import MatchResult
+        
+        reg = registry_with_mocks
+        
+        matches = [
+            MatchResult(
+                asset_id=1,
+                symbol="AAPL",
+                primary_id="BBG000B9XRY4",
+                identity_symbol="AAPL",
+                identity_name="Apple Inc",
+                confidence=100.0,
+                match_type="exact_alias"
+            )
+        ]
+        
+        # fetchval returns the asset id when UPDATE succeeds
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=1)
+        
+        result = await reg._apply_identity_matches(matches)
+        
+        assert result['identified'] == 1
+        assert result['skipped'] == 0
+        assert result['failed'] == 0
+
+    @pytest.mark.asyncio
+    async def test_already_identified_increments_skipped(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Asset already having primary_id increments 'skipped' stat."""
+        from quasar.services.registry.matcher import MatchResult
+        
+        reg = registry_with_mocks
+        
+        matches = [
+            MatchResult(
+                asset_id=1,
+                symbol="AAPL",
+                primary_id="BBG000B9XRY4",
+                identity_symbol="AAPL",
+                identity_name="Apple Inc",
+                confidence=100.0,
+                match_type="exact_alias"
+            )
+        ]
+        
+        # fetchval returns None when no rows updated (asset already had primary_id)
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=None)
+        
+        result = await reg._apply_identity_matches(matches)
+        
+        assert result['identified'] == 0
+        assert result['skipped'] == 1
+        assert result['failed'] == 0
+
+    @pytest.mark.asyncio
+    async def test_unique_constraint_violation_increments_constraint_rejected(
+        self, registry_with_mocks, mock_asyncpg_conn, caplog
+    ):
+        """UniqueViolationError with specific constraint increments 'constraint_rejected'."""
+        from quasar.services.registry.matcher import MatchResult
+        from asyncpg.exceptions import UniqueViolationError
+        import logging
+        
+        caplog.set_level(logging.INFO)
+        reg = registry_with_mocks
+        
+        matches = [
+            MatchResult(
+                asset_id=2,
+                symbol="MS-A",
+                primary_id="FIGI_MS",
+                identity_symbol="MS",
+                identity_name="Morgan Stanley",
+                confidence=100.0,
+                match_type="exact_alias"
+            )
+        ]
+        
+        # Simulate unique constraint violation with specific index name
+        error = UniqueViolationError(
+            "duplicate key value violates unique constraint "
+            "\"idx_assets_unique_securities_primary_id\""
+        )
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=error)
+        
+        result = await reg._apply_identity_matches(matches)
+        
+        assert result['constraint_rejected'] == 1
+        assert result['failed'] == 0
+        assert result['identified'] == 0
+        
+        # Should log at INFO level (expected behavior)
+        assert any(
+            "Identity rejected by constraint" in record.message
+            for record in caplog.records
+            if record.levelno == logging.INFO
+        )
+
+    @pytest.mark.asyncio
+    async def test_other_unique_violation_increments_failed(
+        self, registry_with_mocks, mock_asyncpg_conn, caplog
+    ):
+        """UniqueViolationError with different constraint increments 'failed'."""
+        from quasar.services.registry.matcher import MatchResult
+        from asyncpg.exceptions import UniqueViolationError
+        import logging
+        
+        caplog.set_level(logging.WARNING)
+        reg = registry_with_mocks
+        
+        matches = [
+            MatchResult(
+                asset_id=1,
+                symbol="TEST",
+                primary_id="FIGI_TEST",
+                identity_symbol="TEST",
+                identity_name="Test",
+                confidence=100.0,
+                match_type="exact_alias"
+            )
+        ]
+        
+        # Different constraint violation (unexpected)
+        error = UniqueViolationError(
+            "duplicate key value violates unique constraint \"some_other_constraint\""
+        )
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=error)
+        
+        result = await reg._apply_identity_matches(matches)
+        
+        assert result['failed'] == 1
+        assert result['constraint_rejected'] == 0
+        
+        # Should log at WARNING level (unexpected)
+        assert any(
+            "Unexpected unique violation" in record.message
+            for record in caplog.records
+            if record.levelno == logging.WARNING
+        )
+
+    @pytest.mark.asyncio
+    async def test_general_exception_increments_failed(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """General exceptions increment 'failed' stat."""
+        from quasar.services.registry.matcher import MatchResult
+        
+        reg = registry_with_mocks
+        
+        matches = [
+            MatchResult(
+                asset_id=1,
+                symbol="TEST",
+                primary_id="FIGI_TEST",
+                identity_symbol="TEST",
+                identity_name="Test",
+                confidence=100.0,
+                match_type="exact_alias"
+            )
+        ]
+        
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=Exception("Database error"))
+        
+        result = await reg._apply_identity_matches(matches)
+        
+        assert result['failed'] == 1
+        assert result['identified'] == 0
+
+    @pytest.mark.asyncio
+    async def test_mixed_results_tracked_correctly(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Multiple matches with different outcomes tracked correctly."""
+        from quasar.services.registry.matcher import MatchResult
+        from asyncpg.exceptions import UniqueViolationError
+        
+        reg = registry_with_mocks
+        
+        matches = [
+            MatchResult(asset_id=1, symbol="A", primary_id="F1",
+                       identity_symbol="A", identity_name="A", confidence=100.0, match_type="exact"),
+            MatchResult(asset_id=2, symbol="B", primary_id="F2",
+                       identity_symbol="B", identity_name="B", confidence=100.0, match_type="exact"),
+            MatchResult(asset_id=3, symbol="C", primary_id="F3",
+                       identity_symbol="C", identity_name="C", confidence=100.0, match_type="exact"),
+            MatchResult(asset_id=4, symbol="D", primary_id="F4",
+                       identity_symbol="D", identity_name="D", confidence=100.0, match_type="exact"),
+        ]
+        
+        constraint_error = UniqueViolationError(
+            "idx_assets_unique_securities_primary_id"
+        )
+        
+        # Different outcomes for each match
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=[
+            1,                    # First: identified
+            None,                 # Second: skipped
+            constraint_error,     # Third: constraint rejected
+            Exception("Error"),   # Fourth: failed
+        ])
+        
+        result = await reg._apply_identity_matches(matches)
+        
+        assert result['identified'] == 1
+        assert result['skipped'] == 1
+        assert result['constraint_rejected'] == 1
+        assert result['failed'] == 1
+
+
+class TestProviderConfig:
+    """Tests for provider configuration endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_get_config_success(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test successful retrieval of provider preferences."""
+        reg = registry_with_mocks
+
+        # Mock the database response - provider exists and has preferences
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            True,  # Provider exists
+            {'crypto': {'preferred_quote_currency': 'USDC'}}  # Preferences
+        ])
+
+        result = await reg.handle_get_provider_config(
+            class_name='TestProvider',
+            class_type='provider'
+        )
+
+        assert result.class_name == 'TestProvider'
+        assert result.class_type == 'provider'
+        assert result.preferences.crypto is not None
+        assert result.preferences.crypto.preferred_quote_currency == 'USDC'
+
+    @pytest.mark.asyncio
+    async def test_get_config_not_found(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test 404 response when provider not found."""
+        reg = registry_with_mocks
+
+        # Mock provider not found
+        mock_asyncpg_pool.fetchval = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_provider_config(
+                class_name='UnknownProvider',
+                class_type='provider'
+            )
+
+        assert exc_info.value.status_code == 404
+        assert 'not found' in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_get_config_empty_preferences(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test retrieval when preferences column is empty/null."""
+        reg = registry_with_mocks
+
+        # Mock provider exists but has null preferences
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            True,  # Provider exists
+            None   # Preferences are null
+        ])
+
+        result = await reg.handle_get_provider_config(
+            class_name='TestProvider',
+            class_type='provider'
+        )
+
+        assert result.class_name == 'TestProvider'
+        assert result.class_type == 'provider'
+        assert result.preferences.crypto is None
+
+    @pytest.mark.asyncio
+    async def test_update_config_success(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test successful update of provider preferences."""
+        from quasar.services.registry.schemas import ProviderPreferencesUpdate, CryptoPreferences
+
+        reg = registry_with_mocks
+
+        # Mock provider exists and update succeeds
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            True,  # Provider exists
+            {'crypto': {'preferred_quote_currency': 'USDT'}}  # Updated preferences
+        ])
+
+        update = ProviderPreferencesUpdate(
+            crypto=CryptoPreferences(preferred_quote_currency='USDT')
+        )
+
+        result = await reg.handle_update_provider_config(
+            update=update,
+            class_name='TestProvider',
+            class_type='provider'
+        )
+
+        assert result.class_name == 'TestProvider'
+        assert result.class_type == 'provider'
+        assert result.preferences.crypto.preferred_quote_currency == 'USDT'
+
+        # Verify provider existence check and update queries
+        assert mock_asyncpg_pool.fetchval.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_update_config_not_found(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test 404 response when updating non-existent provider."""
+        from quasar.services.registry.schemas import ProviderPreferencesUpdate, CryptoPreferences
+
+        reg = registry_with_mocks
+
+        # Mock provider doesn't exist
+        mock_asyncpg_pool.fetchval = AsyncMock(return_value=False)
+
+        update = ProviderPreferencesUpdate(
+            crypto=CryptoPreferences(preferred_quote_currency='USDT')
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_update_provider_config(
+                update=update,
+                class_name='UnknownProvider',
+                class_type='provider'
+            )
+
+        assert exc_info.value.status_code == 404
+        assert 'not found' in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_update_config_partial_update(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test partial update merges with existing preferences."""
+        from quasar.services.registry.schemas import ProviderPreferencesUpdate, CryptoPreferences
+
+        reg = registry_with_mocks
+
+        # Mock provider exists and partial update
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            True,  # Provider exists
+            {'crypto': {'preferred_quote_currency': 'USDC'}}  # Updated preferences
+        ])
+
+        update = ProviderPreferencesUpdate(
+            crypto=CryptoPreferences(preferred_quote_currency='USDC')
+        )
+
+        result = await reg.handle_update_provider_config(
+            update=update,
+            class_name='TestProvider',
+            class_type='provider'
+        )
+
+        assert result.preferences.crypto.preferred_quote_currency == 'USDC'
+
+    @pytest.mark.asyncio
+    async def test_update_config_no_updates(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test 400 response when no updates are provided."""
+        from quasar.services.registry.schemas import ProviderPreferencesUpdate
+
+        reg = registry_with_mocks
+
+        # Mock provider exists
+        mock_asyncpg_pool.fetchval = AsyncMock(return_value=True)
+
+        update = ProviderPreferencesUpdate()  # Empty update
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_update_provider_config(
+                update=update,
+                class_name='TestProvider',
+                class_type='provider'
+            )
+
+        assert exc_info.value.status_code == 400
+        assert 'No preferences provided' in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_get_available_quote_currencies(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test retrieval of available quote currencies."""
+        reg = registry_with_mocks
+
+        # Mock database response with quote currencies
+        mock_records = [
+            MockRecord(quote_currency='USDC'),
+            MockRecord(quote_currency='USDT'),
+            MockRecord(quote_currency='USD'),
+        ]
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=mock_records)
+
+        result = await reg.handle_get_available_quote_currencies(
+            class_name='TestProvider',
+            class_type='provider'
+        )
+
+        assert result.class_name == 'TestProvider'
+        assert result.class_type == 'provider'
+        assert result.available_quote_currencies == ['USDC', 'USDT', 'USD']
+
+        # Verify correct query was called
+        mock_asyncpg_pool.fetch.assert_called_once_with(
+            "\n            SELECT DISTINCT quote_currency\n            FROM assets\n            WHERE class_name = $1\n              AND class_type = $2\n              AND asset_class_group = 'crypto'\n              AND quote_currency IS NOT NULL\n            ORDER BY quote_currency\n        ",
+            'TestProvider',
+            'provider'
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_available_quote_currencies_empty(self, registry_with_mocks, mock_asyncpg_pool):
+        """Test empty result when no crypto assets exist."""
+        reg = registry_with_mocks
+
+        # Mock empty result
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+
+        result = await reg.handle_get_available_quote_currencies(
+            class_name='TestProvider',
+            class_type='provider'
+        )
+
+        assert result.class_name == 'TestProvider'
+        assert result.class_type == 'provider'
+        assert result.available_quote_currencies == []
