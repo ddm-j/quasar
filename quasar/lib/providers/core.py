@@ -114,6 +114,7 @@ class DataProvider(ABC):
         self._limiter = AsyncLimiter(calls, seconds)
         self._session: aiohttp.ClientSession | None = None
         self.context = context
+        self._usage = asyncio.Semaphore(1000)  # Track concurrent usage
 
     @property
     @abstractmethod
@@ -144,19 +145,30 @@ class DataProvider(ABC):
         Yields:
             Bar: Bars produced by the provider implementation.
         """
-        if self.provider_type == ProviderType.HISTORICAL:
-            async for bar in self.get_history_many(*args, **kwargs):
-                yield bar
-        elif self.provider_type == ProviderType.REALTIME:
-            bars = await self.get_live(*args, **kwargs)
-            for bar in bars:
-                yield bar
-        else:
-            raise ValueError(f"Unsupported provider type: {self.provider_type}")
+        async with self._usage:  # Add wrapper
+            if self.provider_type == ProviderType.HISTORICAL:
+                async for bar in self.get_history_many(*args, **kwargs):
+                    yield bar
+            elif self.provider_type == ProviderType.REALTIME:
+                bars = await self.get_live(*args, **kwargs)
+                for bar in bars:
+                    yield bar
+            else:
+                raise ValueError(f"Unsupported provider type: {self.provider_type}")
 
     @abstractmethod
-    async def get_available_symbols() -> list[SymbolInfo]:
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:
         """Return all symbols available for trading on this provider."""
+
+    async def get_available_symbols(self) -> list[SymbolInfo]:
+        """Return all symbols available for trading on this provider."""
+        async with self._usage:
+            return await self.fetch_available_symbols()
+
+    @property
+    def in_use(self) -> bool:
+        """Check if provider is currently in use by any operation."""
+        return self._usage._value < 1000
 
     async def _api_get(
             self,

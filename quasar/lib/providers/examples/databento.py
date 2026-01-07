@@ -272,7 +272,7 @@ class DatabentoProvider(HistoricalDataProvider):
             async for bar in self._fetch_bars(req.sym, start, end, req.interval):
                 yield bar
 
-    async def get_available_symbols(self) -> list[SymbolInfo]:
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:
         """Return available symbols from Databento EQUS.SUMMARY dataset.
         
         Fetches instrument definitions using the 'definition' schema with

@@ -14,7 +14,7 @@ class HistoricalStub(HistoricalDataProvider):
 
     name = "DEV_HIST_STUB"
 
-    async def get_available_symbols(self) -> list[SymbolInfo]:  # pragma: no cover - unused in tests
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:  # pragma: no cover - unused in tests
         return [
             {
                 "provider": self.name,
@@ -62,7 +62,7 @@ class LiveStub(LiveDataProvider):
     def close_buffer_seconds(self) -> int:  # pragma: no cover - unused
         return 0
 
-    async def get_available_symbols(self) -> list[SymbolInfo]:  # pragma: no cover - unused
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:  # pragma: no cover - unused
         return [
             {
                 "provider": self.name,

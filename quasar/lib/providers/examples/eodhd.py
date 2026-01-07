@@ -25,7 +25,7 @@ class EODHDProvider(HistoricalDataProvider):
         "FOREX": "XFX"
     }
 
-    async def get_available_symbols(self) -> list[SymbolInfo]:
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:
         """Return available symbols from EODHD filtered to supported exchanges."""
         symbols = []
 

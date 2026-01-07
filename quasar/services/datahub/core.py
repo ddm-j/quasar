@@ -24,7 +24,7 @@ from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
 from quasar.lib.common.context import SystemContext, DerivedContext
 from quasar.lib.common.calendar import TradingCalendar
-from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider
+from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider, DataProvider
 from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
     ProviderValidateRequest, ProviderValidateResponse,
@@ -317,9 +317,13 @@ class DataHub(DatabaseHandler, APIHandler):
 
         # Drop Providers that Aren't Needed Anymore
         for obsolete in current_providers - seen_providers:
+            prov = self._providers[obsolete]
+            if isinstance(prov, DataProvider) and prov.in_use:
+                logger.debug(f"Skipping unload of {obsolete} - currently in use")
+                continue
             logger.info(f"Removing obsolete provider from registry: {obsolete}")
-            if hasattr(self._providers[obsolete], 'aclose'):
-                await self._providers[obsolete].aclose()
+            if hasattr(prov, 'aclose'):
+                await prov.aclose()
             del self._providers[obsolete]
         
         # Update Scheduled Jobs
@@ -532,8 +536,8 @@ class DataHub(DatabaseHandler, APIHandler):
             logger.warning(f"Provider '{provider_name}' not found or not loaded for API request.")
             raise HTTPException(status_code=404, detail=f"Provider '{provider_name}' not found or not loaded")
 
-        if not hasattr(provider_instance, 'get_available_symbols'):
-            logger.error(f"Provider '{provider_name}' does not implement get_available_symbols method.")
+        if not hasattr(provider_instance, 'fetch_available_symbols'):
+            logger.error(f"Provider '{provider_name}' does not implement fetch_available_symbols method.")
             raise HTTPException(status_code=501, detail=f"Provider '{provider_name}' does not support symbol discovery")
 
         try:
@@ -542,7 +546,7 @@ class DataHub(DatabaseHandler, APIHandler):
             # Convert to list of dicts for JSON serialization
             return [dict(symbol) if isinstance(symbol, dict) else symbol for symbol in symbols]
         except NotImplementedError:
-            logger.error(f"get_available_symbols not implemented for provider '{provider_name}'.")
+            logger.error(f"fetch_available_symbols not implemented for provider '{provider_name}'.")
             raise HTTPException(status_code=501, detail=f"Symbol discovery not implemented for provider '{provider_name}'")
         except Exception as e:
             logger.error(f"Error fetching symbols for provider '{provider_name}': {e}", exc_info=True)

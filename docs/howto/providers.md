@@ -42,7 +42,7 @@ from quasar.lib.enums import Interval, AssetClass
 class MyHistorical(HistoricalDataProvider):
     name = "MY_HIST"  # must be unique
 
-    async def get_available_symbols(self) -> list[SymbolInfo]:
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:
         return [
             SymbolInfo(
                 provider=self.name,
@@ -76,7 +76,7 @@ class MyLive(LiveDataProvider):
     name = "MY_LIVE"
     close_buffer_seconds = 2  # keep listening after bar close
 
-    async def get_available_symbols(self):
+    async def fetch_available_symbols(self):
         return []
 
     async def _connect(self):
@@ -100,7 +100,7 @@ The base `get_live` handles: connect → subscribe → listen until the next int
 ## 6) Implement the required methods (checklist)
 ### For both types
 - `name`: short, unique identifier (e.g., `EODHD`, `KRAKEN`).
-- `get_available_symbols`: return a list of `SymbolInfo` dicts (provider name, provider_id if any, symbol, name, exchange, asset_class, base_currency, quote_currency). Keep strings non-empty in strict mode. Use canonical asset classes from `quasar.lib.enums.AssetClass` (or normalize to `.value`).
+- `fetch_available_symbols`: return a list of `SymbolInfo` dicts (provider name, provider_id if any, symbol, name, exchange, asset_class, base_currency, quote_currency). Keep strings non-empty in strict mode. Use canonical asset classes from `quasar.lib.enums.AssetClass` (or normalize to `.value`). Note: The public API `get_available_symbols` is automatically provided by the base class.
 
 ### Historical specifics
 - Implement `get_history(sym, start, end, interval)` and yield bars **oldest → newest**, covering the requested range.
@@ -172,7 +172,7 @@ symbols = run_symbols(config_dict)
 - Bars include all fields: `ts, sym, o, h, l, c, v`; numbers are finite; timestamps are UTC.
 - Historical bars are sorted oldest → newest and match the requested window.
 - Live adaptor unsubscribes cleanly; `_parse_message` ignores heartbeats and returns Bars only.
-- `get_available_symbols` returns meaningful metadata; required string fields are present.
+- `fetch_available_symbols` returns meaningful metadata; required string fields are present.
 - Devtools validations pass (try strict first, then `--no-strict` only for debugging).
 - Unsupported intervals or bad inputs raise clear errors.
 
