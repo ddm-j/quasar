@@ -24,7 +24,7 @@ class KrakenProvider(LiveDataProvider):
         super().__init__(context)
         self._url = "wss://ws.kraken.com/v2"
 
-    async def get_available_symbols(self) -> list[SymbolInfo]:
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:
         """Return supported Kraken trading pairs denominated in USD or USDC."""
         base_url = f"https://api.kraken.com/0/public/AssetPairs"
         params = {

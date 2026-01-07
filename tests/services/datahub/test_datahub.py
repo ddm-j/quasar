@@ -35,7 +35,7 @@ class TestLiveProvider(LiveDataProvider):
     def __init__(self, context: DerivedContext):
         super().__init__(context)
 
-    async def get_available_symbols(self):
+    async def fetch_available_symbols(self):
         return []
 
     async def _connect(self):
@@ -62,7 +62,7 @@ class TestHistoricalProvider(HistoricalDataProvider):
     def __init__(self, context: DerivedContext):
         super().__init__(context)
 
-    async def get_available_symbols(self):
+    async def fetch_available_symbols(self):
         return []
 
     async def get_history(self, sym, start, end, interval):
@@ -441,7 +441,7 @@ class TestDataHubAPIEndpoints:
         hub = datahub_with_mocks
         
         mock_provider = Mock()
-        del mock_provider.get_available_symbols  # Remove the method
+        del mock_provider.fetch_available_symbols  # Remove the method
         hub._providers["TestProvider"] = mock_provider
         
         with pytest.raises(HTTPException) as exc_info:
@@ -1860,6 +1860,117 @@ class TestDataExplorerAPIEndpoints:
         mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
         
         response = await hub.handle_get_symbol_metadata("Kraken", "XBT/USD", data_type="historical")
-        
+
         assert "historical" in response.data_types
         assert "live" not in response.data_types
+
+    # Usage tracking and race condition tests
+    @pytest.mark.asyncio
+    async def test_provider_in_use_property_false_when_not_active(self, datahub_with_mocks, mock_asyncpg_conn, valid_provider_file, mock_system_context):
+        """Test that in_use property returns False when no operations are active."""
+        hub = datahub_with_mocks
+        hub.system_context = mock_system_context
+
+        # Mock database to return provider data
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={
+            'file_path': valid_provider_file['file_path'],
+            'file_hash': valid_provider_file['file_hash'],
+            'nonce': b'test_nonce',
+            'ciphertext': b'test_ciphertext'
+        })
+
+        # Load a provider
+        await hub.load_provider_cls("TEST_LIVE_PROVIDER")
+        prov = hub._providers["TEST_LIVE_PROVIDER"]
+
+        # Should not be in use initially
+        assert prov.in_use is False
+
+    @pytest.mark.asyncio
+    async def test_provider_in_use_property_true_during_operation(self, datahub_with_mocks, mock_asyncpg_conn, valid_provider_file, mock_system_context):
+        """Test that in_use property returns True during active operations."""
+        hub = datahub_with_mocks
+        hub.system_context = mock_system_context
+
+        # Mock database to return provider data
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={
+            'file_path': valid_provider_file['file_path'],
+            'file_hash': valid_provider_file['file_hash'],
+            'nonce': b'test_nonce',
+            'ciphertext': b'test_ciphertext'
+        })
+
+        # Load a provider
+        await hub.load_provider_cls("TEST_LIVE_PROVIDER")
+        prov = hub._providers["TEST_LIVE_PROVIDER"]
+
+        # Start an operation
+        async def check_in_use_during_operation():
+            # Should be in use during operation
+            assert prov.in_use is True
+            return []
+
+        # Mock the fetch method to check in_use status
+        prov.fetch_available_symbols = check_in_use_during_operation
+
+        # Call the public method which should set in_use to True
+        symbols = await prov.get_available_symbols()
+
+        # Should not be in use after operation completes
+        assert prov.in_use is False
+        assert symbols == []
+
+    @pytest.mark.asyncio
+    async def test_refresh_subscriptions_skips_unload_when_provider_in_use(self, datahub_with_mocks, mock_asyncpg_conn, valid_provider_file, mock_system_context):
+        """Test that refresh_subscriptions skips unloading providers that are in use."""
+        hub = datahub_with_mocks
+        hub.system_context = mock_system_context
+
+        # Mock database to return provider data for loading
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={
+            'file_path': valid_provider_file['file_path'],
+            'file_hash': valid_provider_file['file_hash'],
+            'nonce': b'test_nonce',
+            'ciphertext': b'test_ciphertext'
+        })
+
+        # Load a provider
+        await hub.load_provider_cls("TEST_LIVE_PROVIDER")
+        prov = hub._providers["TEST_LIVE_PROVIDER"]
+
+        # Mock the database to return no subscriptions (provider should be removed)
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+
+        # Start an operation to make provider "in use"
+        async def slow_operation():
+            await asyncio.sleep(0.1)  # Small delay to ensure test timing
+            return []
+
+        # Store original method and replace with slow version
+        original_method = prov.fetch_available_symbols
+        prov.fetch_available_symbols = slow_operation
+
+        # Start the operation asynchronously
+        task = asyncio.create_task(prov.get_available_symbols())
+
+        # Give the task a moment to start and acquire the semaphore
+        await asyncio.sleep(0.01)
+
+        # Verify provider is now in use
+        assert prov.in_use is True
+
+        # Run refresh_subscriptions - should skip unloading because provider is in use
+        await hub.refresh_subscriptions()
+
+        # Provider should still be loaded
+        assert "TEST_LIVE_PROVIDER" in hub._providers
+
+        # Wait for operation to complete
+        await task
+
+        # After completion, provider should not be in use
+        assert prov.in_use is False
+
+        # Now run refresh again - should unload the provider
+        await hub.refresh_subscriptions()
+        assert "TEST_LIVE_PROVIDER" not in hub._providers

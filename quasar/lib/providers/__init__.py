@@ -2,6 +2,7 @@ from importlib.metadata import entry_points
 from typing import Dict, Type
 
 from .core import (
+    DataProvider,
     HistoricalDataProvider,
     LiveDataProvider,
     Req,
@@ -40,6 +41,7 @@ def _autodiscover():
 from .examples.eodhd import EODHDProvider
 from .examples.kraken import KrakenProvider
 __all__ = [
+    'DataProvider',
     'HistoricalDataProvider',
     'LiveDataProvider',
     'EODHDProvider',
