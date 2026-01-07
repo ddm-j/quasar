@@ -415,8 +415,7 @@ class Registry(DatabaseHandler, APIHandler):
                         match.asset_id,
                         match.primary_id,
                         match.confidence,
-                        match.match_type,
-                        match.identity_symbol
+                        match.match_type
                     )
                     if result:
                         stats['identified'] += 1
