@@ -8,6 +8,8 @@ dist/
 .coverage
 
 # editor / IDE folders
+CLAUDE.md
+.claude/
 .vscode/
 .idea/
 
