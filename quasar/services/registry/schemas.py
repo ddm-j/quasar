@@ -33,6 +33,10 @@ class UpdateAssetsResponse(BaseModel):
     mappings_created: int = 0      # Automated mappings created
     mappings_skipped: int = 0      # Automated mappings skipped (already exist)
     mappings_failed: int = 0       # Automated mappings that failed to create
+    # Index membership statistics (only populated for IndexProviders)
+    members_added: int = 0
+    members_removed: int = 0
+    members_unchanged: int = 0
     status: int = 200
     error: Optional[str] = None
     message: Optional[str] = None

@@ -898,11 +898,29 @@ class Registry(DatabaseHandler, APIHandler):
             'mappings_created': 0,
             'mappings_skipped': 0,
             'mappings_failed': 0,
+            'members_added': 0,
+            'members_removed': 0,
+            'members_unchanged': 0,
             'status': 200
         }
 
-        # Fetch available symbols from DataHub
-        datahub_url = f'http://datahub:8080/internal/providers/available-symbols'
+        # Get class_subtype to determine provider type
+        async with self.pool.acquire() as conn:
+            subtype_record = await conn.fetchrow(
+                "SELECT class_subtype FROM code_registry WHERE class_name = $1 AND class_type = $2",
+                class_name, class_type
+            )
+            class_subtype = subtype_record['class_subtype'] if subtype_record else None
+
+        is_index_provider = (class_subtype == 'IndexProvider')
+        constituent_weights: dict[str, float | None] = {}  # For membership sync
+
+        # Fetch available symbols/constituents from DataHub
+        if is_index_provider:
+            datahub_url = 'http://datahub:8080/internal/providers/constituents'
+            logger.info(f"Registry._update_assets_for_provider: Fetching constituents for IndexProvider {class_name}")
+        else:
+            datahub_url = 'http://datahub:8080/internal/providers/available-symbols'
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(datahub_url, params={'provider_name': class_name}) as response:
@@ -943,10 +961,36 @@ class Registry(DatabaseHandler, APIHandler):
             return stats
 
         if not symbol_info_list:
-            logger.info(f"Registry._update_assets_for_provider: No symbols returned or fetched from DataHub for provider {class_name}.")
-            stats["message"] = "No symbols returned from DataHub"
-            stats["status"] = 204
-            return stats
+            if is_index_provider:
+                # For IndexProviders, empty constituents means preserve existing memberships
+                logger.warning(f"Registry._update_assets_for_provider: Empty constituents returned for IndexProvider '{class_name}'. Preserving existing memberships.")
+                stats["message"] = "No constituents returned from provider. Existing memberships preserved."
+                stats["status"] = 200
+                return stats
+            else:
+                logger.info(f"Registry._update_assets_for_provider: No symbols returned or fetched from DataHub for provider {class_name}.")
+                stats["message"] = "No symbols returned from DataHub"
+                stats["status"] = 204
+                return stats
+
+        # For IndexProviders, store weights and convert constituents to symbol format
+        if is_index_provider:
+            constituent_weights = {c['symbol']: c.get('weight') for c in symbol_info_list}
+            symbol_info_list = [
+                {
+                    'provider': class_name,
+                    'provider_id': None,
+                    'symbol': c['symbol'],
+                    'matcher_symbol': c.get('matcher_symbol') or c['symbol'],
+                    'name': c.get('name') or '',
+                    'exchange': c.get('exchange') or '',
+                    'asset_class': c.get('asset_class') or '',
+                    'base_currency': c.get('base_currency') or '',
+                    'quote_currency': c.get('quote_currency') or '',
+                }
+                for c in symbol_info_list
+            ]
+            logger.info(f"Registry._update_assets_for_provider: Converted {len(symbol_info_list)} constituents to symbol format for {class_name}")
 
         # Upsert symbols into the database
         # When provider supplies primary_id, set primary_id_source = 'provider'
@@ -1110,6 +1154,31 @@ class Registry(DatabaseHandler, APIHandler):
             )
             # Don't fail the whole operation, just log the warning
 
+        # Sync index memberships (IndexProvider only)
+        if is_index_provider and constituent_weights:
+            try:
+                logger.info(f"Registry._update_assets_for_provider: Starting membership sync for IndexProvider {class_name}")
+                membership_stats = await self._sync_index_memberships(
+                    class_name,
+                    class_type,
+                    constituent_weights
+                )
+                stats['members_added'] = membership_stats.get('added', 0)
+                stats['members_removed'] = membership_stats.get('removed', 0)
+                stats['members_unchanged'] = membership_stats.get('unchanged', 0)
+                logger.info(
+                    f"Registry._update_assets_for_provider: Membership sync complete for {class_name}: "
+                    f"added={stats['members_added']}, removed={stats['members_removed']}, "
+                    f"unchanged={stats['members_unchanged']}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Registry._update_assets_for_provider: Membership sync failed for {class_name}: {e}",
+                    exc_info=True
+                )
+                stats['message'] = f"Assets updated but membership sync failed: {e}"
+                # Don't fail the whole operation, just log the warning
+
         return stats
 
     async def _apply_automated_mappings(
@@ -1169,6 +1238,102 @@ class Registry(DatabaseHandler, APIHandler):
                         logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
                         stats['failed'] += 1
                         await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+
+        return stats
+
+    async def _sync_index_memberships(
+        self,
+        index_name: str,
+        index_type: str,
+        constituent_weights: dict[str, float | None]
+    ) -> dict:
+        """Sync index memberships based on current constituents.
+
+        Computes diff between incoming constituents and current active memberships.
+        Closes removed memberships, adds new ones, and updates weights in place.
+
+        Args:
+            index_name: Index class_name.
+            index_type: Index class_type ('provider').
+            constituent_weights: Dict mapping symbol to weight.
+
+        Returns:
+            Dict with keys: added, removed, unchanged.
+        """
+        stats = {'added': 0, 'removed': 0, 'unchanged': 0}
+        incoming_symbols = set(constituent_weights.keys())
+
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                # Get current active memberships
+                current_members = await conn.fetch(
+                    """
+                    SELECT id, asset_symbol, weight
+                    FROM index_memberships
+                    WHERE index_class_name = $1 AND valid_to IS NULL
+                    """,
+                    index_name
+                )
+                current_symbols = {r['asset_symbol']: r for r in current_members}
+                current_symbol_set = set(current_symbols.keys())
+
+                # Compute diff
+                to_add = incoming_symbols - current_symbol_set
+                to_remove = current_symbol_set - incoming_symbols
+                unchanged = incoming_symbols & current_symbol_set
+
+                # Close removed memberships
+                if to_remove:
+                    await conn.execute(
+                        """
+                        UPDATE index_memberships
+                        SET valid_to = CURRENT_TIMESTAMP
+                        WHERE index_class_name = $1
+                          AND asset_symbol = ANY($2)
+                          AND valid_to IS NULL
+                        """,
+                        index_name, list(to_remove)
+                    )
+                    stats['removed'] = len(to_remove)
+                    logger.info(f"Registry._sync_index_memberships: Closed {len(to_remove)} memberships for {index_name}")
+
+                # Add new memberships
+                for symbol in to_add:
+                    weight = constituent_weights.get(symbol)
+                    await conn.execute(
+                        """
+                        INSERT INTO index_memberships
+                        (index_class_name, index_class_type, asset_class_name, asset_class_type,
+                         asset_symbol, weight, source)
+                        VALUES ($1, $2, $1, $2, $3, $4, 'api')
+                        """,
+                        index_name, index_type, symbol, weight
+                    )
+                    stats['added'] += 1
+
+                if to_add:
+                    logger.info(f"Registry._sync_index_memberships: Added {len(to_add)} memberships for {index_name}")
+
+                # Update weights for unchanged members (in place, no SCD)
+                weights_updated = 0
+                for symbol in unchanged:
+                    new_weight = constituent_weights.get(symbol)
+                    current = current_symbols[symbol]
+                    if current['weight'] != new_weight:
+                        await conn.execute(
+                            """
+                            UPDATE index_memberships
+                            SET weight = $1
+                            WHERE id = $2
+                            """,
+                            new_weight, current['id']
+                        )
+                        weights_updated += 1
+
+                if weights_updated:
+                    logger.info(f"Registry._sync_index_memberships: Updated {weights_updated} weights for {index_name}")
+
+                stats['unchanged'] = len(unchanged)
 
         return stats
 
