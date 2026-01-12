@@ -5,6 +5,8 @@ from .core import (
     DataProvider,
     HistoricalDataProvider,
     LiveDataProvider,
+    IndexProvider,
+    IndexConstituent,
     Req,
     Bar,
     Interval,
@@ -31,6 +33,7 @@ def _autodiscover():
     # Built-Ins
     from .examples.eodhd import EODHDProvider
     from .examples.kraken import KrakenProvider
+    from .examples.cci30 import CCI30Provider
 
     # External Entry Points
     for ep in entry_points(group="quasar.providers"):
@@ -40,12 +43,16 @@ def _autodiscover():
 # Re-Export Built-Ins
 from .examples.eodhd import EODHDProvider
 from .examples.kraken import KrakenProvider
+from .examples.cci30 import CCI30Provider
 __all__ = [
     'DataProvider',
     'HistoricalDataProvider',
     'LiveDataProvider',
+    'IndexProvider',
+    'IndexConstituent',
     'EODHDProvider',
     'KrakenProvider',
+    'CCI30Provider',
     'Bar',
     'Req',
     'Interval',

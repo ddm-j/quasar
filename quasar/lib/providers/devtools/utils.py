@@ -20,6 +20,7 @@ from quasar.lib.common.context import DerivedContext
 from quasar.lib.providers import (
     HistoricalDataProvider,
     LiveDataProvider,
+    IndexProvider,
     ProviderType,
     load_provider,
 )
@@ -39,7 +40,7 @@ def configure_dev_logging(level: int = logging.INFO) -> None:
         )
 
 
-def load_provider_class(identifier: str) -> Type[HistoricalDataProvider] | Type[LiveDataProvider]:
+def load_provider_class(identifier: str) -> Type[HistoricalDataProvider] | Type[LiveDataProvider] | Type[IndexProvider]:
     """Load a provider class from a registry name or dotted path.
 
     Args:
@@ -64,7 +65,7 @@ def load_provider_class(identifier: str) -> Type[HistoricalDataProvider] | Type[
 
     module = import_module(module_path)
     cls = getattr(module, class_name)
-    if not issubclass(cls, (HistoricalDataProvider, LiveDataProvider)):
+    if not issubclass(cls, (HistoricalDataProvider, LiveDataProvider, IndexProvider)):
         raise ValueError(f"{identifier} is not a DataProvider subclass")
     return cls
 
@@ -89,7 +90,9 @@ def parse_provider_type(raw: Any) -> ProviderType:
             return ProviderType.HISTORICAL
         if normalized in {"live", "realtime", "real-time", "rt"}:
             return ProviderType.REALTIME
-    raise ValueError("provider_type must be 'historical' or 'live'")
+        if normalized in {"index", "idx"}:
+            return ProviderType.INDEX
+    raise ValueError("provider_type must be 'historical', 'live', or 'index'")
 
 
 def load_config(config: str | Path | dict[str, Any]) -> dict[str, Any]:

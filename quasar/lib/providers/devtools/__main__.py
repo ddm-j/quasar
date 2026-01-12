@@ -9,6 +9,7 @@ from quasar.lib.providers import ProviderType
 from .historical import run_historical
 from .live import run_live
 from .symbols import run_symbols
+from .constituents import run_constituents
 from .utils import configure_dev_logging, load_config, parse_provider_type
 
 
@@ -35,6 +36,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     strict_group.add_argument("--no-strict", dest="strict", action="store_false", help="Disable strict validation checks")
     symbols.set_defaults(strict=True)
 
+    constituents = subparsers.add_parser("constituents", help="Fetch index constituents from an IndexProvider")
+    constituents.add_argument("--config", required=True, help="Path to config JSON/YAML")
+    strict_group = constituents.add_mutually_exclusive_group()
+    strict_group.add_argument("--strict", dest="strict", action="store_true", help="Enable strict validation checks")
+    strict_group.add_argument("--no-strict", dest="strict", action="store_false", help="Disable strict validation checks")
+    constituents.set_defaults(strict=True)
+
     return parser.parse_args(argv)
 
 
@@ -52,6 +60,8 @@ def _dispatch(command: str, args: argparse.Namespace) -> tuple[str, list]:
         raise ValueError("Unknown provider_type for bars; expected historical or live")
     if command == "symbols":
         return "symbols", run_symbols(config=cfg, strict=args.strict)
+    if command == "constituents":
+        return "constituent(s)", run_constituents(config=cfg, strict=args.strict)
     raise ValueError(f"Unknown command {command}")
 
 
@@ -59,8 +69,7 @@ def main(argv: list[str] | None = None) -> None:
     configure_dev_logging()
     args = _parse_args(argv)
     kind, items = _dispatch(args.command, args)
-    noun = "symbol(s)" if kind == "symbols" else "bar(s)"
-    print(f"Collected {len(items)} {noun}")
+    print(f"Collected {len(items)} {kind}")
 
 
 if __name__ == "__main__":
