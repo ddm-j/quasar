@@ -570,13 +570,23 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                     {pieChartData && (
                       <div
                         style={{
-                          width: '80%',
-                          margin: '0 auto',
-                          marginBottom: '10%',
-                          marginTop: '10%',
+                          width: '100%',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          marginBottom: '16px',
                         }}
                       >
-                        <CChartPie data={pieChartData} options={PIE_CHART_OPTIONS} />
+                        <div
+                          style={{
+                            width: 'min(80%, calc(80vh - 200px))',
+                            aspectRatio: '1',
+                          }}
+                        >
+                          <CChartPie
+                            data={pieChartData}
+                            options={PIE_CHART_OPTIONS}
+                          />
+                        </div>
                       </div>
                     )}
 
