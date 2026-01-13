@@ -417,3 +417,22 @@ class IndexSyncResponse(BaseModel):
     members_added: int
     members_removed: int
     members_unchanged: int
+
+
+# Index History (Timeline) Schemas
+class IndexHistoryEvent(BaseModel):
+    """Single change event in index history."""
+    type: Literal["added", "removed"]
+    symbol: str
+    weight: Optional[float] = None
+
+
+class IndexHistoryChange(BaseModel):
+    """Group of events that occurred on a single date."""
+    date: datetime
+    events: List[IndexHistoryEvent]
+
+
+class IndexHistoryResponse(BaseModel):
+    """Response model for GET /api/registry/indices/{name}/history endpoint."""
+    changes: List[IndexHistoryChange]

@@ -642,6 +642,31 @@ export const getIndexMembers = async (name, params = {}) => {
 };
 
 /**
+ * Fetches membership change history for an index (timeline view).
+ * @param {string} name - Index name.
+ * @returns {Promise<object>} - History response with changes grouped by date.
+ */
+export const getIndexHistory = async (name) => {
+  const url = `${API_BASE}indices/${encodeURIComponent(name)}/history`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
  * Creates a new UserIndex.
  * @param {object} data - Index creation data.
  * @param {string} data.name - Index name (required, unique).

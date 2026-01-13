@@ -3016,3 +3016,98 @@ class TestSyncIndexEndpoint:
             )
 
         assert exc_info.value.status_code == 404
+
+
+class TestGetIndexHistoryEndpoint:
+    """Tests for GET /api/registry/indices/{name}/history endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_returns_history_with_changes_grouped_by_date(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Returns membership changes grouped by date, sorted newest first."""
+        reg = registry_with_mocks
+        from datetime import datetime, timezone, timedelta
+
+        now = datetime.now(timezone.utc)
+        week_ago = now - timedelta(weeks=1)
+        two_weeks_ago = now - timedelta(weeks=2)
+
+        # Mock index exists check
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=1)
+
+        # Mock membership records with history
+        member_records = [
+            # Current member (added recently)
+            MockRecord(
+                symbol='BTC',
+                weight=0.30,
+                valid_from=week_ago,
+                valid_to=None
+            ),
+            # Removed member (was added 2 weeks ago, removed 1 week ago)
+            MockRecord(
+                symbol='ETH',
+                weight=0.25,
+                valid_from=two_weeks_ago,
+                valid_to=week_ago
+            ),
+            # Current member (added 2 weeks ago, still active)
+            MockRecord(
+                symbol='SOL',
+                weight=0.20,
+                valid_from=two_weeks_ago,
+                valid_to=None
+            ),
+        ]
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=member_records)
+
+        result = await reg.handle_get_index_history('TestIndex')
+
+        # Should have 2 dates with changes
+        assert len(result.changes) == 2
+
+        # First change (most recent = week ago)
+        first_change = result.changes[0]
+        assert first_change.date.strftime('%Y-%m-%d') == week_ago.strftime('%Y-%m-%d')
+        # Should have removal of ETH and addition of BTC
+        event_types = [(e.type, e.symbol) for e in first_change.events]
+        assert ('removed', 'ETH') in event_types
+        assert ('added', 'BTC') in event_types
+
+        # Second change (older = two weeks ago)
+        second_change = result.changes[1]
+        assert second_change.date.strftime('%Y-%m-%d') == two_weeks_ago.strftime('%Y-%m-%d')
+        # Should have additions of ETH and SOL
+        event_types = [(e.type, e.symbol) for e in second_change.events]
+        assert ('added', 'ETH') in event_types
+        assert ('added', 'SOL') in event_types
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_changes_for_index_with_no_history(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Returns empty changes list for index with no membership records."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=1)
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+
+        result = await reg.handle_get_index_history('EmptyIndex')
+
+        assert len(result.changes) == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_404_when_index_not_found(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Returns 404 when index doesn't exist."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_get_index_history('NonExistent')
+
+        assert exc_info.value.status_code == 404
+        assert 'not found' in exc_info.value.detail

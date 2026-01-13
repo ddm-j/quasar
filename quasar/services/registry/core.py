@@ -1,6 +1,7 @@
 """Registry service core: code uploads, asset catalog, and mappings."""
 
 from typing import Optional, List, Dict, Any, Union
+from datetime import datetime
 import os, asyncpg, base64, hashlib, json
 import aiohttp
 from pathlib import Path
@@ -29,6 +30,7 @@ from quasar.services.registry.schemas import (
     UserIndexCreate, UserIndexMembersUpdate, IndexSyncRequest,
     IndexItem, IndexMemberItem, IndexDetailResponse,
     IndexListResponse, IndexMembersResponse, IndexSyncResponse,
+    IndexHistoryEvent, IndexHistoryChange, IndexHistoryResponse,
 )
 from quasar.services.registry.matcher import IdentityMatcher, MatchResult
 from quasar.services.registry.mapper import AutomatedMapper, MappingCandidate
@@ -262,6 +264,12 @@ class Registry(DatabaseHandler, APIHandler):
             self.handle_sync_index,
             methods=['POST'],
             response_model=IndexSyncResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}/history',
+            self.handle_get_index_history,
+            methods=['GET'],
+            response_model=IndexHistoryResponse
         )
 
     # OBJECT LIFECYCLE
@@ -2869,6 +2877,92 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.error(f"Registry.handle_get_index_members: Unexpected error for {index_name}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while retrieving index members")
+
+    async def handle_get_index_history(
+        self,
+        index_name: str
+    ) -> IndexHistoryResponse:
+        """Get membership change history for an index (timeline view).
+
+        Returns all membership additions and removals grouped by date,
+        sorted newest first. This enables the timeline UI showing when
+        members were added or removed from the index.
+
+        Args:
+            index_name: The index class_name.
+
+        Returns:
+            IndexHistoryResponse with changes grouped by date.
+        """
+        logger.info(f"Registry.handle_get_index_history: Fetching history for '{index_name}'")
+
+        try:
+            async with self.pool.acquire() as conn:
+                # Verify index exists
+                exists = await conn.fetchval(
+                    """SELECT 1 FROM code_registry
+                       WHERE class_name = $1
+                       AND class_subtype IN ('IndexProvider', 'UserIndex')""",
+                    index_name
+                )
+                if not exists:
+                    raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                # Fetch all membership records (current and historical)
+                query = """
+                    SELECT
+                        COALESCE(asset_symbol, common_symbol) as symbol,
+                        weight,
+                        valid_from,
+                        valid_to
+                    FROM index_memberships
+                    WHERE index_class_name = $1
+                    ORDER BY valid_from DESC
+                """
+                records = await conn.fetch(query, index_name)
+
+            # Build change events grouped by date
+            # We need to track both additions (valid_from) and removals (valid_to)
+            from collections import defaultdict
+            changes_by_date: dict[str, list[IndexHistoryEvent]] = defaultdict(list)
+
+            for r in records:
+                symbol = r['symbol']
+                weight = r['weight']
+
+                # Addition event: when this membership started
+                add_date = r['valid_from'].strftime('%Y-%m-%d')
+                changes_by_date[add_date].append(
+                    IndexHistoryEvent(type="added", symbol=symbol, weight=weight)
+                )
+
+                # Removal event: when this membership ended (if it did)
+                if r['valid_to'] is not None:
+                    remove_date = r['valid_to'].strftime('%Y-%m-%d')
+                    changes_by_date[remove_date].append(
+                        IndexHistoryEvent(type="removed", symbol=symbol, weight=weight)
+                    )
+
+            # Convert to list of IndexHistoryChange, sorted by date descending
+            changes = []
+            for date_str in sorted(changes_by_date.keys(), reverse=True):
+                events = changes_by_date[date_str]
+                # Sort events: removals first, then additions, then by symbol
+                events.sort(key=lambda e: (0 if e.type == "removed" else 1, e.symbol))
+                changes.append(
+                    IndexHistoryChange(
+                        date=datetime.fromisoformat(date_str),
+                        events=events
+                    )
+                )
+
+            return IndexHistoryResponse(changes=changes)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_index_history: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving index history")
 
     async def handle_create_user_index(
         self,

@@ -20,9 +20,11 @@ import {
   CTableHeaderCell,
   CTableBody,
   CTableDataCell,
+  CFormInput,
+  CFormLabel,
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react';
-import { cilReload, cilWarning, cilPencil, cilTrash } from '@coreui/icons';
+import { cilReload, cilWarning, cilPencil, cilTrash, cilHistory } from '@coreui/icons';
 import { CChartPie } from '@coreui/react-chartjs';
 
 import CommonSymbolDetailModal from '../mappings/CommonSymbolDetailModal';
@@ -32,6 +34,8 @@ import SaveChangesModal from './SaveChangesModal';
 import ConfirmModal from './ConfirmModal';
 import {
   getIndexDetail,
+  getIndexMembers,
+  getIndexHistory,
   updateAssetsForClass,
   updateUserIndexMembers,
 } from '../services/registry_api';
@@ -83,6 +87,15 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
   const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false);
   const [discardAction, setDiscardAction] = useState(null); // 'cancel' or 'close'
 
+  // Historical view state
+  const [asOfDate, setAsOfDate] = useState(null); // null = current, string = historical (YYYY-MM-DD)
+  const [historicalMembers, setHistoricalMembers] = useState(null);
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState(false);
+
+  // Timeline (history) state
+  const [history, setHistory] = useState(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (visible && indexItem) {
@@ -92,6 +105,11 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
       setEditableMembers([]);
       setOriginalMembers([]);
       setError(null);
+      // Reset historical view
+      setAsOfDate(null);
+      setHistoricalMembers(null);
+      // Reset timeline
+      setHistory(null);
     }
   }, [visible, indexItem]);
 
@@ -117,6 +135,78 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
   const hasWeights = members.some((m) => m.weight != null);
   const weightedMembers = members.filter((m) => m.weight != null);
   const isUserIndex = indexItem?.index_type === 'UserIndex';
+
+  // Historical view derived state
+  const isViewingHistorical = asOfDate !== null;
+  const displayMembers = isViewingHistorical ? (historicalMembers || []) : members;
+
+  // Handle date change for historical view
+  const handleDateChange = async (dateString) => {
+    if (!dateString) {
+      setAsOfDate(null);
+      setHistoricalMembers(null);
+      return;
+    }
+
+    setAsOfDate(dateString);
+    setIsLoadingHistorical(true);
+
+    try {
+      // Convert date to end-of-day ISO 8601
+      const asOfDateTime = `${dateString}T23:59:59Z`;
+      const response = await getIndexMembers(indexItem.class_name, {
+        as_of: asOfDateTime,
+        limit: 500,
+      });
+      setHistoricalMembers(response.items);
+    } catch (err) {
+      console.error('Failed to fetch historical members:', err);
+      if (pushToast) {
+        pushToast({
+          title: 'Error',
+          body: err.message || 'Failed to fetch historical data',
+          color: 'danger',
+          icon: cilWarning,
+        });
+      }
+      // Reset to current view on error
+      setAsOfDate(null);
+      setHistoricalMembers(null);
+    } finally {
+      setIsLoadingHistorical(false);
+    }
+  };
+
+  // Fetch timeline history
+  const fetchHistory = async () => {
+    if (!indexItem?.class_name || history) return; // Don't refetch if already loaded
+
+    setIsLoadingHistory(true);
+    try {
+      const response = await getIndexHistory(indexItem.class_name);
+      setHistory(response.changes || []);
+    } catch (err) {
+      console.error('Failed to fetch history:', err);
+      if (pushToast) {
+        pushToast({
+          title: 'Error',
+          body: err.message || 'Failed to fetch history',
+          color: 'danger',
+          icon: cilWarning,
+        });
+      }
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Handle tab change (fetch history when timeline tab is selected)
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'timeline') {
+      fetchHistory();
+    }
+  };
 
   // Check for unsaved changes
   const hasUnsavedChanges = () => {
@@ -422,11 +512,55 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
             </div>
           ) : (
             <>
+              {/* Historical date selector */}
+              {!isEditMode && (
+                <div className="d-flex align-items-center gap-2 mb-3">
+                  <CFormLabel className="mb-0 text-muted small">View as of:</CFormLabel>
+                  <CFormInput
+                    type="date"
+                    value={asOfDate || ''}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    style={{ width: '160px' }}
+                    size="sm"
+                    disabled={isLoadingHistorical}
+                  />
+                  {isLoadingHistorical && <CSpinner size="sm" />}
+                  {isViewingHistorical && !isLoadingHistorical && (
+                    <CButton
+                      color="secondary"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDateChange(null)}
+                    >
+                      Reset to Current
+                    </CButton>
+                  )}
+                </div>
+              )}
+
+              {/* Historical view banner */}
+              {isViewingHistorical && !isLoadingHistorical && (
+                <CAlert color="info" className="d-flex align-items-center py-2 mb-3">
+                  <CIcon icon={cilHistory} className="me-2" />
+                  <div>
+                    <strong>Viewing index as of {formatDate(asOfDate, false)}</strong>
+                    <span className="ms-2 text-muted">
+                      ({displayMembers.length} members
+                      {displayMembers.length !== members.length && (
+                        <> • currently {members.length}</>
+                      )}
+                      )
+                    </span>
+                  </div>
+                </CAlert>
+              )}
+
               <CNav variant="tabs" className="mb-3">
                 <CNavItem>
                   <CNavLink
                     active={activeTab === 'constituents'}
-                    onClick={() => setActiveTab('constituents')}
+                    onClick={() => handleTabChange('constituents')}
                     style={{ cursor: 'pointer' }}
                   >
                     Constituents
@@ -436,10 +570,22 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'weights'}
-                      onClick={() => setActiveTab('weights')}
+                      onClick={() => handleTabChange('weights')}
                       style={{ cursor: 'pointer' }}
                     >
                       Weights
+                    </CNavLink>
+                  </CNavItem>
+                )}
+                {!isEditMode && (
+                  <CNavItem>
+                    <CNavLink
+                      active={activeTab === 'timeline'}
+                      onClick={() => handleTabChange('timeline')}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <CIcon icon={cilHistory} className="me-1" />
+                      Timeline
                     </CNavLink>
                   </CNavItem>
                 )}
@@ -520,8 +666,12 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                   ) : (
                     /* View mode: Regular table with clickable common symbols */
                     <>
-                      {members.length === 0 ? (
-                        <CAlert color="info">No members found in this index.</CAlert>
+                      {displayMembers.length === 0 ? (
+                        <CAlert color="info">
+                          {isViewingHistorical
+                            ? 'No members found at this point in time.'
+                            : 'No members found in this index.'}
+                        </CAlert>
                       ) : (
                         <>
                           <p className="text-muted small mb-2">
@@ -539,7 +689,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                               </CTableRow>
                             </CTableHead>
                             <CTableBody>
-                              {members.map((member, idx) => (
+                              {displayMembers.map((member, idx) => (
                                 <CTableRow key={member.id || idx}>
                                   <CTableDataCell className="fw-semibold">
                                     {member.effective_symbol || member.common_symbol || '—'}
@@ -628,6 +778,42 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                         ))}
                       </CTableBody>
                     </CTable>
+                  </CTabPane>
+                )}
+
+                {/* Timeline Tab */}
+                {!isEditMode && (
+                  <CTabPane visible={activeTab === 'timeline'}>
+                    {isLoadingHistory ? (
+                      <div className="text-center py-4">
+                        <CSpinner />
+                        <div className="mt-2 text-muted">Loading timeline...</div>
+                      </div>
+                    ) : history && history.length > 0 ? (
+                      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {history.map((change, idx) => (
+                          <div key={idx} className="mb-3">
+                            <div className="fw-bold text-muted small mb-1">
+                              {formatDate(change.date, false)}
+                            </div>
+                            {change.events.map((event, eventIdx) => (
+                              <div
+                                key={eventIdx}
+                                className={event.type === 'added' ? 'text-success' : 'text-danger'}
+                              >
+                                {event.type === 'added' ? '+' : '−'}{' '}
+                                {event.symbol}
+                                {event.weight != null && ` ${(event.weight * 100).toFixed(0)}%`}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-muted text-center py-4">
+                        No change history available for this index.
+                      </div>
+                    )}
                   </CTabPane>
                 )}
               </CTabContent>
