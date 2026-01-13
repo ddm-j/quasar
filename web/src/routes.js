@@ -7,6 +7,7 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Registry = React.lazy(() => import('./views/registry/Registry'))
 const Assets = React.lazy(() => import('./views/assets/Assets'))
 const Mappings = React.lazy(() => import('./views/mappings/Mappings'))
+const Indices = React.lazy(() => import('./views/indices/Indices'))
 const DataExplorer = React.lazy(() => import('./views/data-explorer/DataExplorer'))
 
 // Charts (kept for trading data visualization)
@@ -18,6 +19,7 @@ const routes = [
   { path: '/registry', name: 'Registry', element: Registry },
   { path: '/assets', name: 'Assets', element: Assets },
   { path: '/mappings', name: 'Mappings', element: Mappings },
+  { path: '/indices', name: 'Indices', element: Indices },
   { path: '/data-explorer', name: 'Data Explorer', element: DataExplorer },
   { path: '/charts', name: 'Charts', element: Charts },
 ]
