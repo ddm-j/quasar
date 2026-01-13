@@ -154,10 +154,16 @@ const EditableMembersTable = ({ members, onChange, disabled }) => {
                       !inputValue ? 'Type to search...' : 'No symbols found'
                     }
                     loadingMessage={() => 'Loading...'}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
                     styles={{
                       control: (base) => ({
                         ...base,
                         minHeight: '38px',
+                      }),
+                      menuPortal: (base) => ({
+                        ...base,
+                        zIndex: 9999,
                       }),
                     }}
                   />
