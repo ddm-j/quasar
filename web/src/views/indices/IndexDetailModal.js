@@ -221,7 +221,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
     setError(null);
 
     try {
-      await updateAssetsForClass('index_provider', indexItem.class_name);
+      await updateAssetsForClass('provider', indexItem.class_name);
       await fetchIndexDetail();
       if (onRefresh) onRefresh();
     } catch (err) {
