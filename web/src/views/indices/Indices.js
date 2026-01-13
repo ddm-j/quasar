@@ -99,25 +99,26 @@ const Indices = () => {
     return indexType === 'IndexProvider' ? 'primary' : 'success';
   };
 
-  // Table columns
+  // Table columns - use width: '1%' + whiteSpace: 'nowrap' for auto-fit
   const columns = [
     {
       key: 'class_name',
       label: 'Name',
+      _style: { width: '1%', whiteSpace: 'nowrap' },
       _props: { className: 'fw-semibold' },
       sorter: true,
     },
     {
       key: 'index_type',
       label: 'Type',
-      _style: { width: '15%' },
+      _style: { width: '1%', whiteSpace: 'nowrap' },
       sorter: true,
       filter: false,
     },
     {
       key: 'current_member_count',
       label: 'Members',
-      _style: { width: '12%' },
+      _style: { width: '1%', whiteSpace: 'nowrap' },
       sorter: true,
       filter: false,
       _props: { className: 'text-center' },
@@ -125,7 +126,7 @@ const Indices = () => {
     {
       key: 'uploaded_at',
       label: 'Last Updated',
-      _style: { width: '20%' },
+      _style: { width: '1%', whiteSpace: 'nowrap' },
       sorter: true,
       filter: false,
     },
