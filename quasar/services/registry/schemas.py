@@ -376,6 +376,7 @@ class IndexMemberItem(BaseModel):
     asset_class_type: Optional[str] = None
     asset_symbol: Optional[str] = None
     common_symbol: Optional[str] = None
+    mapped_common_symbol: Optional[str] = None  # From asset_mapping join
     effective_symbol: str  # Computed: asset_symbol or common_symbol
     weight: Optional[float] = None
     valid_from: datetime

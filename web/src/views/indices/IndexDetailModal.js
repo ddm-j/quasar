@@ -316,10 +316,9 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
     );
   };
 
-  // Handle member row click (view mode) - opens symbol detail modal
-  const handleMemberClick = (member) => {
-    if (isEditMode) return;
-    const symbol = member.common_symbol || member.effective_symbol;
+  // Handle common symbol click (view mode) - opens symbol detail modal
+  const handleCommonSymbolClick = (member) => {
+    const symbol = member.mapped_common_symbol || member.common_symbol;
     if (symbol) {
       setSelectedCommonSymbol(symbol);
       setIsSymbolDetailModalVisible(true);
@@ -519,19 +518,20 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                       </div>
                     </>
                   ) : (
-                    /* View mode: Regular table with clickable rows */
+                    /* View mode: Regular table with clickable common symbols */
                     <>
                       {members.length === 0 ? (
                         <CAlert color="info">No members found in this index.</CAlert>
                       ) : (
                         <>
                           <p className="text-muted small mb-2">
-                            Click a row to view symbol mappings.
+                            Click a common symbol to view its mappings.
                           </p>
                           <CTable striped hover responsive>
                             <CTableHead>
                               <CTableRow>
                                 <CTableHeaderCell>Symbol</CTableHeaderCell>
+                                <CTableHeaderCell>Common Symbol</CTableHeaderCell>
                                 <CTableHeaderCell className="text-end">
                                   Weight
                                 </CTableHeaderCell>
@@ -540,13 +540,31 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                             </CTableHead>
                             <CTableBody>
                               {members.map((member, idx) => (
-                                <CTableRow
-                                  key={member.id || idx}
-                                  onClick={() => handleMemberClick(member)}
-                                  style={{ cursor: 'pointer' }}
-                                >
+                                <CTableRow key={member.id || idx}>
                                   <CTableDataCell className="fw-semibold">
                                     {member.effective_symbol || member.common_symbol || '—'}
+                                  </CTableDataCell>
+                                  <CTableDataCell>
+                                    {member.mapped_common_symbol || member.common_symbol ? (
+                                      <span
+                                        style={{
+                                          cursor: 'pointer',
+                                          color: 'var(--cui-link-color)',
+                                          textDecoration: 'none',
+                                        }}
+                                        onClick={() => handleCommonSymbolClick(member)}
+                                        onMouseEnter={(e) =>
+                                          (e.target.style.textDecoration = 'underline')
+                                        }
+                                        onMouseLeave={(e) =>
+                                          (e.target.style.textDecoration = 'none')
+                                        }
+                                      >
+                                        {member.mapped_common_symbol || member.common_symbol}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted">—</span>
+                                    )}
                                   </CTableDataCell>
                                   <CTableDataCell className="text-end">
                                     {formatWeight(member.weight)}

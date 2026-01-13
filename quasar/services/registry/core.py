@@ -2712,13 +2712,18 @@ class Registry(DatabaseHandler, APIHandler):
                 if not index_record:
                     raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
 
-                # Get current members
+                # Get current members with mapped common_symbol from asset_mapping
                 members_query = """
-                    SELECT id, asset_class_name, asset_class_type, asset_symbol,
-                           common_symbol, effective_symbol, weight, valid_from, source
-                    FROM current_index_memberships
-                    WHERE index_class_name = $1
-                    ORDER BY weight DESC NULLS LAST
+                    SELECT cim.id, cim.asset_class_name, cim.asset_class_type, cim.asset_symbol,
+                           cim.common_symbol, cim.effective_symbol, cim.weight, cim.valid_from, cim.source,
+                           am.common_symbol as mapped_common_symbol
+                    FROM current_index_memberships cim
+                    LEFT JOIN asset_mapping am
+                        ON am.class_name = cim.asset_class_name
+                       AND am.class_type = cim.asset_class_type
+                       AND am.class_symbol = cim.asset_symbol
+                    WHERE cim.index_class_name = $1
+                    ORDER BY cim.weight DESC NULLS LAST
                 """
                 member_records = await conn.fetch(members_query, index_name)
 
@@ -2738,6 +2743,7 @@ class Registry(DatabaseHandler, APIHandler):
                     asset_class_type=r['asset_class_type'],
                     asset_symbol=r['asset_symbol'],
                     common_symbol=r['common_symbol'],
+                    mapped_common_symbol=r['mapped_common_symbol'],
                     effective_symbol=r['effective_symbol'],
                     weight=r['weight'],
                     valid_from=r['valid_from'],
@@ -2772,7 +2778,7 @@ class Registry(DatabaseHandler, APIHandler):
 
         try:
             # Validate sort_by
-            valid_sort_columns = ["weight", "asset_symbol", "common_symbol", "valid_from"]
+            valid_sort_columns = ["weight", "asset_symbol", "common_symbol", "valid_from", "mapped_common_symbol"]
             sort_by = params.sort_by if params.sort_by in valid_sort_columns else "weight"
             sort_order = "DESC" if params.sort_order.lower() == "desc" else "ASC"
             # Handle NULL weights in sorting
@@ -2788,7 +2794,7 @@ class Registry(DatabaseHandler, APIHandler):
                     raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
 
                 if params.as_of:
-                    # Point-in-time query using function
+                    # Point-in-time query with mapped common_symbol from asset_mapping
                     count_query = """
                         SELECT COUNT(*) FROM get_index_members_at($1, 'provider', $2)
                     """
@@ -2796,8 +2802,13 @@ class Registry(DatabaseHandler, APIHandler):
                         SELECT im.id, im.asset_class_name, im.asset_class_type, im.asset_symbol,
                                im.common_symbol,
                                COALESCE(im.asset_symbol, im.common_symbol) as effective_symbol,
-                               im.weight, im.valid_from, im.source
+                               im.weight, im.valid_from, im.source,
+                               am.common_symbol as mapped_common_symbol
                         FROM index_memberships im
+                        LEFT JOIN asset_mapping am
+                            ON am.class_name = im.asset_class_name
+                           AND am.class_type = im.asset_class_type
+                           AND am.class_symbol = im.asset_symbol
                         WHERE im.index_class_name = $1
                           AND im.valid_from <= $2
                           AND (im.valid_to IS NULL OR im.valid_to > $2)
@@ -2807,15 +2818,20 @@ class Registry(DatabaseHandler, APIHandler):
                     count_result = await conn.fetchrow(count_query, index_name, params.as_of)
                     records = await conn.fetch(data_query, index_name, params.as_of, params.limit, params.offset)
                 else:
-                    # Current members query
+                    # Current members query with mapped common_symbol from asset_mapping
                     count_query = """
                         SELECT COUNT(*) FROM current_index_memberships WHERE index_class_name = $1
                     """
                     data_query = f"""
-                        SELECT id, asset_class_name, asset_class_type, asset_symbol,
-                               common_symbol, effective_symbol, weight, valid_from, source
-                        FROM current_index_memberships
-                        WHERE index_class_name = $1
+                        SELECT cim.id, cim.asset_class_name, cim.asset_class_type, cim.asset_symbol,
+                               cim.common_symbol, cim.effective_symbol, cim.weight, cim.valid_from, cim.source,
+                               am.common_symbol as mapped_common_symbol
+                        FROM current_index_memberships cim
+                        LEFT JOIN asset_mapping am
+                            ON am.class_name = cim.asset_class_name
+                           AND am.class_type = cim.asset_class_type
+                           AND am.class_symbol = cim.asset_symbol
+                        WHERE cim.index_class_name = $1
                         ORDER BY {sort_by} {sort_order} {nulls}
                         LIMIT $2 OFFSET $3
                     """
@@ -2830,6 +2846,7 @@ class Registry(DatabaseHandler, APIHandler):
                     asset_class_type=r['asset_class_type'],
                     asset_symbol=r['asset_symbol'],
                     common_symbol=r['common_symbol'],
+                    mapped_common_symbol=r['mapped_common_symbol'],
                     effective_symbol=r['effective_symbol'],
                     weight=r['weight'],
                     valid_from=r['valid_from'],

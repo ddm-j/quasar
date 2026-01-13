@@ -2577,6 +2577,7 @@ class TestGetIndexEndpoint:
                 asset_class_type='provider',
                 asset_symbol='BTC',
                 common_symbol=None,
+                mapped_common_symbol='BTCUSD',
                 effective_symbol='BTC',
                 weight=0.27,
                 valid_from=datetime.now(timezone.utc),
@@ -2588,6 +2589,7 @@ class TestGetIndexEndpoint:
                 asset_class_type='provider',
                 asset_symbol='ETH',
                 common_symbol=None,
+                mapped_common_symbol='ETHUSD',
                 effective_symbol='ETH',
                 weight=0.12,
                 valid_from=datetime.now(timezone.utc),
@@ -2603,6 +2605,8 @@ class TestGetIndexEndpoint:
         assert len(result.members) == 2
         assert result.members[0].asset_symbol == 'BTC'
         assert result.members[0].weight == 0.27
+        assert result.members[0].mapped_common_symbol == 'BTCUSD'
+        assert result.members[1].mapped_common_symbol == 'ETHUSD'
 
     @pytest.mark.asyncio
     async def test_returns_404_when_not_found(
@@ -2690,6 +2694,7 @@ class TestGetIndexMembersEndpoint:
                 asset_class_type='provider',
                 asset_symbol='BTC',
                 common_symbol=None,
+                mapped_common_symbol='BTCUSD',
                 effective_symbol='BTC',
                 weight=0.27,
                 valid_from=datetime.now(timezone.utc),
@@ -2705,6 +2710,7 @@ class TestGetIndexMembersEndpoint:
         assert result.total_items == 1
         assert len(result.items) == 1
         assert result.items[0].asset_symbol == 'BTC'
+        assert result.items[0].mapped_common_symbol == 'BTCUSD'
 
     @pytest.mark.asyncio
     async def test_returns_404_when_index_not_found(
@@ -2720,6 +2726,71 @@ class TestGetIndexMembersEndpoint:
             await reg.handle_get_index_members('NonExistent', IndexMemberQueryParams())
 
         assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_returns_none_mapped_common_symbol_when_no_mapping(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Returns None for mapped_common_symbol when asset has no mapping."""
+        reg = registry_with_mocks
+        from quasar.services.registry.schemas import IndexMemberQueryParams
+        from datetime import datetime, timezone
+
+        member_records = [
+            MockRecord(
+                id=1,
+                asset_class_name='CCI30',
+                asset_class_type='provider',
+                asset_symbol='NEWCOIN',
+                common_symbol=None,
+                mapped_common_symbol=None,  # No mapping exists
+                effective_symbol='NEWCOIN',
+                weight=0.10,
+                valid_from=datetime.now(timezone.utc),
+                source='api'
+            ),
+        ]
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=1)  # Index exists
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(count=1))
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=member_records)
+
+        result = await reg.handle_get_index_members('CCI30', IndexMemberQueryParams())
+
+        assert result.items[0].mapped_common_symbol is None
+        assert result.items[0].asset_symbol == 'NEWCOIN'
+
+    @pytest.mark.asyncio
+    async def test_user_index_members_have_common_symbol_not_mapped(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """UserIndex members have common_symbol set directly, mapped_common_symbol is None."""
+        reg = registry_with_mocks
+        from quasar.services.registry.schemas import IndexMemberQueryParams
+        from datetime import datetime, timezone
+
+        member_records = [
+            MockRecord(
+                id=1,
+                asset_class_name=None,
+                asset_class_type=None,
+                asset_symbol=None,
+                common_symbol='BTCUSD',  # UserIndex uses common_symbol directly
+                mapped_common_symbol=None,  # No join match (asset columns are NULL)
+                effective_symbol='BTCUSD',
+                weight=0.5,
+                valid_from=datetime.now(timezone.utc),
+                source='manual'
+            ),
+        ]
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=1)  # Index exists
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(count=1))
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=member_records)
+
+        result = await reg.handle_get_index_members('MyUserIndex', IndexMemberQueryParams())
+
+        assert result.items[0].common_symbol == 'BTCUSD'
+        assert result.items[0].mapped_common_symbol is None
+        assert result.items[0].asset_symbol is None
 
 
 class TestUpdateUserIndexMembersEndpoint:
