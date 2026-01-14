@@ -138,3 +138,15 @@ BEGIN
       AND (im.valid_to IS NULL OR im.valid_to > p_as_of);
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- FK to common_symbols for UserIndex memberships
+-- Note: Only affects rows where common_symbol IS NOT NULL (UserIndex)
+-- IndexProvider rows have common_symbol = NULL, so FK is not checked
+ALTER TABLE index_memberships
+    DROP CONSTRAINT IF EXISTS fk_membership_common_symbol;
+ALTER TABLE index_memberships
+    ADD CONSTRAINT fk_membership_common_symbol
+    FOREIGN KEY (common_symbol)
+    REFERENCES common_symbols(symbol)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE;
