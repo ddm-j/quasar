@@ -1,6 +1,7 @@
 """Registry service core: code uploads, asset catalog, and mappings."""
 
 from typing import Optional, List, Dict, Any, Union
+from datetime import datetime
 import os, asyncpg, base64, hashlib, json
 import aiohttp
 from pathlib import Path
@@ -23,7 +24,13 @@ from quasar.services.registry.schemas import (
     SuggestionsResponse, SuggestionItem,
     ProviderPreferences, ProviderPreferencesResponse,
     ProviderPreferencesUpdate, AvailableQuoteCurrenciesResponse,
-    CryptoPreferences, CommonSymbolQueryParams, CommonSymbolItem, CommonSymbolResponse
+    CryptoPreferences, CommonSymbolQueryParams, CommonSymbolItem, CommonSymbolResponse,
+    # Index management schemas
+    IndexQueryParams, IndexMemberQueryParams,
+    UserIndexCreate, UserIndexMembersUpdate, IndexSyncRequest,
+    IndexItem, IndexMemberItem, IndexDetailResponse,
+    IndexListResponse, IndexMembersResponse, IndexSyncResponse,
+    IndexHistoryEvent, IndexHistoryChange, IndexHistoryResponse,
 )
 from quasar.services.registry.matcher import IdentityMatcher, MatchResult
 from quasar.services.registry.mapper import AutomatedMapper, MappingCandidate
@@ -212,6 +219,57 @@ class Registry(DatabaseHandler, APIHandler):
             self.handle_get_available_quote_currencies,
             methods=['GET'],
             response_model=AvailableQuoteCurrenciesResponse
+        )
+
+        # Index Management Routes (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/indices',
+            self.handle_get_indices,
+            methods=['GET'],
+            response_model=IndexListResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices',
+            self.handle_create_user_index,
+            methods=['POST'],
+            response_model=IndexItem,
+            status_code=201
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}',
+            self.handle_get_index,
+            methods=['GET'],
+            response_model=IndexDetailResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}',
+            self.handle_delete_index,
+            methods=['DELETE'],
+            status_code=204
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}/members',
+            self.handle_get_index_members,
+            methods=['GET'],
+            response_model=IndexMembersResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}/members',
+            self.handle_update_user_index_members,
+            methods=['PUT'],
+            response_model=IndexMembersResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}/sync',
+            self.handle_sync_index,
+            methods=['POST'],
+            response_model=IndexSyncResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/indices/{index_name}/history',
+            self.handle_get_index_history,
+            methods=['GET'],
+            response_model=IndexHistoryResponse
         )
 
     # OBJECT LIFECYCLE
@@ -848,18 +906,41 @@ class Registry(DatabaseHandler, APIHandler):
             'mappings_created': 0,
             'mappings_skipped': 0,
             'mappings_failed': 0,
+            'members_added': 0,
+            'members_removed': 0,
+            'members_unchanged': 0,
             'status': 200
         }
 
-        # Fetch available symbols from DataHub
-        datahub_url = f'http://datahub:8080/internal/providers/available-symbols'
+        # Get class_subtype to determine provider type
+        async with self.pool.acquire() as conn:
+            subtype_record = await conn.fetchrow(
+                "SELECT class_subtype FROM code_registry WHERE class_name = $1 AND class_type = $2",
+                class_name, class_type
+            )
+            class_subtype = subtype_record['class_subtype'] if subtype_record else None
+
+        is_index_provider = (class_subtype == 'IndexProvider')
+        constituent_weights: dict[str, float | None] = {}  # For membership sync
+
+        # Fetch available symbols/constituents from DataHub
+        if is_index_provider:
+            datahub_url = 'http://datahub:8080/internal/providers/constituents'
+            logger.info(f"Registry._update_assets_for_provider: Fetching constituents for IndexProvider {class_name}")
+        else:
+            datahub_url = 'http://datahub:8080/internal/providers/available-symbols'
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(datahub_url, params={'provider_name': class_name}) as response:
                     if response.status == 200:
-                        symbol_info_list = await response.json()
-                        if not isinstance(symbol_info_list, list):
-                            logger.warning(f"Invalid response format from DataHub (not a list)")
+                        response_data = await response.json()
+                        # Handle wrapped response format: {"items": [...]}
+                        if isinstance(response_data, dict) and 'items' in response_data:
+                            symbol_info_list = response_data['items']
+                        elif isinstance(response_data, list):
+                            symbol_info_list = response_data
+                        else:
+                            logger.warning(f"Invalid response format from DataHub")
                             stats['error'] = "Invalid response format from DataHub"
                             stats['status'] = 500
                             return stats
@@ -893,10 +974,36 @@ class Registry(DatabaseHandler, APIHandler):
             return stats
 
         if not symbol_info_list:
-            logger.info(f"Registry._update_assets_for_provider: No symbols returned or fetched from DataHub for provider {class_name}.")
-            stats["message"] = "No symbols returned from DataHub"
-            stats["status"] = 204
-            return stats
+            if is_index_provider:
+                # For IndexProviders, empty constituents means preserve existing memberships
+                logger.warning(f"Registry._update_assets_for_provider: Empty constituents returned for IndexProvider '{class_name}'. Preserving existing memberships.")
+                stats["message"] = "No constituents returned from provider. Existing memberships preserved."
+                stats["status"] = 200
+                return stats
+            else:
+                logger.info(f"Registry._update_assets_for_provider: No symbols returned or fetched from DataHub for provider {class_name}.")
+                stats["message"] = "No symbols returned from DataHub"
+                stats["status"] = 204
+                return stats
+
+        # For IndexProviders, store weights and convert constituents to symbol format
+        if is_index_provider:
+            constituent_weights = {c['symbol']: c.get('weight') for c in symbol_info_list}
+            symbol_info_list = [
+                {
+                    'provider': class_name,
+                    'provider_id': None,
+                    'symbol': c['symbol'],
+                    'matcher_symbol': c.get('matcher_symbol') or c['symbol'],
+                    'name': c.get('name') or '',
+                    'exchange': c.get('exchange') or '',
+                    'asset_class': c.get('asset_class') or '',
+                    'base_currency': c.get('base_currency') or '',
+                    'quote_currency': c.get('quote_currency') or '',
+                }
+                for c in symbol_info_list
+            ]
+            logger.info(f"Registry._update_assets_for_provider: Converted {len(symbol_info_list)} constituents to symbol format for {class_name}")
 
         # Upsert symbols into the database
         # When provider supplies primary_id, set primary_id_source = 'provider'
@@ -1060,6 +1167,31 @@ class Registry(DatabaseHandler, APIHandler):
             )
             # Don't fail the whole operation, just log the warning
 
+        # Sync index memberships (IndexProvider only)
+        if is_index_provider and constituent_weights:
+            try:
+                logger.info(f"Registry._update_assets_for_provider: Starting membership sync for IndexProvider {class_name}")
+                membership_stats = await self._sync_index_memberships(
+                    class_name,
+                    class_type,
+                    constituent_weights
+                )
+                stats['members_added'] = membership_stats.get('added', 0)
+                stats['members_removed'] = membership_stats.get('removed', 0)
+                stats['members_unchanged'] = membership_stats.get('unchanged', 0)
+                logger.info(
+                    f"Registry._update_assets_for_provider: Membership sync complete for {class_name}: "
+                    f"added={stats['members_added']}, removed={stats['members_removed']}, "
+                    f"unchanged={stats['members_unchanged']}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Registry._update_assets_for_provider: Membership sync failed for {class_name}: {e}",
+                    exc_info=True
+                )
+                stats['message'] = f"Assets updated but membership sync failed: {e}"
+                # Don't fail the whole operation, just log the warning
+
         return stats
 
     async def _apply_automated_mappings(
@@ -1119,6 +1251,108 @@ class Registry(DatabaseHandler, APIHandler):
                         logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
                         stats['failed'] += 1
                         await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+
+        return stats
+
+    async def _sync_index_memberships(
+        self,
+        index_name: str,
+        index_type: str,
+        constituent_weights: dict[str, float | None]
+    ) -> dict:
+        """Sync index memberships based on current constituents.
+
+        Computes diff between incoming constituents and current active memberships.
+        Closes removed memberships, adds new ones, and updates weights in place.
+
+        Args:
+            index_name: Index class_name.
+            index_type: Index class_type ('provider').
+            constituent_weights: Dict mapping symbol to weight.
+
+        Returns:
+            Dict with keys: added, removed, unchanged.
+        """
+        stats = {'added': 0, 'removed': 0, 'unchanged': 0}
+        incoming_symbols = set(constituent_weights.keys())
+
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                # Get current active memberships
+                current_members = await conn.fetch(
+                    """
+                    SELECT id, asset_symbol, weight
+                    FROM index_memberships
+                    WHERE index_class_name = $1 AND valid_to IS NULL
+                    """,
+                    index_name
+                )
+                current_symbols = {r['asset_symbol']: r for r in current_members}
+                current_symbol_set = set(current_symbols.keys())
+
+                # Compute diff
+                to_add = incoming_symbols - current_symbol_set
+                to_remove = current_symbol_set - incoming_symbols
+                unchanged = incoming_symbols & current_symbol_set
+
+                # Close removed memberships
+                if to_remove:
+                    await conn.execute(
+                        """
+                        UPDATE index_memberships
+                        SET valid_to = CURRENT_TIMESTAMP
+                        WHERE index_class_name = $1
+                          AND asset_symbol = ANY($2)
+                          AND valid_to IS NULL
+                        """,
+                        index_name, list(to_remove)
+                    )
+                    stats['removed'] = len(to_remove)
+                    logger.info(f"Registry._sync_index_memberships: Closed {len(to_remove)} memberships for {index_name}")
+
+                # Add new memberships
+                for symbol in to_add:
+                    weight = constituent_weights.get(symbol)
+                    await conn.execute(
+                        """
+                        INSERT INTO index_memberships
+                        (index_class_name, index_class_type, asset_class_name, asset_class_type,
+                         asset_symbol, weight, source)
+                        VALUES ($1, $2, $1, $2, $3, $4, 'api')
+                        """,
+                        index_name, index_type, symbol, weight
+                    )
+                    stats['added'] += 1
+
+                if to_add:
+                    logger.info(f"Registry._sync_index_memberships: Added {len(to_add)} memberships for {index_name}")
+
+                # Update weights for unchanged members (in place, no SCD)
+                weights_updated = 0
+                for symbol in unchanged:
+                    new_weight = constituent_weights.get(symbol)
+                    current = current_symbols[symbol]
+                    current_weight = current['weight']
+                    weights_equal = (
+                        (current_weight is None and new_weight is None) or
+                        (current_weight is not None and new_weight is not None and
+                         abs(current_weight - new_weight) < 1e-9)
+                    )
+                    if not weights_equal:
+                        await conn.execute(
+                            """
+                            UPDATE index_memberships
+                            SET weight = $1
+                            WHERE id = $2
+                            """,
+                            new_weight, current['id']
+                        )
+                        weights_updated += 1
+
+                if weights_updated:
+                    logger.info(f"Registry._sync_index_memberships: Updated {weights_updated} weights for {index_name}")
+
+                stats['unchanged'] = len(unchanged)
 
         return stats
 
@@ -2388,3 +2622,716 @@ class Registry(DatabaseHandler, APIHandler):
         except Exception as e:
             logger.error(f"Registry.handle_get_available_quote_currencies: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while retrieving available quote currencies")
+
+    # =========================================================================
+    # INDEX MANAGEMENT HANDLERS
+    # =========================================================================
+
+    async def handle_get_indices(
+        self,
+        params: IndexQueryParams = Depends()
+    ) -> IndexListResponse:
+        """List all indices with pagination.
+
+        Args:
+            params: Query parameters for filtering and pagination.
+
+        Returns:
+            Paginated list of indices.
+        """
+        logger.info(f"Registry.handle_get_indices: Fetching indices with params {params}")
+
+        try:
+            # Build query
+            filters = []
+            db_params: List[Any] = []
+            param_idx = 1
+
+            if params.index_type:
+                filters.append(f"index_type = ${param_idx}")
+                db_params.append(params.index_type)
+                param_idx += 1
+
+            where_clause = " AND ".join(filters) if filters else "TRUE"
+
+            # Validate sort_by
+            valid_sort_columns = ["class_name", "class_type", "index_type", "uploaded_at", "current_member_count"]
+            sort_by = params.sort_by if params.sort_by in valid_sort_columns else "class_name"
+            sort_order = "DESC" if params.sort_order.lower() == "desc" else "ASC"
+
+            # Count query
+            count_query = f"SELECT COUNT(*) as total FROM index_summary WHERE {where_clause}"
+
+            # Data query
+            data_query = f"""
+                SELECT class_name, class_type, index_type, uploaded_at,
+                       current_member_count, preferences
+                FROM index_summary
+                WHERE {where_clause}
+                ORDER BY {sort_by} {sort_order}
+                LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            """
+            data_params = db_params + [params.limit, params.offset]
+
+            async with self.pool.acquire() as conn:
+                count_result = await conn.fetchrow(count_query, *db_params)
+                records = await conn.fetch(data_query, *data_params)
+
+            total_items = count_result['total'] if count_result else 0
+            items = [
+                IndexItem(
+                    class_name=r['class_name'],
+                    class_type=r['class_type'],
+                    index_type=r['index_type'],
+                    uploaded_at=r['uploaded_at'],
+                    current_member_count=r['current_member_count'],
+                    preferences=json.loads(r['preferences']) if r['preferences'] else None
+                )
+                for r in records
+            ]
+
+            return IndexListResponse(
+                items=items,
+                total_items=total_items,
+                limit=params.limit,
+                offset=params.offset,
+                page=(params.offset // params.limit) + 1 if params.limit > 0 else 1,
+                total_pages=(total_items + params.limit - 1) // params.limit if params.limit > 0 else 1
+            )
+
+        except Exception as e:
+            logger.error(f"Registry.handle_get_indices: Unexpected error: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving indices")
+
+    async def handle_get_index(
+        self,
+        index_name: str
+    ) -> IndexDetailResponse:
+        """Get index details with current members.
+
+        Args:
+            index_name: The index class_name.
+
+        Returns:
+            Index details with current members.
+        """
+        logger.info(f"Registry.handle_get_index: Fetching index {index_name}")
+
+        try:
+            async with self.pool.acquire() as conn:
+                # Get index info
+                index_query = """
+                    SELECT class_name, class_type, index_type, uploaded_at,
+                           current_member_count, preferences
+                    FROM index_summary
+                    WHERE class_name = $1
+                """
+                index_record = await conn.fetchrow(index_query, index_name)
+
+                if not index_record:
+                    raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                # Get current members with mapped common_symbol from asset_mapping
+                members_query = """
+                    SELECT cim.id, cim.asset_class_name, cim.asset_class_type, cim.asset_symbol,
+                           cim.common_symbol, cim.effective_symbol, cim.weight, cim.valid_from, cim.source,
+                           am.common_symbol as mapped_common_symbol
+                    FROM current_index_memberships cim
+                    LEFT JOIN asset_mapping am
+                        ON am.class_name = cim.asset_class_name
+                       AND am.class_type = cim.asset_class_type
+                       AND am.class_symbol = cim.asset_symbol
+                    WHERE cim.index_class_name = $1
+                    ORDER BY cim.weight DESC NULLS LAST
+                """
+                member_records = await conn.fetch(members_query, index_name)
+
+            index_item = IndexItem(
+                class_name=index_record['class_name'],
+                class_type=index_record['class_type'],
+                index_type=index_record['index_type'],
+                uploaded_at=index_record['uploaded_at'],
+                current_member_count=index_record['current_member_count'],
+                preferences=json.loads(index_record['preferences']) if index_record['preferences'] else None
+            )
+
+            members = [
+                IndexMemberItem(
+                    id=r['id'],
+                    asset_class_name=r['asset_class_name'],
+                    asset_class_type=r['asset_class_type'],
+                    asset_symbol=r['asset_symbol'],
+                    common_symbol=r['common_symbol'],
+                    mapped_common_symbol=r['mapped_common_symbol'],
+                    effective_symbol=r['effective_symbol'],
+                    weight=r['weight'],
+                    valid_from=r['valid_from'],
+                    source=r['source']
+                )
+                for r in member_records
+            ]
+
+            return IndexDetailResponse(index=index_item, members=members)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_index: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving index")
+
+    async def handle_get_index_members(
+        self,
+        index_name: str,
+        params: IndexMemberQueryParams = Depends()
+    ) -> IndexMembersResponse:
+        """Get index members with optional point-in-time query.
+
+        Args:
+            index_name: The index class_name.
+            params: Query parameters including optional as_of timestamp.
+
+        Returns:
+            Paginated list of index members.
+        """
+        logger.info(f"Registry.handle_get_index_members: Fetching members for {index_name} with params {params}")
+
+        try:
+            # Validate sort_by
+            valid_sort_columns = ["weight", "asset_symbol", "common_symbol", "valid_from", "mapped_common_symbol"]
+            sort_by = params.sort_by if params.sort_by in valid_sort_columns else "weight"
+            sort_order = "DESC" if params.sort_order.lower() == "desc" else "ASC"
+            # Handle NULL weights in sorting
+            nulls = "NULLS LAST" if sort_order == "DESC" else "NULLS FIRST"
+
+            async with self.pool.acquire() as conn:
+                # Check index exists
+                exists = await conn.fetchval(
+                    "SELECT 1 FROM code_registry WHERE class_name = $1 AND class_subtype IN ('IndexProvider', 'UserIndex')",
+                    index_name
+                )
+                if not exists:
+                    raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                if params.as_of:
+                    # Point-in-time query with mapped common_symbol from asset_mapping
+                    count_query = """
+                        SELECT COUNT(*) FROM get_index_members_at($1, 'provider', $2)
+                    """
+                    data_query = f"""
+                        SELECT im.id, im.asset_class_name, im.asset_class_type, im.asset_symbol,
+                               im.common_symbol,
+                               COALESCE(im.asset_symbol, im.common_symbol) as effective_symbol,
+                               im.weight, im.valid_from, im.source,
+                               am.common_symbol as mapped_common_symbol
+                        FROM index_memberships im
+                        LEFT JOIN asset_mapping am
+                            ON am.class_name = im.asset_class_name
+                           AND am.class_type = im.asset_class_type
+                           AND am.class_symbol = im.asset_symbol
+                        WHERE im.index_class_name = $1
+                          AND im.valid_from <= $2
+                          AND (im.valid_to IS NULL OR im.valid_to > $2)
+                        ORDER BY {sort_by} {sort_order} {nulls}
+                        LIMIT $3 OFFSET $4
+                    """
+                    count_result = await conn.fetchrow(count_query, index_name, params.as_of)
+                    records = await conn.fetch(data_query, index_name, params.as_of, params.limit, params.offset)
+                else:
+                    # Current members query with mapped common_symbol from asset_mapping
+                    count_query = """
+                        SELECT COUNT(*) FROM current_index_memberships WHERE index_class_name = $1
+                    """
+                    data_query = f"""
+                        SELECT cim.id, cim.asset_class_name, cim.asset_class_type, cim.asset_symbol,
+                               cim.common_symbol, cim.effective_symbol, cim.weight, cim.valid_from, cim.source,
+                               am.common_symbol as mapped_common_symbol
+                        FROM current_index_memberships cim
+                        LEFT JOIN asset_mapping am
+                            ON am.class_name = cim.asset_class_name
+                           AND am.class_type = cim.asset_class_type
+                           AND am.class_symbol = cim.asset_symbol
+                        WHERE cim.index_class_name = $1
+                        ORDER BY {sort_by} {sort_order} {nulls}
+                        LIMIT $2 OFFSET $3
+                    """
+                    count_result = await conn.fetchrow(count_query, index_name)
+                    records = await conn.fetch(data_query, index_name, params.limit, params.offset)
+
+            total_items = count_result['count'] if count_result else 0
+            items = [
+                IndexMemberItem(
+                    id=r['id'],
+                    asset_class_name=r['asset_class_name'],
+                    asset_class_type=r['asset_class_type'],
+                    asset_symbol=r['asset_symbol'],
+                    common_symbol=r['common_symbol'],
+                    mapped_common_symbol=r['mapped_common_symbol'],
+                    effective_symbol=r['effective_symbol'],
+                    weight=r['weight'],
+                    valid_from=r['valid_from'],
+                    source=r['source']
+                )
+                for r in records
+            ]
+
+            return IndexMembersResponse(
+                items=items,
+                total_items=total_items,
+                limit=params.limit,
+                offset=params.offset,
+                page=(params.offset // params.limit) + 1 if params.limit > 0 else 1,
+                total_pages=(total_items + params.limit - 1) // params.limit if params.limit > 0 else 1
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_index_members: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving index members")
+
+    async def handle_get_index_history(
+        self,
+        index_name: str
+    ) -> IndexHistoryResponse:
+        """Get membership change history for an index (timeline view).
+
+        Returns all membership additions and removals grouped by date,
+        sorted newest first. This enables the timeline UI showing when
+        members were added or removed from the index.
+
+        Args:
+            index_name: The index class_name.
+
+        Returns:
+            IndexHistoryResponse with changes grouped by date.
+        """
+        logger.info(f"Registry.handle_get_index_history: Fetching history for '{index_name}'")
+
+        try:
+            async with self.pool.acquire() as conn:
+                # Verify index exists
+                exists = await conn.fetchval(
+                    """SELECT 1 FROM code_registry
+                       WHERE class_name = $1
+                       AND class_subtype IN ('IndexProvider', 'UserIndex')""",
+                    index_name
+                )
+                if not exists:
+                    raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                # Fetch all membership records (current and historical)
+                query = """
+                    SELECT
+                        COALESCE(asset_symbol, common_symbol) as symbol,
+                        weight,
+                        valid_from,
+                        valid_to
+                    FROM index_memberships
+                    WHERE index_class_name = $1
+                    ORDER BY valid_from DESC
+                """
+                records = await conn.fetch(query, index_name)
+
+            # Build change events grouped by date
+            # We need to track both additions (valid_from) and removals (valid_to)
+            from collections import defaultdict
+            changes_by_date: dict[str, list[IndexHistoryEvent]] = defaultdict(list)
+
+            for r in records:
+                symbol = r['symbol']
+                weight = r['weight']
+
+                # Addition event: when this membership started
+                add_date = r['valid_from'].strftime('%Y-%m-%d')
+                changes_by_date[add_date].append(
+                    IndexHistoryEvent(type="added", symbol=symbol, weight=weight)
+                )
+
+                # Removal event: when this membership ended (if it did)
+                if r['valid_to'] is not None:
+                    remove_date = r['valid_to'].strftime('%Y-%m-%d')
+                    changes_by_date[remove_date].append(
+                        IndexHistoryEvent(type="removed", symbol=symbol, weight=weight)
+                    )
+
+            # Convert to list of IndexHistoryChange, sorted by date descending
+            changes = []
+            for date_str in sorted(changes_by_date.keys(), reverse=True):
+                events = changes_by_date[date_str]
+                # Sort events: removals first, then additions, then by symbol
+                events.sort(key=lambda e: (0 if e.type == "removed" else 1, e.symbol))
+                changes.append(
+                    IndexHistoryChange(
+                        date=datetime.fromisoformat(date_str),
+                        events=events
+                    )
+                )
+
+            return IndexHistoryResponse(changes=changes)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_index_history: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving index history")
+
+    async def handle_create_user_index(
+        self,
+        body: UserIndexCreate = Body(...)
+    ) -> IndexItem:
+        """Create a new UserIndex.
+
+        Args:
+            body: UserIndex creation request with name and optional description.
+
+        Returns:
+            Created index item.
+        """
+        logger.info(f"Registry.handle_create_user_index: Creating UserIndex '{body.name}'")
+
+        try:
+            preferences = {"description": body.description} if body.description else {}
+
+            query = """
+                INSERT INTO code_registry (class_name, class_type, class_subtype, preferences)
+                VALUES ($1, 'provider', 'UserIndex', $2)
+                RETURNING class_name, class_type, class_subtype, uploaded_at, preferences
+            """
+
+            async with self.pool.acquire() as conn:
+                record = await conn.fetchrow(query, body.name, json.dumps(preferences))
+
+            return IndexItem(
+                class_name=record['class_name'],
+                class_type=record['class_type'],
+                index_type=record['class_subtype'],
+                uploaded_at=record['uploaded_at'],
+                current_member_count=0,
+                preferences=json.loads(record['preferences']) if record['preferences'] else None
+            )
+
+        except asyncpg.exceptions.UniqueViolationError:
+            raise HTTPException(status_code=409, detail=f"Index '{body.name}' already exists")
+        except Exception as e:
+            logger.error(f"Registry.handle_create_user_index: Unexpected error: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while creating index")
+
+    async def handle_delete_index(
+        self,
+        index_name: str
+    ) -> Response:
+        """Delete a UserIndex (not allowed for IndexProvider).
+
+        Args:
+            index_name: The index class_name.
+
+        Returns:
+            204 No Content on success.
+        """
+        logger.info(f"Registry.handle_delete_index: Deleting index '{index_name}'")
+
+        try:
+            async with self.pool.acquire() as conn:
+                # Check index type
+                record = await conn.fetchrow(
+                    "SELECT class_subtype FROM code_registry WHERE class_name = $1 AND class_type = 'provider'",
+                    index_name
+                )
+
+                if not record:
+                    raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                if record['class_subtype'] != 'UserIndex':
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Cannot delete IndexProvider '{index_name}'. Only UserIndex can be deleted."
+                    )
+
+                # Delete (memberships cascade)
+                await conn.execute(
+                    "DELETE FROM code_registry WHERE class_name = $1 AND class_type = 'provider'",
+                    index_name
+                )
+
+            return Response(status_code=204)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_delete_index: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while deleting index")
+
+    async def handle_update_user_index_members(
+        self,
+        index_name: str,
+        body: UserIndexMembersUpdate = Body(...)
+    ) -> IndexMembersResponse:
+        """Replace UserIndex members (full replacement).
+
+        Args:
+            index_name: The index class_name.
+            body: New member list with common_symbols and optional weights.
+
+        Returns:
+            Updated member list.
+        """
+        logger.info(f"Registry.handle_update_user_index_members: Updating members for '{index_name}'")
+
+        try:
+            async with self.pool.acquire() as conn:
+                async with conn.transaction():
+                    # Verify index exists and is UserIndex
+                    record = await conn.fetchrow(
+                        "SELECT class_subtype FROM code_registry WHERE class_name = $1 AND class_type = 'provider'",
+                        index_name
+                    )
+
+                    if not record:
+                        raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                    if record['class_subtype'] != 'UserIndex':
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Cannot update members for IndexProvider '{index_name}'. Use sync endpoint instead."
+                        )
+
+                    # Validate common_symbols exist
+                    common_symbols = [m.common_symbol for m in body.members]
+                    if common_symbols:
+                        existing = await conn.fetch(
+                            "SELECT symbol FROM common_symbols WHERE symbol = ANY($1)",
+                            common_symbols
+                        )
+                        existing_symbols = {r['symbol'] for r in existing}
+                        missing = set(common_symbols) - existing_symbols
+                        if missing:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Invalid common_symbols: {list(missing)}"
+                            )
+
+                    # Close all current members
+                    await conn.execute(
+                        """
+                        UPDATE index_memberships
+                        SET valid_to = CURRENT_TIMESTAMP
+                        WHERE index_class_name = $1 AND valid_to IS NULL
+                        """,
+                        index_name
+                    )
+
+                    # Insert new members
+                    new_members = []
+                    for member in body.members:
+                        result = await conn.fetchrow(
+                            """
+                            INSERT INTO index_memberships
+                            (index_class_name, index_class_type, common_symbol, weight, source)
+                            VALUES ($1, 'provider', $2, $3, 'manual')
+                            RETURNING id, common_symbol, weight, valid_from, source
+                            """,
+                            index_name, member.common_symbol, member.weight
+                        )
+                        new_members.append(result)
+
+            items = [
+                IndexMemberItem(
+                    id=r['id'],
+                    asset_class_name=None,
+                    asset_class_type=None,
+                    asset_symbol=None,
+                    common_symbol=r['common_symbol'],
+                    effective_symbol=r['common_symbol'],
+                    weight=r['weight'],
+                    valid_from=r['valid_from'],
+                    source=r['source']
+                )
+                for r in new_members
+            ]
+
+            return IndexMembersResponse(
+                items=items,
+                total_items=len(items),
+                limit=len(items),
+                offset=0,
+                page=1,
+                total_pages=1
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_update_user_index_members: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while updating index members")
+
+    async def handle_sync_index(
+        self,
+        index_name: str,
+        body: IndexSyncRequest = Body(...)
+    ) -> IndexSyncResponse:
+        """Sync API index constituents (called by DataHub).
+
+        Args:
+            index_name: The index class_name.
+            body: Constituents list from IndexProvider.
+
+        Returns:
+            Sync statistics.
+        """
+        logger.info(f"Registry.handle_sync_index: Syncing {len(body.constituents)} constituents for '{index_name}'")
+
+        try:
+            async with self.pool.acquire() as conn:
+                async with conn.transaction():
+                    # Verify index exists and is IndexProvider
+                    record = await conn.fetchrow(
+                        "SELECT class_subtype FROM code_registry WHERE class_name = $1 AND class_type = 'provider'",
+                        index_name
+                    )
+
+                    if not record:
+                        raise HTTPException(status_code=404, detail=f"Index '{index_name}' not found")
+
+                    if record['class_subtype'] != 'IndexProvider':
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Cannot sync UserIndex '{index_name}'. Use PUT members endpoint instead."
+                        )
+
+                    stats = {
+                        "assets_created": 0,
+                        "assets_updated": 0,
+                        "members_added": 0,
+                        "members_removed": 0,
+                        "members_unchanged": 0
+                    }
+
+                    # Step 1: Upsert assets from constituents
+                    asset_upsert_query = """
+                        INSERT INTO assets (
+                            class_name, class_type, symbol, matcher_symbol, name,
+                            exchange, asset_class, base_currency, quote_currency
+                        ) VALUES ($1, 'provider', $2, $3, $4, $5, $6, $7, $8)
+                        ON CONFLICT (class_name, class_type, symbol) DO UPDATE SET
+                            matcher_symbol = EXCLUDED.matcher_symbol,
+                            name = EXCLUDED.name,
+                            exchange = EXCLUDED.exchange,
+                            asset_class = EXCLUDED.asset_class,
+                            base_currency = EXCLUDED.base_currency,
+                            quote_currency = EXCLUDED.quote_currency
+                        RETURNING xmax
+                    """
+
+                    constituent_weights = {}
+                    for c in body.constituents:
+                        # Normalize asset_class
+                        asset_class = normalize_asset_class(c.asset_class) if c.asset_class else None
+                        if asset_class and asset_class not in ASSET_CLASSES:
+                            asset_class = None
+
+                        result = await conn.fetchrow(
+                            asset_upsert_query,
+                            index_name,
+                            c.symbol,
+                            c.matcher_symbol or c.symbol,
+                            c.name or "",
+                            c.exchange or "",
+                            asset_class,
+                            c.base_currency or "",
+                            c.quote_currency or ""
+                        )
+
+                        # xmax == 0 means INSERT, xmax > 0 means UPDATE
+                        if result and result['xmax'] == 0:
+                            stats["assets_created"] += 1
+                        else:
+                            stats["assets_updated"] += 1
+
+                        constituent_weights[c.symbol] = c.weight
+
+                    # Step 2: Get current active memberships
+                    current_records = await conn.fetch(
+                        """
+                        SELECT id, asset_symbol, weight FROM index_memberships
+                        WHERE index_class_name = $1 AND valid_to IS NULL
+                        """,
+                        index_name
+                    )
+                    current_symbols = {r['asset_symbol']: (r['id'], r['weight']) for r in current_records}
+
+                    # Step 3: Compute diff
+                    incoming_symbols = set(constituent_weights.keys())
+                    current_symbol_set = set(current_symbols.keys())
+                    to_add = incoming_symbols - current_symbol_set
+                    to_remove = current_symbol_set - incoming_symbols
+                    potentially_unchanged = current_symbol_set & incoming_symbols
+
+                    # Step 4: Close removed memberships
+                    if to_remove:
+                        await conn.execute(
+                            """
+                            UPDATE index_memberships
+                            SET valid_to = CURRENT_TIMESTAMP
+                            WHERE index_class_name = $1
+                              AND asset_symbol = ANY($2)
+                              AND valid_to IS NULL
+                            """,
+                            index_name, list(to_remove)
+                        )
+                        stats["members_removed"] = len(to_remove)
+
+                    # Step 5: Insert new memberships
+                    for symbol in to_add:
+                        await conn.execute(
+                            """
+                            INSERT INTO index_memberships
+                            (index_class_name, index_class_type,
+                             asset_class_name, asset_class_type, asset_symbol,
+                             weight, source)
+                            VALUES ($1, 'provider', $1, 'provider', $2, $3, 'api')
+                            """,
+                            index_name, symbol, constituent_weights[symbol]
+                        )
+                        stats["members_added"] += 1
+
+                    # Step 6: Check for weight changes in unchanged symbols
+                    for symbol in potentially_unchanged:
+                        membership_id, current_weight = current_symbols[symbol]
+                        new_weight = constituent_weights[symbol]
+
+                        # Compare weights (handle None)
+                        weights_equal = (
+                            (current_weight is None and new_weight is None) or
+                            (current_weight is not None and new_weight is not None and
+                             abs(current_weight - new_weight) < 1e-9)
+                        )
+
+                        if not weights_equal:
+                            # Close old, create new
+                            await conn.execute(
+                                "UPDATE index_memberships SET valid_to = CURRENT_TIMESTAMP WHERE id = $1",
+                                membership_id
+                            )
+                            await conn.execute(
+                                """
+                                INSERT INTO index_memberships
+                                (index_class_name, index_class_type,
+                                 asset_class_name, asset_class_type, asset_symbol,
+                                 weight, source)
+                                VALUES ($1, 'provider', $1, 'provider', $2, $3, 'api')
+                                """,
+                                index_name, symbol, new_weight
+                            )
+                            stats["members_removed"] += 1
+                            stats["members_added"] += 1
+                        else:
+                            stats["members_unchanged"] += 1
+
+            logger.info(f"Registry.handle_sync_index: Sync complete for '{index_name}': {stats}")
+            return IndexSyncResponse(index_class_name=index_name, **stats)
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_sync_index: Unexpected error for {index_name}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while syncing index")

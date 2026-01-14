@@ -537,3 +537,220 @@ export const getAssetMappingsForSymbol = async (commonSymbol) => {
 
   return data; // Expected format: [{ common_symbol, class_name, class_type, class_symbol, is_active }, ...]
 };
+
+/**
+ * Fetches all indices with optional filtering.
+ * @param {object} params - Query parameters.
+ * @param {number} [params.limit=100] - Number of items per page.
+ * @param {number} [params.offset=0] - Starting index.
+ * @param {string} [params.index_type] - Filter by 'IndexProvider' or 'UserIndex'.
+ * @param {string} [params.sort_by] - Column to sort by.
+ * @param {string} [params.sort_order] - Sort order ('asc' or 'desc').
+ * @returns {Promise<object>} - Indices response: { items, total_items, limit, offset }
+ */
+export const getIndices = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  // Default to large limit to fetch all indices for client-side pagination
+  queryParams.append('limit', params.limit || 100);
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (key !== 'limit' && value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const url = `${API_BASE}indices?${queryParams.toString()}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Fetches index detail with first 100 members.
+ * @param {string} name - Index name.
+ * @returns {Promise<object>} - Index detail response: { index, members }
+ */
+export const getIndexDetail = async (name) => {
+  const response = await fetch(`${API_BASE}indices/${encodeURIComponent(name)}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Fetches paginated members for an index.
+ * @param {string} name - Index name.
+ * @param {object} params - Query parameters.
+ * @param {number} [params.limit=100] - Number of items per page.
+ * @param {number} [params.offset=0] - Starting index.
+ * @param {string} [params.sort_by] - Column to sort by.
+ * @param {string} [params.sort_order] - Sort order ('asc' or 'desc').
+ * @returns {Promise<object>} - Members response: { items, total_items, limit, offset }
+ */
+export const getIndexMembers = async (name, params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${API_BASE}indices/${encodeURIComponent(name)}/members${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Fetches membership change history for an index (timeline view).
+ * @param {string} name - Index name.
+ * @returns {Promise<object>} - History response with changes grouped by date.
+ */
+export const getIndexHistory = async (name) => {
+  const url = `${API_BASE}indices/${encodeURIComponent(name)}/history`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Creates a new UserIndex.
+ * @param {object} data - Index creation data.
+ * @param {string} data.name - Index name (required, unique).
+ * @param {string} [data.description] - Index description (optional).
+ * @returns {Promise<object>} - Created IndexItem.
+ */
+export const createUserIndex = async (data) => {
+  const response = await fetch(`${API_BASE}indices`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(responseData, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return responseData;
+};
+
+/**
+ * Updates UserIndex members (full replacement).
+ * @param {string} name - Index name.
+ * @param {object} data - Members update data.
+ * @param {object[]} data.members - Array of member objects.
+ * @param {string} data.members[].common_symbol - Common symbol (required).
+ * @param {number} [data.members[].weight] - Weight as decimal (optional, must be > 0).
+ * @returns {Promise<object>} - Updated IndexMembersResponse.
+ */
+export const updateUserIndexMembers = async (name, data) => {
+  const response = await fetch(`${API_BASE}indices/${encodeURIComponent(name)}/members`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(responseData, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return responseData;
+};
+
+/**
+ * Deletes a UserIndex.
+ * @param {string} name - Index name.
+ * @returns {Promise<void>}
+ */
+export const deleteUserIndex = async (name) => {
+  const response = await fetch(`${API_BASE}indices/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  // Handle 204 No Content (successful deletion)
+  if (response.status === 204) {
+    return;
+  }
+
+  // If not 204, attempt to parse error response
+  let responseData;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.indexOf('application/json') !== -1) {
+    responseData = await response.json();
+  } else {
+    responseData = { message: response.statusText, status: response.status };
+  }
+
+  if (!response.ok) {
+    const errorMessage = formatErrorMessage(responseData, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return responseData;
+};

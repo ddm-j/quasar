@@ -59,10 +59,41 @@ class SymbolInfo(TypedDict):
     quote_currency: str
     country: str | None
 
+# Index constituent type
+class IndexConstituent(TypedDict, total=False):
+    """Constituent of an index with optional weight and asset metadata.
+
+    Required fields:
+        symbol: Provider's symbol for this constituent
+
+    Optional fields:
+        weight: Weight in the index (None = equal weight)
+        name: Human-readable name (e.g., "Bitcoin")
+        asset_class: Asset classification (e.g., "crypto", "equity")
+        matcher_symbol: Symbol used for matching (defaults to symbol if not provided)
+        base_currency: Base currency for pairs (e.g., "BTC")
+        quote_currency: Quote currency for pairs (e.g., "USD")
+        exchange: Exchange or market identifier
+    """
+    # Required
+    symbol: str
+
+    # Weight
+    weight: float | None
+
+    # Asset metadata for ingestion
+    name: str | None
+    asset_class: str | None
+    matcher_symbol: str | None
+    base_currency: str | None
+    quote_currency: str | None
+    exchange: str | None
+
 # Provider Class Type Enum
 class ProviderType(Enum):
     HISTORICAL = 0                 # historical data provider
-    REALTIME = 1                     # real-time data provider
+    REALTIME = 1                   # real-time data provider
+    INDEX = 2                      # index provider
 
 # Asynchronous timeout decorator
 T = TypeVar('T')
@@ -355,6 +386,68 @@ class LiveDataProvider(DataProvider):
         # Return raw bars
         bars = list(symbol_bars.values())
         return bars
+
+
+class IndexProvider(DataProvider):
+    """Base class for index providers that return constituent lists."""
+    provider_type = ProviderType.INDEX
+
+    def __init__(self, context: DerivedContext):
+        """Initialize index provider.
+
+        Args:
+            context (DerivedContext): Derived context containing provider secrets.
+        """
+        super().__init__(context)
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Unique provider identifier (e.g., 'SP500Provider')."""
+        ...
+
+    @abstractmethod
+    async def fetch_constituents(
+        self,
+        as_of_date: date | None = None
+    ) -> list[IndexConstituent]:
+        """Return index constituents for the given date.
+
+        Args:
+            as_of_date: Date for which to fetch constituents.
+                        None means current/latest.
+
+        Returns:
+            List of constituents with provider symbols and optional weights.
+        """
+        ...
+
+    async def get_constituents(
+        self,
+        as_of_date: date | None = None
+    ) -> list[IndexConstituent]:
+        """Public method to get constituents with usage tracking.
+
+        Args:
+            as_of_date: Date for which to fetch constituents.
+                        None means current/latest.
+
+        Returns:
+            List of constituents with provider symbols and optional weights.
+        """
+        async with self._usage:
+            return await self.fetch_constituents(as_of_date)
+
+    async def fetch_available_symbols(self) -> list[SymbolInfo]:
+        """Not applicable for index providers.
+
+        Raises:
+            NotImplementedError: IndexProvider does not support this method.
+        """
+        raise NotImplementedError(
+            "IndexProvider does not support fetch_available_symbols. "
+            "Use get_constituents() instead."
+        )
 
 
 def get_next_interval_timestamp(interval: Interval) -> datetime:

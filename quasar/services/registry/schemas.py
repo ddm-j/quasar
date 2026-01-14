@@ -33,6 +33,10 @@ class UpdateAssetsResponse(BaseModel):
     mappings_created: int = 0      # Automated mappings created
     mappings_skipped: int = 0      # Automated mappings skipped (already exist)
     mappings_failed: int = 0       # Automated mappings that failed to create
+    # Index membership statistics (only populated for IndexProviders)
+    members_added: int = 0
+    members_removed: int = 0
+    members_unchanged: int = 0
     status: int = 200
     error: Optional[str] = None
     message: Optional[str] = None
@@ -290,3 +294,145 @@ class AvailableQuoteCurrenciesResponse(BaseModel):
     class_name: str
     class_type: str
     available_quote_currencies: List[str]
+
+
+# =============================================================================
+# Index Management Schemas
+# =============================================================================
+
+# Index Query Parameters
+class IndexQueryParams(BaseModel):
+    """Query parameters for GET /api/registry/indices endpoint."""
+    limit: int = Field(default=25, ge=1, le=100, description="Number of items per page")
+    offset: int = Field(default=0, ge=0, description="Starting index")
+    index_type: Optional[Literal["IndexProvider", "UserIndex"]] = Field(
+        default=None, description="Filter by index type"
+    )
+    sort_by: str = Field(default="class_name", description="Column to sort by")
+    sort_order: str = Field(default="asc", description="Sort order ('asc' or 'desc')")
+
+
+class IndexMemberQueryParams(BaseModel):
+    """Query parameters for GET /api/registry/indices/{name}/members endpoint."""
+    limit: int = Field(default=100, ge=1, le=500, description="Number of items per page")
+    offset: int = Field(default=0, ge=0, description="Starting index")
+    as_of: Optional[datetime] = Field(
+        default=None, description="Point-in-time query (ISO 8601 timestamp)"
+    )
+    sort_by: str = Field(default="weight", description="Column to sort by")
+    sort_order: str = Field(default="desc", description="Sort order ('asc' or 'desc')")
+
+
+# Index Request Models
+class UserIndexCreate(BaseModel):
+    """Request model for creating a UserIndex."""
+    name: str = Field(..., min_length=1, max_length=100, description="Index name (unique)")
+    description: Optional[str] = Field(default=None, description="Index description")
+
+
+class UserIndexMemberCreate(BaseModel):
+    """Single member for UserIndex."""
+    common_symbol: str = Field(..., description="Common symbol to add to index")
+    weight: Optional[float] = Field(default=None, gt=0, description="Weight (optional, must be positive)")
+
+
+class UserIndexMembersUpdate(BaseModel):
+    """Request model for updating UserIndex members (full replacement)."""
+    members: List[UserIndexMemberCreate] = Field(..., description="List of members")
+
+
+class IndexConstituentSync(BaseModel):
+    """Single constituent from IndexProvider for sync endpoint."""
+    symbol: str = Field(..., description="Provider symbol")
+    weight: Optional[float] = Field(default=None, description="Weight in index")
+    name: Optional[str] = Field(default=None, description="Asset name")
+    asset_class: Optional[str] = Field(default=None, description="Asset class")
+    matcher_symbol: Optional[str] = Field(default=None, description="Symbol for matching")
+    base_currency: Optional[str] = Field(default=None, description="Base currency")
+    quote_currency: Optional[str] = Field(default=None, description="Quote currency")
+    exchange: Optional[str] = Field(default=None, description="Exchange identifier")
+
+
+class IndexSyncRequest(BaseModel):
+    """Request body for sync endpoint (from DataHub)."""
+    constituents: List[IndexConstituentSync] = Field(..., description="List of constituents")
+
+
+# Index Response Models
+class IndexItem(BaseModel):
+    """Single index item for list response."""
+    class_name: str
+    class_type: str
+    index_type: str  # 'IndexProvider' or 'UserIndex'
+    uploaded_at: Optional[datetime] = None
+    current_member_count: int
+    preferences: Optional[Dict[str, Any]] = None
+
+
+class IndexMemberItem(BaseModel):
+    """Single index member item."""
+    id: int
+    asset_class_name: Optional[str] = None
+    asset_class_type: Optional[str] = None
+    asset_symbol: Optional[str] = None
+    common_symbol: Optional[str] = None
+    mapped_common_symbol: Optional[str] = None  # From asset_mapping join
+    effective_symbol: str  # Computed: asset_symbol or common_symbol
+    weight: Optional[float] = None
+    valid_from: datetime
+    source: str
+
+
+class IndexDetailResponse(BaseModel):
+    """Response model for GET /api/registry/indices/{name} endpoint."""
+    index: IndexItem
+    members: List[IndexMemberItem]
+
+
+class IndexListResponse(BaseModel):
+    """Response model for GET /api/registry/indices endpoint (paginated)."""
+    items: List[IndexItem]
+    total_items: int
+    limit: int
+    offset: int
+    page: int
+    total_pages: int
+
+
+class IndexMembersResponse(BaseModel):
+    """Response model for GET /api/registry/indices/{name}/members endpoint (paginated)."""
+    items: List[IndexMemberItem]
+    total_items: int
+    limit: int
+    offset: int
+    page: int
+    total_pages: int
+
+
+class IndexSyncResponse(BaseModel):
+    """Response model for POST /api/registry/indices/{name}/sync endpoint."""
+    index_class_name: str
+    assets_created: int
+    assets_updated: int
+    members_added: int
+    members_removed: int
+    members_unchanged: int
+
+
+# Index History (Timeline) Schemas
+class IndexHistoryEvent(BaseModel):
+    """Single change event in index history."""
+    type: Literal["added", "removed"]
+    symbol: str
+    weight: Optional[float] = None
+
+
+class IndexHistoryChange(BaseModel):
+    """Group of events that occurred on a single date."""
+    date: datetime
+    events: List[IndexHistoryEvent]
+
+
+class IndexHistoryResponse(BaseModel):
+    """Response model for GET /api/registry/indices/{name}/history endpoint."""
+    changes: List[IndexHistoryChange]

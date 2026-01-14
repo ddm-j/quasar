@@ -24,10 +24,11 @@ from quasar.lib.common.database_handler import DatabaseHandler
 from quasar.lib.common.api_handler import APIHandler
 from quasar.lib.common.context import SystemContext, DerivedContext
 from quasar.lib.common.calendar import TradingCalendar
-from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Req, Bar, ProviderType, load_provider, DataProvider
+from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, IndexProvider, Req, Bar, ProviderType, load_provider, DataProvider
 from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
     ProviderValidateRequest, ProviderValidateResponse,
+    AvailableSymbolsResponse, ConstituentsResponse,
     SymbolSearchResponse, SymbolSearchItem, OHLCDataResponse, OHLCBar,
     SymbolMetadataResponse, DataTypeInfo, AssetInfo, OtherProvider
 )
@@ -148,7 +149,14 @@ class DataHub(DatabaseHandler, APIHandler):
         self._api_app.router.add_api_route(
             '/internal/providers/available-symbols',
             self.handle_get_available_symbols,
-            methods=['GET']
+            methods=['GET'],
+            response_model=AvailableSymbolsResponse
+        )
+        self._api_app.router.add_api_route(
+            '/internal/providers/constituents',
+            self.handle_get_constituents,
+            methods=['GET'],
+            response_model=ConstituentsResponse
         )
         # Data Explorer API routes (public API)
         self._api_app.router.add_api_route(
@@ -512,14 +520,14 @@ class DataHub(DatabaseHandler, APIHandler):
     async def handle_get_available_symbols(
         self,
         provider_name: str = Query(..., description="Provider name")
-    ) -> list[dict]:
+    ) -> AvailableSymbolsResponse:
         """Return available symbols for the requested provider.
 
         Args:
             provider_name (str): Provider class name.
 
         Returns:
-            list[dict]: Provider-specific symbol metadata.
+            AvailableSymbolsResponse: Wrapped list of provider-specific symbol metadata.
 
         Raises:
             HTTPException: When the provider is missing or unimplemented.
@@ -544,13 +552,58 @@ class DataHub(DatabaseHandler, APIHandler):
             symbols = await provider_instance.get_available_symbols()
             # ProviderSymbolInfo is a TypedDict, which is inherently JSON serializable if its contents are.
             # Convert to list of dicts for JSON serialization
-            return [dict(symbol) if isinstance(symbol, dict) else symbol for symbol in symbols]
+            items = [dict(symbol) if isinstance(symbol, dict) else symbol for symbol in symbols]
+            return AvailableSymbolsResponse(items=items)
         except NotImplementedError:
             logger.error(f"fetch_available_symbols not implemented for provider '{provider_name}'.")
             raise HTTPException(status_code=501, detail=f"Symbol discovery not implemented for provider '{provider_name}'")
         except Exception as e:
             logger.error(f"Error fetching symbols for provider '{provider_name}': {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Internal server error while fetching symbols for '{provider_name}'")
+
+    async def handle_get_constituents(
+        self,
+        provider_name: str = Query(..., description="IndexProvider name")
+    ) -> ConstituentsResponse:
+        """Return index constituents for the requested IndexProvider.
+
+        Args:
+            provider_name: IndexProvider class name.
+
+        Returns:
+            ConstituentsResponse: Wrapped list of constituent dicts with symbol, weight, and metadata.
+
+        Raises:
+            HTTPException: 404 if not found, 501 if not IndexProvider, 500 on error.
+        """
+        logger.info(f"API request: Get constituents for provider '{provider_name}'")
+
+        # Lazy load provider if not cached
+        provider_instance = self._providers.get(provider_name)
+        if not provider_instance:
+            didLoad = await self.load_provider_cls(provider_name)
+            if didLoad:
+                provider_instance = self._providers.get(provider_name)
+
+        if not provider_instance:
+            logger.warning(f"Provider '{provider_name}' not found or not loaded for API request.")
+            raise HTTPException(status_code=404, detail=f"Provider '{provider_name}' not found or not loaded")
+
+        # Verify it's an IndexProvider
+        if not hasattr(provider_instance, 'fetch_constituents'):
+            logger.error(f"Provider '{provider_name}' is not an IndexProvider (no fetch_constituents method).")
+            raise HTTPException(status_code=501, detail=f"Provider '{provider_name}' is not an IndexProvider")
+
+        try:
+            constituents = await provider_instance.get_constituents()
+            items = [dict(c) for c in constituents]
+            return ConstituentsResponse(items=items)
+        except NotImplementedError:
+            logger.error(f"fetch_constituents not implemented for provider '{provider_name}'.")
+            raise HTTPException(status_code=501, detail=f"fetch_constituents not implemented for '{provider_name}'")
+        except Exception as e:
+            logger.error(f"Error fetching constituents for provider '{provider_name}': {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Error fetching constituents for '{provider_name}'")
 
     # Helper Methods for Data Explorer API
     # ---------------------------------------------------------------------
@@ -1111,11 +1164,14 @@ class DataHub(DatabaseHandler, APIHandler):
             
             # Check if Class is the correct subclass
             the_class = defined_classes[0]
-            is_valid_subclass = [issubclass(the_class, HistoricalDataProvider), \
-                issubclass(the_class, LiveDataProvider)]
+            is_valid_subclass = [
+                issubclass(the_class, HistoricalDataProvider),
+                issubclass(the_class, LiveDataProvider),
+                issubclass(the_class, IndexProvider)
+            ]
             if not any(is_valid_subclass):
                 raise HTTPException(status_code=500, detail=f'Class {the_class.__name__} in {file_path} is not a valid provider subclass')
-            subclass_types = ['Historical', 'Live']
+            subclass_types = ['Historical', 'Live', 'IndexProvider']
             subclass_type = list(compress(subclass_types, is_valid_subclass))[0]
 
             # Get Class Name Attribute
@@ -1231,7 +1287,9 @@ def load_provider_from_file_path(file_path: str, expected_class_name: str) -> ty
     provider_classes = []
     for name, member_class in inspect.getmembers(module, inspect.isclass):
         if member_class.__module__ == module.__name__ and \
-        (issubclass(member_class, HistoricalDataProvider) or issubclass(member_class, LiveDataProvider)):
+        (issubclass(member_class, HistoricalDataProvider) or
+         issubclass(member_class, LiveDataProvider) or
+         issubclass(member_class, IndexProvider)):
             provider_classes.append(member_class)
     
     if not provider_classes:

@@ -70,7 +70,11 @@ class TestRegistryAutomatedMappingIntegration:
 
         # Mock database operations for asset upsert
         mock_asyncpg_conn.prepare = AsyncMock(return_value=mock_asyncpg_conn)
-        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={"xmax": 0})
+        # First call returns class_subtype, subsequent calls return asset upsert result
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
+            MockRecord(class_subtype='Historical'),  # class_subtype query
+            {"xmax": 0},  # asset upsert
+        ])
 
         # Mock identity matching (no matches)
         with patch.object(registry_with_mocks.matcher, 'identify_unidentified_assets', new_callable=AsyncMock) as mock_identify:
@@ -111,7 +115,11 @@ class TestRegistryAutomatedMappingIntegration:
 
         # Mock database operations for asset upsert
         mock_asyncpg_conn.prepare = AsyncMock(return_value=mock_asyncpg_conn)
-        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={"xmax": 0})
+        # First call returns class_subtype, subsequent calls return asset upsert result
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
+            MockRecord(class_subtype='Historical'),  # class_subtype query
+            {"xmax": 0},  # asset upsert
+        ])
 
         # Mock identity matching (no matches)
         with patch.object(registry_with_mocks.matcher, 'identify_unidentified_assets', new_callable=AsyncMock) as mock_identify:
@@ -145,7 +153,11 @@ class TestRegistryAutomatedMappingIntegration:
 
         # Mock database operations for asset upsert
         mock_asyncpg_conn.prepare = AsyncMock(return_value=mock_asyncpg_conn)
-        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={"xmax": 0})
+        # First call returns class_subtype, subsequent calls return asset upsert result
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
+            MockRecord(class_subtype='Historical'),  # class_subtype query
+            {"xmax": 0},  # asset upsert
+        ])
 
         # Mock identity matching (no matches)
         with patch.object(registry_with_mocks.matcher, 'identify_unidentified_assets', new_callable=AsyncMock) as mock_identify, \
@@ -187,7 +199,11 @@ class TestRegistryAutomatedMappingIntegration:
 
         # Mock database operations for asset upsert
         mock_asyncpg_conn.prepare = AsyncMock(return_value=mock_asyncpg_conn)
-        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={"xmax": 0})
+        # First call returns class_subtype, subsequent calls return asset upsert result
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
+            MockRecord(class_subtype='Historical'),  # class_subtype query
+            {"xmax": 0},  # asset upsert
+        ])
 
         # Mock identity matching (no matches)
         with patch.object(registry_with_mocks.matcher, 'identify_unidentified_assets', new_callable=AsyncMock) as mock_identify, \
@@ -221,7 +237,11 @@ class TestRegistryAutomatedMappingIntegration:
 
         # Mock database operations for asset upsert
         mock_asyncpg_conn.prepare = AsyncMock(return_value=mock_asyncpg_conn)
-        mock_asyncpg_conn.fetchrow = AsyncMock(return_value={"xmax": 0})
+        # First call returns class_subtype, subsequent calls return asset upsert result
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
+            MockRecord(class_subtype='Historical'),  # class_subtype query
+            {"xmax": 0},  # asset upsert
+        ])
 
         # Mock identity matching (no matches)
         with patch.object(registry_with_mocks.matcher, 'identify_unidentified_assets', new_callable=AsyncMock) as mock_identify, \

@@ -140,6 +140,59 @@ def validate_symbols(symbols: Sequence[dict], strict: bool = True) -> None:
                 sym["interval"] = norm_iv
 
 
+def validate_constituents(constituents: Sequence[dict], strict: bool = True) -> None:
+    """Validate a list of index constituents.
+
+    Args:
+        constituents: Sequence of constituent dicts with 'symbol' and optional metadata.
+        strict: If True, performs stricter validation checks.
+
+    Raises:
+        ValidationError: If validation fails.
+    """
+    if not constituents:
+        if strict:
+            raise ValidationError("No constituents returned")
+        logger.warning("Empty constituents list returned")
+        return
+
+    for i, c in enumerate(constituents):
+        if not isinstance(c, dict):
+            raise ValidationError(f"Constituent {i} must be a dict")
+
+        if "symbol" not in c:
+            raise ValidationError(f"Constituent {i} missing 'symbol' field")
+
+        symbol = c["symbol"]
+        if not isinstance(symbol, str) or not symbol:
+            raise ValidationError(f"Constituent {i} has invalid symbol: {symbol!r}")
+
+        weight = c.get("weight")
+        if weight is not None:
+            if not _is_number(weight):
+                raise ValidationError(f"Constituent {i} has invalid weight type: {type(weight).__name__}")
+            if math.isnan(weight) or math.isinf(weight):
+                raise ValidationError(f"Constituent {i} has non-finite weight: {weight}")
+            if strict and weight <= 0:
+                raise ValidationError(f"Constituent {i} has non-positive weight: {weight}")
+
+        # Validate optional string fields
+        string_fields = ["name", "asset_class", "matcher_symbol", "base_currency", "quote_currency", "exchange"]
+        for field in string_fields:
+            val = c.get(field)
+            if val is not None and not isinstance(val, str):
+                raise ValidationError(f"Constituent {i} has invalid {field} type: {type(val).__name__}")
+
+        # Validate asset_class against known values if strict
+        asset_class = c.get("asset_class")
+        if strict and asset_class is not None:
+            norm_ac = normalize_asset_class(asset_class)
+            if norm_ac is not None and norm_ac in ASSET_CLASS_ALIAS_MAP:
+                norm_ac = ASSET_CLASS_ALIAS_MAP[norm_ac]
+            if norm_ac not in ASSET_CLASSES:
+                raise ValidationError(f"Constituent {i} has invalid asset_class: {asset_class!r}")
+
+
 async def drain_async_iterable(stream: Iterable[Bar], limit: int | None = None) -> list[Bar]:
     """Collect at most ``limit`` items from an async iterator."""
     items: list[Bar] = []
