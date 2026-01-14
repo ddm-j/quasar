@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   CModal,
   CModalHeader,
@@ -96,6 +96,27 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
   const [history, setHistory] = useState(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
+  // Abort controller for cancelling stale historical view requests
+  const historicalAbortRef = useRef(null);
+
+  // Fetch index details (defined before useEffect that uses it)
+  const fetchIndexDetail = useCallback(async () => {
+    if (!indexItem?.class_name) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await getIndexDetail(indexItem.class_name);
+      setIndexDetail(data);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch index details');
+      setIndexDetail(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [indexItem?.class_name]);
+
   // Reset state when modal opens/closes
   useEffect(() => {
     if (visible && indexItem) {
@@ -111,24 +132,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
       // Reset timeline
       setHistory(null);
     }
-  }, [visible, indexItem]);
-
-  const fetchIndexDetail = async () => {
-    if (!indexItem?.class_name) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await getIndexDetail(indexItem.class_name);
-      setIndexDetail(data);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch index details');
-      setIndexDetail(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [visible, indexItem, fetchIndexDetail]);
 
   // Derived data - simple operations don't need useMemo
   const members = indexDetail?.members || [];
@@ -142,6 +146,11 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
 
   // Handle date change for historical view
   const handleDateChange = async (dateString) => {
+    // Cancel any pending request
+    if (historicalAbortRef.current) {
+      historicalAbortRef.current.abort();
+    }
+
     if (!dateString) {
       setAsOfDate(null);
       setHistoricalMembers(null);
@@ -151,6 +160,10 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
     setAsOfDate(dateString);
     setIsLoadingHistorical(true);
 
+    // Create new abort controller for this request
+    historicalAbortRef.current = new AbortController();
+    const currentController = historicalAbortRef.current;
+
     try {
       // Convert date to end-of-day ISO 8601
       const asOfDateTime = `${dateString}T23:59:59Z`;
@@ -158,8 +171,13 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
         as_of: asOfDateTime,
         limit: 500,
       });
-      setHistoricalMembers(response.items);
+      // Only update if this request wasn't superseded
+      if (!currentController.signal.aborted) {
+        setHistoricalMembers(response.items);
+      }
     } catch (err) {
+      // Ignore abort errors
+      if (err.name === 'AbortError') return;
       console.error('Failed to fetch historical members:', err);
       if (pushToast) {
         pushToast({
@@ -173,7 +191,9 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
       setAsOfDate(null);
       setHistoricalMembers(null);
     } finally {
-      setIsLoadingHistorical(false);
+      if (!currentController.signal.aborted) {
+        setIsLoadingHistorical(false);
+      }
     }
   };
 

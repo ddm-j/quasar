@@ -7,6 +7,7 @@
 export const formatDate = (dateString, includeTime = true) => {
   if (!dateString) return '—';
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '—';
   const options = {
     year: 'numeric',
     month: 'short',

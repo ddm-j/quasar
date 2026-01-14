@@ -2807,8 +2807,8 @@ class TestUpdateUserIndexMembersEndpoint:
 
         # Mock transaction context
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock()
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
@@ -2819,8 +2819,8 @@ class TestUpdateUserIndexMembersEndpoint:
                       valid_from=datetime.now(timezone.utc), source='manual'),
         ])
         mock_asyncpg_conn.fetch = AsyncMock(return_value=[
-            MockRecord(common_symbol='BTCUSD'),
-            MockRecord(common_symbol='ETHUSD'),
+            MockRecord(symbol='BTCUSD'),
+            MockRecord(symbol='ETHUSD'),
         ])
         mock_asyncpg_conn.execute = AsyncMock()
 
@@ -2843,8 +2843,8 @@ class TestUpdateUserIndexMembersEndpoint:
         from quasar.services.registry.schemas import UserIndexMembersUpdate, UserIndexMemberCreate
 
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock(return_value=False)
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(
@@ -2871,8 +2871,8 @@ class TestUpdateUserIndexMembersEndpoint:
         from quasar.services.registry.schemas import UserIndexMembersUpdate, UserIndexMemberCreate
 
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock(return_value=False)
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(
@@ -2905,8 +2905,8 @@ class TestSyncIndexEndpoint:
         from quasar.services.registry.schemas import IndexSyncRequest, IndexConstituentSync
 
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock()
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
@@ -2939,8 +2939,8 @@ class TestSyncIndexEndpoint:
         from quasar.services.registry.schemas import IndexSyncRequest, IndexConstituentSync
 
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock()
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
@@ -2973,8 +2973,8 @@ class TestSyncIndexEndpoint:
         from quasar.services.registry.schemas import IndexSyncRequest, IndexConstituentSync
 
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock(return_value=False)
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(
@@ -3001,8 +3001,8 @@ class TestSyncIndexEndpoint:
         from quasar.services.registry.schemas import IndexSyncRequest, IndexConstituentSync
 
         mock_transaction = AsyncMock()
-        mock_transaction.__aenter__ = AsyncMock()
-        mock_transaction.__aexit__ = AsyncMock(return_value=False)
+        mock_transaction.__aenter__ = AsyncMock(return_value=mock_transaction)
+        mock_transaction.__aexit__ = AsyncMock(return_value=None)
         mock_asyncpg_conn.transaction = Mock(return_value=mock_transaction)
 
         mock_asyncpg_conn.fetchrow = AsyncMock(return_value=None)

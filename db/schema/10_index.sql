@@ -66,8 +66,6 @@ CREATE INDEX IF NOT EXISTS idx_memberships_common_symbol
     ON index_memberships (common_symbol) WHERE common_symbol IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_memberships_asset
     ON index_memberships (asset_class_name, asset_class_type, asset_symbol) WHERE asset_class_name IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_memberships_index_fk
-    ON index_memberships (index_class_name, index_class_type);
 
 -- Unique constraints for active memberships
 CREATE UNIQUE INDEX IF NOT EXISTS idx_memberships_unique_api_active

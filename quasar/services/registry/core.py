@@ -933,9 +933,14 @@ class Registry(DatabaseHandler, APIHandler):
             async with aiohttp.ClientSession() as session:
                 async with session.get(datahub_url, params={'provider_name': class_name}) as response:
                     if response.status == 200:
-                        symbol_info_list = await response.json()
-                        if not isinstance(symbol_info_list, list):
-                            logger.warning(f"Invalid response format from DataHub (not a list)")
+                        response_data = await response.json()
+                        # Handle wrapped response format: {"items": [...]}
+                        if isinstance(response_data, dict) and 'items' in response_data:
+                            symbol_info_list = response_data['items']
+                        elif isinstance(response_data, list):
+                            symbol_info_list = response_data
+                        else:
+                            logger.warning(f"Invalid response format from DataHub")
                             stats['error'] = "Invalid response format from DataHub"
                             stats['status'] = 500
                             return stats
@@ -1327,7 +1332,13 @@ class Registry(DatabaseHandler, APIHandler):
                 for symbol in unchanged:
                     new_weight = constituent_weights.get(symbol)
                     current = current_symbols[symbol]
-                    if current['weight'] != new_weight:
+                    current_weight = current['weight']
+                    weights_equal = (
+                        (current_weight is None and new_weight is None) or
+                        (current_weight is not None and new_weight is not None and
+                         abs(current_weight - new_weight) < 1e-9)
+                    )
+                    if not weights_equal:
                         await conn.execute(
                             """
                             UPDATE index_memberships
@@ -3088,10 +3099,10 @@ class Registry(DatabaseHandler, APIHandler):
                     common_symbols = [m.common_symbol for m in body.members]
                     if common_symbols:
                         existing = await conn.fetch(
-                            "SELECT DISTINCT common_symbol FROM asset_mapping WHERE common_symbol = ANY($1)",
+                            "SELECT symbol FROM common_symbols WHERE symbol = ANY($1)",
                             common_symbols
                         )
-                        existing_symbols = {r['common_symbol'] for r in existing}
+                        existing_symbols = {r['symbol'] for r in existing}
                         missing = set(common_symbols) - existing_symbols
                         if missing:
                             raise HTTPException(

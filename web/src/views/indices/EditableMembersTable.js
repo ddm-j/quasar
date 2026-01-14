@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   CTable,
   CTableHead,
@@ -16,11 +16,10 @@ import AsyncSelect from 'react-select/async';
 import { getCommonSymbols } from '../services/registry_api';
 import { formatWeightForInput } from '../../utils/formatting';
 
-// Simple counter for generating unique row IDs
-let rowIdCounter = 0;
-const generateId = () => `new_${++rowIdCounter}`;
-
 const EditableMembersTable = ({ members, onChange, disabled }) => {
+  // Counter for generating unique row IDs (scoped to component instance)
+  const rowIdCounterRef = useRef(0);
+  const generateId = useCallback(() => `new_${++rowIdCounterRef.current}`, []);
   // Load common symbol options for AsyncSelect
   const loadSymbolOptions = useCallback(async (inputValue, callback) => {
     if (inputValue.length < 1) {
@@ -160,6 +159,34 @@ const EditableMembersTable = ({ members, onChange, disabled }) => {
                       control: (base) => ({
                         ...base,
                         minHeight: '38px',
+                        backgroundColor: 'var(--cui-body-bg)',
+                        borderColor: 'var(--cui-border-color)',
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        backgroundColor: 'var(--cui-body-bg)',
+                      }),
+                      menuList: (base) => ({
+                        ...base,
+                        backgroundColor: 'var(--cui-body-bg)',
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isFocused
+                          ? 'var(--cui-primary)'
+                          : 'transparent',
+                        color: 'var(--cui-body-color)',
+                        ':hover': {
+                          backgroundColor: 'var(--cui-primary)',
+                        },
+                      }),
+                      singleValue: (base) => ({
+                        ...base,
+                        color: 'var(--cui-body-color)',
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: 'var(--cui-body-color)',
                       }),
                       menuPortal: (base) => ({
                         ...base,

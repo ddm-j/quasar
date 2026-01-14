@@ -28,6 +28,7 @@ from quasar.lib.providers import HistoricalDataProvider, LiveDataProvider, Index
 from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
     ProviderValidateRequest, ProviderValidateResponse,
+    AvailableSymbolsResponse, ConstituentsResponse,
     SymbolSearchResponse, SymbolSearchItem, OHLCDataResponse, OHLCBar,
     SymbolMetadataResponse, DataTypeInfo, AssetInfo, OtherProvider
 )
@@ -148,12 +149,14 @@ class DataHub(DatabaseHandler, APIHandler):
         self._api_app.router.add_api_route(
             '/internal/providers/available-symbols',
             self.handle_get_available_symbols,
-            methods=['GET']
+            methods=['GET'],
+            response_model=AvailableSymbolsResponse
         )
         self._api_app.router.add_api_route(
             '/internal/providers/constituents',
             self.handle_get_constituents,
-            methods=['GET']
+            methods=['GET'],
+            response_model=ConstituentsResponse
         )
         # Data Explorer API routes (public API)
         self._api_app.router.add_api_route(
@@ -517,14 +520,14 @@ class DataHub(DatabaseHandler, APIHandler):
     async def handle_get_available_symbols(
         self,
         provider_name: str = Query(..., description="Provider name")
-    ) -> list[dict]:
+    ) -> AvailableSymbolsResponse:
         """Return available symbols for the requested provider.
 
         Args:
             provider_name (str): Provider class name.
 
         Returns:
-            list[dict]: Provider-specific symbol metadata.
+            AvailableSymbolsResponse: Wrapped list of provider-specific symbol metadata.
 
         Raises:
             HTTPException: When the provider is missing or unimplemented.
@@ -549,7 +552,8 @@ class DataHub(DatabaseHandler, APIHandler):
             symbols = await provider_instance.get_available_symbols()
             # ProviderSymbolInfo is a TypedDict, which is inherently JSON serializable if its contents are.
             # Convert to list of dicts for JSON serialization
-            return [dict(symbol) if isinstance(symbol, dict) else symbol for symbol in symbols]
+            items = [dict(symbol) if isinstance(symbol, dict) else symbol for symbol in symbols]
+            return AvailableSymbolsResponse(items=items)
         except NotImplementedError:
             logger.error(f"fetch_available_symbols not implemented for provider '{provider_name}'.")
             raise HTTPException(status_code=501, detail=f"Symbol discovery not implemented for provider '{provider_name}'")
@@ -560,14 +564,14 @@ class DataHub(DatabaseHandler, APIHandler):
     async def handle_get_constituents(
         self,
         provider_name: str = Query(..., description="IndexProvider name")
-    ) -> list[dict]:
+    ) -> ConstituentsResponse:
         """Return index constituents for the requested IndexProvider.
 
         Args:
             provider_name: IndexProvider class name.
 
         Returns:
-            List of constituent dicts with symbol, weight, and metadata.
+            ConstituentsResponse: Wrapped list of constituent dicts with symbol, weight, and metadata.
 
         Raises:
             HTTPException: 404 if not found, 501 if not IndexProvider, 500 on error.
@@ -592,7 +596,8 @@ class DataHub(DatabaseHandler, APIHandler):
 
         try:
             constituents = await provider_instance.get_constituents()
-            return [dict(c) for c in constituents]
+            items = [dict(c) for c in constituents]
+            return ConstituentsResponse(items=items)
         except NotImplementedError:
             logger.error(f"fetch_constituents not implemented for provider '{provider_name}'.")
             raise HTTPException(status_code=501, detail=f"fetch_constituents not implemented for '{provider_name}'")

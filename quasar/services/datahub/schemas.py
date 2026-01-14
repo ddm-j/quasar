@@ -23,7 +23,14 @@ class ProviderValidateResponse(BaseModel):
     file_path: str = Field(..., description="Path to the validated file")
 
 
-AvailableSymbolsResponse = List[dict]  # List of SymbolInfo (TypedDict)
+class AvailableSymbolsResponse(BaseModel):
+    """Response wrapper for available symbols endpoint."""
+    items: List[dict] = Field(..., description="Symbol information from provider")
+
+
+class ConstituentsResponse(BaseModel):
+    """Response wrapper for index constituents endpoint."""
+    items: List[dict] = Field(..., description="Index constituents from provider")
 
 
 # Data Explorer API Schemas

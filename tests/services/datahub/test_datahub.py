@@ -394,11 +394,11 @@ class TestDataHubAPIEndpoints:
         """Test that handle_get_available_symbols returns symbols for loaded provider."""
         hub = datahub_with_mocks
         hub._providers["TestProvider"] = mock_provider_historical
-        
-        symbols = await hub.handle_get_available_symbols("TestProvider")
-        
-        assert len(symbols) == 1
-        assert symbols[0]["symbol"] == "TEST"
+
+        response = await hub.handle_get_available_symbols("TestProvider")
+
+        assert len(response.items) == 1
+        assert response.items[0]["symbol"] == "TEST"
     
     @pytest.mark.asyncio
     async def test_handle_get_available_symbols_provider_not_loaded(
@@ -406,19 +406,19 @@ class TestDataHubAPIEndpoints:
     ):
         """Test that handle_get_available_symbols auto-loads provider if not loaded."""
         hub = datahub_with_mocks
-        
+
         # Mock provider loading
         mock_provider = Mock()
         mock_provider.get_available_symbols = AsyncMock(return_value=[{"symbol": "TEST", "matcher_symbol": "TEST"}])
-        
+
         async def mock_load_provider(name):
             hub._providers[name] = mock_provider
             return True
-        
+
         with patch.object(hub, 'load_provider_cls', side_effect=mock_load_provider):
-            symbols = await hub.handle_get_available_symbols("TestProvider")
-            
-            assert len(symbols) == 1
+            response = await hub.handle_get_available_symbols("TestProvider")
+
+            assert len(response.items) == 1
     
     @pytest.mark.asyncio
     async def test_handle_get_available_symbols_provider_not_found(
