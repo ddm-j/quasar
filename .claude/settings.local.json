@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs:*)",
+      "Bash(grep:*)",
+      "Bash(conda run:*)",
+      "Bash(python -m quasar.lib.providers.devtools:*)",
+      "Bash(python -c:*)",
+      "Bash(python -m pytest tests/test_registry.py -v --tb=short)",
+      "Bash(python -m pytest tests/services/registry/test_registry.py -v --tb=short)",
+      "Bash(python -m pytest:*)",
+      "Bash(docker logs:*)",
+      "Bash(tree:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)"
+    ]
+  }
+}
