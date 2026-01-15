@@ -1,6 +1,7 @@
 """Registry service core: code uploads, asset catalog, and mappings."""
 
 from typing import Optional, List, Dict, Any, Union
+from dataclasses import dataclass
 from datetime import datetime
 import os, asyncpg, base64, hashlib, json
 import aiohttp
@@ -37,6 +38,39 @@ from quasar.services.registry.mapper import AutomatedMapper, MappingCandidate
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+def _weights_equal(w1: float | None, w2: float | None) -> bool:
+    """Compare two weights for equality within tolerance.
+
+    Args:
+        w1: First weight value.
+        w2: Second weight value.
+
+    Returns:
+        True if weights are equal within 1e-9 tolerance.
+    """
+    if w1 is None and w2 is None:
+        return True
+    if w1 is None or w2 is None:
+        return False
+    return abs(w1 - w2) < 1e-9
+
+
+@dataclass
+class MembershipSyncResult:
+    """Result of index membership synchronization.
+
+    Attributes:
+        added: Number of new memberships created.
+        removed: Number of memberships closed.
+        unchanged: Number of memberships with no changes.
+        weights_updated: Number of memberships with weight changes.
+    """
+    added: int
+    removed: int
+    unchanged: int
+    weights_updated: int
 
 
 def _encode_cursor(score: float, src_sym: str, tgt_sym: str) -> str:
@@ -1254,6 +1288,132 @@ class Registry(DatabaseHandler, APIHandler):
 
         return stats
 
+    async def _sync_memberships_core(
+        self,
+        conn: asyncpg.Connection,
+        index_name: str,
+        index_type: str,
+        constituent_weights: dict[str, float | None],
+        *,
+        use_scd: bool = False,
+        source: str = 'api'
+    ) -> MembershipSyncResult:
+        """Sync index memberships within an existing transaction.
+
+        Computes diff between incoming constituents and current active memberships.
+        Handles additions, removals, and weight changes according to the specified mode.
+
+        Args:
+            conn: Active database connection (caller manages transaction).
+            index_name: Index class_name.
+            index_type: Index class_type (e.g., 'provider').
+            constituent_weights: Dict mapping symbol to weight.
+            use_scd: If True, use SCD Type 2 for weight changes (close old, insert new).
+                If False, update weights in place.
+            source: Source identifier for new membership records.
+
+        Returns:
+            MembershipSyncResult with counts of added, removed, unchanged, and weights_updated.
+
+        Note:
+            This method expects to be called within an active transaction context.
+            The caller is responsible for transaction management.
+        """
+        result = MembershipSyncResult(added=0, removed=0, unchanged=0, weights_updated=0)
+        incoming_symbols = set(constituent_weights.keys())
+
+        # Get current active memberships
+        current_members = await conn.fetch(
+            """
+            SELECT id, asset_symbol, weight
+            FROM index_memberships
+            WHERE index_class_name = $1 AND valid_to IS NULL
+            """,
+            index_name
+        )
+        current_symbols = {r['asset_symbol']: (r['id'], r['weight']) for r in current_members}
+        current_symbol_set = set(current_symbols.keys())
+
+        # Compute diff
+        to_add = incoming_symbols - current_symbol_set
+        to_remove = current_symbol_set - incoming_symbols
+        potentially_unchanged = current_symbol_set & incoming_symbols
+
+        # Close removed memberships
+        if to_remove:
+            await conn.execute(
+                """
+                UPDATE index_memberships
+                SET valid_to = CURRENT_TIMESTAMP
+                WHERE index_class_name = $1
+                  AND asset_symbol = ANY($2)
+                  AND valid_to IS NULL
+                """,
+                index_name, list(to_remove)
+            )
+            result.removed = len(to_remove)
+            logger.info(f"Registry._sync_memberships_core: Closed {len(to_remove)} memberships for {index_name}")
+
+        # Insert new memberships
+        for symbol in to_add:
+            weight = constituent_weights.get(symbol)
+            await conn.execute(
+                """
+                INSERT INTO index_memberships
+                (index_class_name, index_class_type, asset_class_name, asset_class_type,
+                 asset_symbol, weight, source)
+                VALUES ($1, $2, $1, $2, $3, $4, $5)
+                """,
+                index_name, index_type, symbol, weight, source
+            )
+            result.added += 1
+
+        if to_add:
+            logger.info(f"Registry._sync_memberships_core: Added {len(to_add)} memberships for {index_name}")
+
+        # Handle weight changes for potentially unchanged members
+        for symbol in potentially_unchanged:
+            membership_id, current_weight = current_symbols[symbol]
+            new_weight = constituent_weights.get(symbol)
+
+            if not _weights_equal(current_weight, new_weight):
+                if use_scd:
+                    # SCD Type 2: Close old record, insert new
+                    await conn.execute(
+                        "UPDATE index_memberships SET valid_to = CURRENT_TIMESTAMP WHERE id = $1",
+                        membership_id
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO index_memberships
+                        (index_class_name, index_class_type, asset_class_name, asset_class_type,
+                         asset_symbol, weight, source)
+                        VALUES ($1, $2, $1, $2, $3, $4, $5)
+                        """,
+                        index_name, index_type, symbol, new_weight, source
+                    )
+                    # In SCD mode, weight changes count as both removal and addition
+                    result.removed += 1
+                    result.added += 1
+                else:
+                    # In-place update
+                    await conn.execute(
+                        "UPDATE index_memberships SET weight = $1 WHERE id = $2",
+                        new_weight, membership_id
+                    )
+                result.weights_updated += 1
+            else:
+                result.unchanged += 1
+
+        if result.weights_updated:
+            mode = "SCD Type 2" if use_scd else "in-place"
+            logger.info(
+                f"Registry._sync_memberships_core: Updated {result.weights_updated} weights "
+                f"for {index_name} ({mode})"
+            )
+
+        return result
+
     async def _sync_index_memberships(
         self,
         index_name: str,
@@ -1273,88 +1433,13 @@ class Registry(DatabaseHandler, APIHandler):
         Returns:
             Dict with keys: added, removed, unchanged.
         """
-        stats = {'added': 0, 'removed': 0, 'unchanged': 0}
-        incoming_symbols = set(constituent_weights.keys())
-
         async with self.pool.acquire() as conn:
             async with conn.transaction():
-                # Get current active memberships
-                current_members = await conn.fetch(
-                    """
-                    SELECT id, asset_symbol, weight
-                    FROM index_memberships
-                    WHERE index_class_name = $1 AND valid_to IS NULL
-                    """,
-                    index_name
+                result = await self._sync_memberships_core(
+                    conn, index_name, index_type, constituent_weights,
+                    use_scd=False, source='api'
                 )
-                current_symbols = {r['asset_symbol']: r for r in current_members}
-                current_symbol_set = set(current_symbols.keys())
-
-                # Compute diff
-                to_add = incoming_symbols - current_symbol_set
-                to_remove = current_symbol_set - incoming_symbols
-                unchanged = incoming_symbols & current_symbol_set
-
-                # Close removed memberships
-                if to_remove:
-                    await conn.execute(
-                        """
-                        UPDATE index_memberships
-                        SET valid_to = CURRENT_TIMESTAMP
-                        WHERE index_class_name = $1
-                          AND asset_symbol = ANY($2)
-                          AND valid_to IS NULL
-                        """,
-                        index_name, list(to_remove)
-                    )
-                    stats['removed'] = len(to_remove)
-                    logger.info(f"Registry._sync_index_memberships: Closed {len(to_remove)} memberships for {index_name}")
-
-                # Add new memberships
-                for symbol in to_add:
-                    weight = constituent_weights.get(symbol)
-                    await conn.execute(
-                        """
-                        INSERT INTO index_memberships
-                        (index_class_name, index_class_type, asset_class_name, asset_class_type,
-                         asset_symbol, weight, source)
-                        VALUES ($1, $2, $1, $2, $3, $4, 'api')
-                        """,
-                        index_name, index_type, symbol, weight
-                    )
-                    stats['added'] += 1
-
-                if to_add:
-                    logger.info(f"Registry._sync_index_memberships: Added {len(to_add)} memberships for {index_name}")
-
-                # Update weights for unchanged members (in place, no SCD)
-                weights_updated = 0
-                for symbol in unchanged:
-                    new_weight = constituent_weights.get(symbol)
-                    current = current_symbols[symbol]
-                    current_weight = current['weight']
-                    weights_equal = (
-                        (current_weight is None and new_weight is None) or
-                        (current_weight is not None and new_weight is not None and
-                         abs(current_weight - new_weight) < 1e-9)
-                    )
-                    if not weights_equal:
-                        await conn.execute(
-                            """
-                            UPDATE index_memberships
-                            SET weight = $1
-                            WHERE id = $2
-                            """,
-                            new_weight, current['id']
-                        )
-                        weights_updated += 1
-
-                if weights_updated:
-                    logger.info(f"Registry._sync_index_memberships: Updated {weights_updated} weights for {index_name}")
-
-                stats['unchanged'] = len(unchanged)
-
-        return stats
+        return {'added': result.added, 'removed': result.removed, 'unchanged': result.unchanged}
 
     async def handle_get_assets(self, params: AssetQueryParams = Depends()) -> AssetResponse:
         """Return assets with optional filtering, sorting, and pagination.
@@ -3249,83 +3334,14 @@ class Registry(DatabaseHandler, APIHandler):
 
                         constituent_weights[c.symbol] = c.weight
 
-                    # Step 2: Get current active memberships
-                    current_records = await conn.fetch(
-                        """
-                        SELECT id, asset_symbol, weight FROM index_memberships
-                        WHERE index_class_name = $1 AND valid_to IS NULL
-                        """,
-                        index_name
+                    # Step 2: Sync memberships using shared helper (SCD Type 2)
+                    membership_result = await self._sync_memberships_core(
+                        conn, index_name, 'provider', constituent_weights,
+                        use_scd=True, source='api'
                     )
-                    current_symbols = {r['asset_symbol']: (r['id'], r['weight']) for r in current_records}
-
-                    # Step 3: Compute diff
-                    incoming_symbols = set(constituent_weights.keys())
-                    current_symbol_set = set(current_symbols.keys())
-                    to_add = incoming_symbols - current_symbol_set
-                    to_remove = current_symbol_set - incoming_symbols
-                    potentially_unchanged = current_symbol_set & incoming_symbols
-
-                    # Step 4: Close removed memberships
-                    if to_remove:
-                        await conn.execute(
-                            """
-                            UPDATE index_memberships
-                            SET valid_to = CURRENT_TIMESTAMP
-                            WHERE index_class_name = $1
-                              AND asset_symbol = ANY($2)
-                              AND valid_to IS NULL
-                            """,
-                            index_name, list(to_remove)
-                        )
-                        stats["members_removed"] = len(to_remove)
-
-                    # Step 5: Insert new memberships
-                    for symbol in to_add:
-                        await conn.execute(
-                            """
-                            INSERT INTO index_memberships
-                            (index_class_name, index_class_type,
-                             asset_class_name, asset_class_type, asset_symbol,
-                             weight, source)
-                            VALUES ($1, 'provider', $1, 'provider', $2, $3, 'api')
-                            """,
-                            index_name, symbol, constituent_weights[symbol]
-                        )
-                        stats["members_added"] += 1
-
-                    # Step 6: Check for weight changes in unchanged symbols
-                    for symbol in potentially_unchanged:
-                        membership_id, current_weight = current_symbols[symbol]
-                        new_weight = constituent_weights[symbol]
-
-                        # Compare weights (handle None)
-                        weights_equal = (
-                            (current_weight is None and new_weight is None) or
-                            (current_weight is not None and new_weight is not None and
-                             abs(current_weight - new_weight) < 1e-9)
-                        )
-
-                        if not weights_equal:
-                            # Close old, create new
-                            await conn.execute(
-                                "UPDATE index_memberships SET valid_to = CURRENT_TIMESTAMP WHERE id = $1",
-                                membership_id
-                            )
-                            await conn.execute(
-                                """
-                                INSERT INTO index_memberships
-                                (index_class_name, index_class_type,
-                                 asset_class_name, asset_class_type, asset_symbol,
-                                 weight, source)
-                                VALUES ($1, 'provider', $1, 'provider', $2, $3, 'api')
-                                """,
-                                index_name, symbol, new_weight
-                            )
-                            stats["members_removed"] += 1
-                            stats["members_added"] += 1
-                        else:
-                            stats["members_unchanged"] += 1
+                    stats["members_added"] = membership_result.added
+                    stats["members_removed"] = membership_result.removed
+                    stats["members_unchanged"] = membership_result.unchanged
 
             logger.info(f"Registry.handle_sync_index: Sync complete for '{index_name}': {stats}")
             return IndexSyncResponse(index_class_name=index_name, **stats)
