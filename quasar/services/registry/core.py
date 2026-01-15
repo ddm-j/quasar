@@ -1607,7 +1607,9 @@ class Registry(DatabaseHandler, APIHandler):
             sort_by_str = params.sort_by
             sort_order_str = params.sort_order
 
-            valid_sort_columns = ['common_symbol', 'provider_count']
+            # Map API column names to DB column names
+            column_mapping = {'common_symbol': 'symbol', 'provider_count': 'ref_count'}
+            valid_sort_columns = list(column_mapping.keys())
 
             sort_by_cols = [col.strip() for col in sort_by_str.split(',')]
             sort_orders = [order.strip().lower() for order in sort_order_str.split(',')]
@@ -1622,7 +1624,7 @@ class Registry(DatabaseHandler, APIHandler):
             elif len(sort_orders) != len(sort_by_cols):
                 raise HTTPException(status_code=400, detail="Mismatch between sort_by and sort_order counts")
 
-            order_by_clauses = [f"{col} {order.upper()}" for col, order in zip(sort_by_cols, sort_orders)]
+            order_by_clauses = [f"{column_mapping[col]} {order.upper()}" for col, order in zip(sort_by_cols, sort_orders)]
             order_by_sql = ", ".join(order_by_clauses)
 
             # Filtering
@@ -1651,22 +1653,21 @@ class Registry(DatabaseHandler, APIHandler):
                         db_params.append(decoded_value)
                         param_idx += 1
 
-            add_filter('common_symbol', params.common_symbol_like, partial_match=True)
+            add_filter('symbol', params.common_symbol_like, partial_match=True)
 
             where_clause = " AND ".join(filters) if filters else "TRUE"
 
-            # Build queries
+            # Build queries - use common_symbols table directly
             data_query = f"""
-                SELECT common_symbol, COUNT(DISTINCT (class_name, class_type)) as provider_count
-                FROM asset_mapping
+                SELECT symbol AS common_symbol, ref_count AS provider_count
+                FROM common_symbols
                 WHERE {where_clause}
-                GROUP BY common_symbol
                 ORDER BY {order_by_sql}
                 LIMIT ${param_idx} OFFSET ${param_idx + 1};
             """
             count_query = f"""
-                SELECT COUNT(DISTINCT common_symbol) as total_items
-                FROM asset_mapping
+                SELECT COUNT(*) AS total_items
+                FROM common_symbols
                 WHERE {where_clause};
             """
 
