@@ -3111,3 +3111,223 @@ class TestGetIndexHistoryEndpoint:
 
         assert exc_info.value.status_code == 404
         assert 'not found' in exc_info.value.detail
+
+
+class TestWeightsEqualHelper:
+    """Tests for the _weights_equal utility function."""
+
+    def test_both_none_returns_true(self):
+        """Both None weights are considered equal."""
+        from quasar.services.registry.core import _weights_equal
+        assert _weights_equal(None, None) is True
+
+    def test_one_none_returns_false(self):
+        """One None and one non-None are not equal."""
+        from quasar.services.registry.core import _weights_equal
+        assert _weights_equal(None, 0.5) is False
+        assert _weights_equal(0.5, None) is False
+
+    def test_within_tolerance_returns_true(self):
+        """Weights within 1e-9 tolerance are considered equal."""
+        from quasar.services.registry.core import _weights_equal
+        assert _weights_equal(0.25, 0.25 + 1e-10) is True
+        assert _weights_equal(0.25, 0.25 - 1e-10) is True
+
+    def test_outside_tolerance_returns_false(self):
+        """Weights outside 1e-9 tolerance are not equal."""
+        from quasar.services.registry.core import _weights_equal
+        assert _weights_equal(0.25, 0.25 + 1e-8) is False
+        assert _weights_equal(0.25, 0.25 - 1e-8) is False
+
+    def test_exact_match_returns_true(self):
+        """Exactly equal weights are considered equal."""
+        from quasar.services.registry.core import _weights_equal
+        assert _weights_equal(0.5, 0.5) is True
+        assert _weights_equal(0.0, 0.0) is True
+
+
+class TestMembershipSyncCore:
+    """Tests for the unified _sync_memberships_core helper."""
+
+    @pytest.mark.asyncio
+    async def test_in_place_weight_update_does_not_create_history(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """In-place mode (use_scd=False) updates weights without closing records."""
+        reg = registry_with_mocks
+
+        # Setup: existing member with different weight
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            MockRecord(id=1, asset_symbol='BTC', weight=0.25),
+        ])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': 0.30},  # Weight changed
+            use_scd=False
+        )
+
+        # Should update in place, not close+insert
+        assert result.weights_updated == 1
+        assert result.added == 0  # No new records for weight change
+        assert result.removed == 0
+        assert result.unchanged == 0
+
+        # Verify UPDATE was called with weight change (not INSERT for weight change)
+        execute_calls = [str(call) for call in mock_asyncpg_conn.execute.call_args_list]
+        assert any('SET weight' in call for call in execute_calls)
+
+    @pytest.mark.asyncio
+    async def test_scd_weight_update_creates_history(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """SCD mode (use_scd=True) closes old record and creates new for weight changes."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            MockRecord(id=1, asset_symbol='BTC', weight=0.25),
+        ])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': 0.30},
+            use_scd=True
+        )
+
+        # SCD mode: weight change = remove + add
+        assert result.weights_updated == 1
+        assert result.added == 1
+        assert result.removed == 1
+        assert result.unchanged == 0
+
+        # Verify close + insert pattern
+        execute_calls = [str(call) for call in mock_asyncpg_conn.execute.call_args_list]
+        assert any('valid_to = CURRENT_TIMESTAMP' in call for call in execute_calls)
+        assert any('INSERT INTO index_memberships' in call for call in execute_calls)
+
+    @pytest.mark.asyncio
+    async def test_no_change_when_weights_equal(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """No updates when weights are equal within tolerance."""
+        reg = registry_with_mocks
+
+        # 0.25 + 1e-10 is within the 1e-9 tolerance (diff = 1e-10 < 1e-9)
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            MockRecord(id=1, asset_symbol='BTC', weight=0.2500000001),
+        ])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': 0.25},  # Within 1e-9 tolerance
+            use_scd=False
+        )
+
+        assert result.unchanged == 1
+        assert result.weights_updated == 0
+        assert result.added == 0
+        assert result.removed == 0
+
+    @pytest.mark.asyncio
+    async def test_handles_none_weights(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Correctly handles None weights (equal-weighted indices)."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            MockRecord(id=1, asset_symbol='BTC', weight=None),
+        ])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        # None to None should be unchanged
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': None},
+            use_scd=False
+        )
+
+        assert result.unchanged == 1
+        assert result.weights_updated == 0
+
+    @pytest.mark.asyncio
+    async def test_none_to_value_triggers_update(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Changing from None to a value triggers weight update."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            MockRecord(id=1, asset_symbol='BTC', weight=None),
+        ])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': 0.5},
+            use_scd=False
+        )
+
+        assert result.weights_updated == 1
+        assert result.unchanged == 0
+
+    @pytest.mark.asyncio
+    async def test_adds_new_members(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Correctly adds new members that don't exist."""
+        reg = registry_with_mocks
+
+        # No existing members
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': 0.5, 'ETH': 0.3},
+            use_scd=False
+        )
+
+        assert result.added == 2
+        assert result.removed == 0
+        assert result.unchanged == 0
+
+    @pytest.mark.asyncio
+    async def test_removes_members_not_in_new_list(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Correctly removes members not in the new list."""
+        reg = registry_with_mocks
+
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=[
+            MockRecord(id=1, asset_symbol='BTC', weight=0.5),
+            MockRecord(id=2, asset_symbol='XRP', weight=0.3),  # Will be removed
+        ])
+        mock_asyncpg_conn.execute = AsyncMock()
+
+        result = await reg._sync_memberships_core(
+            mock_asyncpg_conn,
+            'TestIndex',
+            'provider',
+            {'BTC': 0.5},  # Only BTC remains
+            use_scd=False
+        )
+
+        assert result.removed == 1
+        assert result.unchanged == 1
+        assert result.added == 0
