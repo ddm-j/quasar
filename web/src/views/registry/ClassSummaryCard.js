@@ -139,21 +139,23 @@ const ClassSummaryCard = ({ class_summary, displayToast, onAssetsRefreshed }) =>
 
           {/* Card Icon - Right Justified */}
           <div className="d-flex align-items-center">
-              <CButton
-                  variant="ghost"
-                  color="body"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className="p-1 me-2"
-                  title="Refresh Assets"
-              >
-                  {isRefreshing ? (
-                      <CSpinner size="sm" component="span" aria-hidden="true" color="success" title="Refreshing..."/>
-                  ) : (
-                      <CIcon icon={cilSync} className="sm" />
-                  )}
-              </CButton>
+              {class_summary.class_subtype !== 'UserIndex' && (
+                <CButton
+                    variant="ghost"
+                    color="body"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="p-1 me-2"
+                    title="Refresh Assets"
+                >
+                    {isRefreshing ? (
+                        <CSpinner size="sm" component="span" aria-hidden="true" color="success" title="Refreshing..."/>
+                    ) : (
+                        <CIcon icon={cilSync} className="sm" />
+                    )}
+                </CButton>
+              )}
               <CButton
                 variant="ghost"
                 color="body"
