@@ -1,0 +1,33 @@
+# byte-code & build junk
+__pycache__/
+*.py[cod]
+*.so
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+
+# editor / IDE folders
+tmpclaude-*
+nul
+.vscode/
+.cursor/
+.idea/
+.playwright-mcp/
+
+# development related research
+docs/throwaway/
+
+# local config & secrets
+.secrets/
+.env
+*.sqlite
+
+# tests, notebooks, auto-generated API docs
+scripts_local/
+*.ipynb
+docs/api/
+
+# version control
+.git
