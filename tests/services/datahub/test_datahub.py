@@ -78,13 +78,21 @@ def temp_provider_dir(tmp_path, monkeypatch):
     """
     provider_dir = tmp_path / "dynamic_providers"
     provider_dir.mkdir()
-    
-    # Patch the ALLOWED_DYNAMIC_PATH constant
+
+    # Patch the ALLOWED_DYNAMIC_PATH constant in all locations where it's used
+    monkeypatch.setattr(
+        "quasar.services.datahub.utils.constants.ALLOWED_DYNAMIC_PATH",
+        str(provider_dir)
+    )
+    monkeypatch.setattr(
+        "quasar.services.datahub.handlers.providers.ALLOWED_DYNAMIC_PATH",
+        str(provider_dir)
+    )
     monkeypatch.setattr(
         "quasar.services.datahub.core.ALLOWED_DYNAMIC_PATH",
         str(provider_dir)
     )
-    
+
     return provider_dir
 
 
