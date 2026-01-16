@@ -21,6 +21,7 @@ from quasar.services.registry.schemas import (
     CommonSymbolResponse,
     UpdateAssetsResponse,
 )
+from quasar.services.registry.utils import FilterBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -537,53 +538,25 @@ class AssetHandlersMixin(HandlerMixin):
             order_by_sql = ", ".join(order_by_clauses)
 
             # Filtering
-            filters = []
-            db_params: List[Any] = []
-            param_idx = 1
-
-            def add_filter(column: str, value: Optional[str], partial_match: bool = False, is_list: bool = False):
-                nonlocal param_idx
-                if value is not None and value.strip() != "":
-                    decoded_value = unquote_plus(value.strip())
-                    if is_list:
-                        # Assuming comma-separated list for IN clause
-                        list_values = [v.strip() for v in decoded_value.split(',')]
-                        if list_values:
-                            placeholders = ', '.join([f'${param_idx + i}' for i in range(len(list_values))])
-                            filters.append(f"{column} IN ({placeholders})")
-                            db_params.extend(list_values)
-                            param_idx += len(list_values)
-                    elif partial_match:
-                        filters.append(f"LOWER({column}) LIKE LOWER(${param_idx})")
-                        db_params.append(f"%{decoded_value}%")
-                        param_idx += 1
-                    else:  # Exact match
-                        filters.append(f"{column} = ${param_idx}")
-                        db_params.append(decoded_value)
-                        param_idx += 1
-
-            add_filter('class_name', params.class_name_like, partial_match=True)
-            add_filter('class_type', params.class_type)
+            builder = FilterBuilder()
+            builder.add('class_name', params.class_name_like, partial_match=True)
+            builder.add('class_type', params.class_type)
             if params.asset_class is not None:
                 norm_ac = normalize_asset_class(params.asset_class)
                 if norm_ac not in ASSET_CLASSES:
                     raise HTTPException(status_code=400, detail=f"Invalid asset_class: {params.asset_class}")
-                add_filter('asset_class', norm_ac)  # Exact match for dropdown
-            add_filter('base_currency', params.base_currency_like, partial_match=True)
-            add_filter('quote_currency', params.quote_currency_like, partial_match=True)
-            add_filter('country', params.country_like, partial_match=True)
-            add_filter('symbol', params.symbol_like, partial_match=True)
-            add_filter('name', params.name_like, partial_match=True)
-            add_filter('exchange', params.exchange_like, partial_match=True)
-
-            # New identity field filters
-            add_filter('primary_id', params.primary_id_like, partial_match=True)
-            add_filter('primary_id_source', params.primary_id_source)
-            add_filter('matcher_symbol', params.matcher_symbol_like, partial_match=True)
-            add_filter('identity_match_type', params.identity_match_type)
-            add_filter('asset_class_group', params.asset_class_group)
-
-            where_clause = " AND ".join(filters) if filters else "TRUE"
+                builder.add('asset_class', norm_ac)
+            builder.add('base_currency', params.base_currency_like, partial_match=True)
+            builder.add('quote_currency', params.quote_currency_like, partial_match=True)
+            builder.add('country', params.country_like, partial_match=True)
+            builder.add('symbol', params.symbol_like, partial_match=True)
+            builder.add('name', params.name_like, partial_match=True)
+            builder.add('exchange', params.exchange_like, partial_match=True)
+            builder.add('primary_id', params.primary_id_like, partial_match=True)
+            builder.add('primary_id_source', params.primary_id_source)
+            builder.add('matcher_symbol', params.matcher_symbol_like, partial_match=True)
+            builder.add('identity_match_type', params.identity_match_type)
+            builder.add('asset_class_group', params.asset_class_group)
 
             # Build queries
             select_columns = """
@@ -596,18 +569,18 @@ class AssetHandlersMixin(HandlerMixin):
             data_query = f"""
                 SELECT {select_columns}
                 FROM assets
-                WHERE {where_clause}
+                WHERE {builder.where_clause}
                 ORDER BY {order_by_sql}
-                LIMIT ${param_idx} OFFSET ${param_idx + 1};
+                LIMIT ${builder.next_param_idx} OFFSET ${builder.next_param_idx + 1};
             """
             count_query = f"""
                 SELECT COUNT(*) as total_items
                 FROM assets
-                WHERE {where_clause};
+                WHERE {builder.where_clause};
             """
 
-            data_params = db_params + [limit, offset]
-            count_params = db_params  # Count query doesn't use limit/offset
+            data_params = builder.params + [limit, offset]
+            count_params = builder.params
 
             async with self.pool.acquire() as conn:
                 logger.debug(f"Executing data query: {data_query} with params: {data_params}")
@@ -679,51 +652,25 @@ class AssetHandlersMixin(HandlerMixin):
             order_by_sql = ", ".join(order_by_clauses)
 
             # Filtering
-            filters = []
-            db_params: List[Any] = []
-            param_idx = 1
-
-            def add_filter(column: str, value: Optional[str], partial_match: bool = False, is_list: bool = False):
-                nonlocal param_idx
-                if value is not None and value.strip() != "":
-                    decoded_value = unquote_plus(value.strip())
-                    if is_list:
-                        # Assuming comma-separated list for IN clause
-                        list_values = [v.strip() for v in decoded_value.split(',')]
-                        if list_values:
-                            placeholders = ', '.join([f'${param_idx + i}' for i in range(len(list_values))])
-                            filters.append(f"{column} IN ({placeholders})")
-                            db_params.extend(list_values)
-                            param_idx += len(list_values)
-                    elif partial_match:
-                        filters.append(f"LOWER({column}) LIKE LOWER(${param_idx})")
-                        db_params.append(f"%{decoded_value}%")
-                        param_idx += 1
-                    else:  # Exact match
-                        filters.append(f"{column} = ${param_idx}")
-                        db_params.append(decoded_value)
-                        param_idx += 1
-
-            add_filter('symbol', params.common_symbol_like, partial_match=True)
-
-            where_clause = " AND ".join(filters) if filters else "TRUE"
+            builder = FilterBuilder()
+            builder.add('symbol', params.common_symbol_like, partial_match=True)
 
             # Build queries - use common_symbols table directly
             data_query = f"""
                 SELECT symbol AS common_symbol, ref_count AS provider_count
                 FROM common_symbols
-                WHERE {where_clause}
+                WHERE {builder.where_clause}
                 ORDER BY {order_by_sql}
-                LIMIT ${param_idx} OFFSET ${param_idx + 1};
+                LIMIT ${builder.next_param_idx} OFFSET ${builder.next_param_idx + 1};
             """
             count_query = f"""
                 SELECT COUNT(*) AS total_items
                 FROM common_symbols
-                WHERE {where_clause};
+                WHERE {builder.where_clause};
             """
 
-            data_params = db_params + [limit, offset]
-            count_params = db_params  # Count query doesn't use limit/offset
+            data_params = builder.params + [limit, offset]
+            count_params = builder.params
 
             async with self.pool.acquire() as conn:
                 logger.debug(f"Executing data query: {data_query} with params: {data_params}")

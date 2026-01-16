@@ -9,7 +9,7 @@ from fastapi.responses import Response
 from asyncpg.exceptions import UndefinedFunctionError
 
 from quasar.services.registry.handlers.base import HandlerMixin
-from quasar.services.registry.utils.pagination import encode_cursor, decode_cursor
+from quasar.services.registry.utils import encode_cursor, decode_cursor, FilterBuilder
 from quasar.services.registry.schemas import (
     ClassType,
     AssetMappingCreate, AssetMappingCreateRequest, AssetMappingCreateResponse,
@@ -231,48 +231,15 @@ class MappingHandlersMixin(HandlerMixin):
             order_by_sql = ", ".join(order_by_clauses)
 
             # Filtering
-            filters = []
-            db_params: List[Any] = []
-            param_idx = 1
-
-            def add_filter(column: str, value, partial_match: bool = False, is_list: bool = False):
-                nonlocal param_idx
-                if value is not None and str(value).strip() != "":
-                    if isinstance(value, bool):
-                        # Boolean values don't need URL decoding or stripping
-                        filters.append(f"{column} = ${param_idx}")
-                        db_params.append(value)
-                        param_idx += 1
-                    else:
-                        # String values need URL decoding and stripping
-                        decoded_value = unquote_plus(str(value).strip())
-                        if is_list:
-                            # Assuming comma-separated list for IN clause
-                            list_values = [v.strip() for v in decoded_value.split(',')]
-                            if list_values:
-                                placeholders = ', '.join([f'${param_idx + i}' for i in range(len(list_values))])
-                                filters.append(f"{column} IN ({placeholders})")
-                                db_params.extend(list_values)
-                                param_idx += len(list_values)
-                        elif partial_match:
-                            filters.append(f"LOWER({column}) LIKE LOWER(${param_idx})")
-                            db_params.append(f"%{decoded_value}%")
-                            param_idx += 1
-                        else: # Exact match
-                            filters.append(f"{column} = ${param_idx}")
-                            db_params.append(decoded_value)
-                            param_idx += 1
-
-            add_filter('common_symbol', params.common_symbol)
-            add_filter('common_symbol', params.common_symbol_like, partial_match=True)
-            add_filter('class_name', params.class_name)
-            add_filter('class_name', params.class_name_like, partial_match=True)
-            add_filter('class_type', params.class_type)
-            add_filter('class_symbol', params.class_symbol)
-            add_filter('class_symbol', params.class_symbol_like, partial_match=True)
-            add_filter('is_active', params.is_active)
-
-            where_clause = " AND ".join(filters) if filters else "TRUE"
+            builder = FilterBuilder()
+            builder.add('common_symbol', params.common_symbol)
+            builder.add('common_symbol', params.common_symbol_like, partial_match=True)
+            builder.add('class_name', params.class_name)
+            builder.add('class_name', params.class_name_like, partial_match=True)
+            builder.add('class_type', params.class_type)
+            builder.add('class_symbol', params.class_symbol)
+            builder.add('class_symbol', params.class_symbol_like, partial_match=True)
+            builder.add('is_active', params.is_active)
 
             # Build queries
             select_columns = "common_symbol, class_name, class_type, class_symbol, is_active"
@@ -280,18 +247,18 @@ class MappingHandlersMixin(HandlerMixin):
             data_query = f"""
                 SELECT {select_columns}
                 FROM asset_mapping
-                WHERE {where_clause}
+                WHERE {builder.where_clause}
                 ORDER BY {order_by_sql}
-                LIMIT ${param_idx} OFFSET ${param_idx + 1};
+                LIMIT ${builder.next_param_idx} OFFSET ${builder.next_param_idx + 1};
             """
             count_query = f"""
                 SELECT COUNT(*) as total_items
                 FROM asset_mapping
-                WHERE {where_clause};
+                WHERE {builder.where_clause};
             """
 
-            data_params = db_params + [limit, offset]
-            count_params = db_params # Count query doesn't use limit/offset
+            data_params = builder.params + [limit, offset]
+            count_params = builder.params
 
             async with self.pool.acquire() as conn:
                 logger.debug(f"Executing data query: {data_query} with params: {data_params}")

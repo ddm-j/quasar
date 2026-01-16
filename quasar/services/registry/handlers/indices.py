@@ -18,6 +18,7 @@ from quasar.services.registry.schemas import (
     IndexListResponse, IndexMembersResponse, IndexSyncResponse,
     IndexHistoryEvent, IndexHistoryChange, IndexHistoryResponse,
 )
+from quasar.services.registry.utils import FilterBuilder
 from quasar.lib.enums import ASSET_CLASSES, normalize_asset_class
 
 import logging
@@ -228,17 +229,9 @@ class IndexHandlersMixin(HandlerMixin):
         logger.info(f"Registry.handle_get_indices: Fetching indices with params {params}")
 
         try:
-            # Build query
-            filters = []
-            db_params: List[Any] = []
-            param_idx = 1
-
-            if params.index_type:
-                filters.append(f"index_type = ${param_idx}")
-                db_params.append(params.index_type)
-                param_idx += 1
-
-            where_clause = " AND ".join(filters) if filters else "TRUE"
+            # Filtering
+            builder = FilterBuilder()
+            builder.add('index_type', params.index_type)
 
             # Validate sort_by
             valid_sort_columns = ["class_name", "class_type", "index_type", "uploaded_at", "current_member_count"]
@@ -246,21 +239,21 @@ class IndexHandlersMixin(HandlerMixin):
             sort_order = "DESC" if params.sort_order.lower() == "desc" else "ASC"
 
             # Count query
-            count_query = f"SELECT COUNT(*) as total FROM index_summary WHERE {where_clause}"
+            count_query = f"SELECT COUNT(*) as total FROM index_summary WHERE {builder.where_clause}"
 
             # Data query
             data_query = f"""
                 SELECT class_name, class_type, index_type, uploaded_at,
                        current_member_count, preferences
                 FROM index_summary
-                WHERE {where_clause}
+                WHERE {builder.where_clause}
                 ORDER BY {sort_by} {sort_order}
-                LIMIT ${param_idx} OFFSET ${param_idx + 1}
+                LIMIT ${builder.next_param_idx} OFFSET ${builder.next_param_idx + 1}
             """
-            data_params = db_params + [params.limit, params.offset]
+            data_params = builder.params + [params.limit, params.offset]
 
             async with self.pool.acquire() as conn:
-                count_result = await conn.fetchrow(count_query, *db_params)
+                count_result = await conn.fetchrow(count_query, *builder.params)
                 records = await conn.fetch(data_query, *data_params)
 
             total_items = count_result['total'] if count_result else 0
