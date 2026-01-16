@@ -32,37 +32,14 @@ from quasar.services.datahub.schemas import (
     SymbolSearchResponse, SymbolSearchItem, OHLCDataResponse, OHLCBar,
     SymbolMetadataResponse, DataTypeInfo, AssetInfo, OtherProvider
 )
+from quasar.services.datahub.utils.constants import (
+    QUERIES, ALLOWED_DYNAMIC_PATH, BATCH_SIZE,
+    DEFAULT_LOOKBACK, DEFAULT_LIVE_OFFSET, IMMEDIATE_PULL
+)
 
 import logging
 logger = logging.getLogger(__name__)
 
-IMMEDIATE_PULL = True # Whether to pull data immediately upon subscription or wait for the next cron job (available for historical data providers ONLY)
-DEFAULT_LIVE_OFFSET = 30 # Default number of seconds to offset the subscription cron job for live data providers
-DEFAULT_LOOKBACK = 8000 # Default Number of bars to pull if we don't already have data
-BATCH_SIZE = 500 # Number of bars to batch insert into the database 
-QUERIES = {
-          'get_subscriptions': """SELECT ps.provider, ps.interval, ps.cron, 
-                                  array_agg(ps.sym ORDER BY ps.sym) AS syms,
-                                  array_agg(a.exchange ORDER BY ps.sym) AS exchanges
-                                  FROM provider_subscription ps
-                                  JOIN assets a ON (
-                                      ps.provider = a.class_name 
-                                      AND ps.provider_class_type = a.class_type 
-                                      AND ps.sym = a.symbol
-                                  )
-                                  GROUP BY ps.provider, ps.interval, ps.cron
-                                  """,
-           'get_last_updated': """SELECT sym, last_updated::date AS d
-                                  FROM   historical_symbol_state
-                                  WHERE  provider = $1
-                                  AND  sym = ANY($2::text[])
-                                  """,
-    'get_registered_provider': """SELECT file_path, file_hash, nonce, ciphertext
-                                  FROM code_registry
-                                  WHERE class_name = $1 AND class_type = 'provider';
-                                  """
-}
-ALLOWED_DYNAMIC_PATH = '/app/dynamic_providers'
 ENUM_GUARD_MODE = os.getenv("ENUM_GUARD_MODE", "off").lower()
 
 def safe_job(default_return: Any = None) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
