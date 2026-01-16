@@ -818,7 +818,7 @@ class TestDataHubGetData:
     """Tests for DataHub get_data() method."""
     
     @pytest.mark.asyncio
-    @patch("quasar.services.datahub.core.TradingCalendar")
+    @patch("quasar.services.datahub.handlers.collection.TradingCalendar")
     async def test_get_data_historical_provider(
         self, mock_calendar, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn
     ):
@@ -838,7 +838,7 @@ class TestDataHubGetData:
             hub._insert_bars.assert_called()
     
     @pytest.mark.asyncio
-    @patch("quasar.services.datahub.core.TradingCalendar")
+    @patch("quasar.services.datahub.handlers.collection.TradingCalendar")
     async def test_get_data_live_provider(
         self, mock_calendar, datahub_with_mocks, mock_provider_live
     ):
@@ -864,7 +864,7 @@ class TestDataHubGetData:
         assert result is None
     
     @pytest.mark.asyncio
-    @patch("quasar.services.datahub.core.TradingCalendar")
+    @patch("quasar.services.datahub.handlers.collection.TradingCalendar")
     async def test_get_data_batch_insertion(
         self, mock_calendar, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn
     ):
@@ -903,7 +903,7 @@ class TestDataHubGetData:
             assert len(insert_calls) == 2
 
     @pytest.mark.asyncio
-    @patch("quasar.services.datahub.core.TradingCalendar")
+    @patch("quasar.services.datahub.handlers.collection.TradingCalendar")
     async def test_get_data_handles_unique_violation_fallback(
         self, mock_calendar, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn, mock_asyncpg_pool
     ):
@@ -930,7 +930,7 @@ class TestDataHubGetData:
         mock_asyncpg_conn.executemany.assert_called()
 
     @pytest.mark.asyncio
-    @patch("quasar.services.datahub.core.TradingCalendar")
+    @patch("quasar.services.datahub.handlers.collection.TradingCalendar")
     async def test_get_data_reraises_non_unique_db_errors(
         self, mock_calendar, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn
     ):
@@ -954,7 +954,7 @@ class TestDataHubGetData:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch("quasar.services.datahub.core.TradingCalendar")
+    @patch("quasar.services.datahub.handlers.collection.TradingCalendar")
     async def test_get_data_historical_no_valid_requests_returns_early(
         self, mock_calendar, datahub_with_mocks, mock_provider_historical, mock_asyncpg_conn
     ):

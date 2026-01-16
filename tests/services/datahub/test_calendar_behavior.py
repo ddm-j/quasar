@@ -31,7 +31,7 @@ def datahub_with_mocks():
     return hub
 
 @pytest.mark.asyncio
-@patch("quasar.services.datahub.core.TradingCalendar")
+@patch("quasar.services.datahub.handlers.collection.TradingCalendar")
 async def test_gatekeeper_skips_historical_on_weekend(mock_calendar, datahub_with_mocks):
     """Verify that historical data pulls are skipped if no sessions occurred in the gap."""
     hub = datahub_with_mocks
@@ -45,7 +45,7 @@ async def test_gatekeeper_skips_historical_on_weekend(mock_calendar, datahub_wit
     # Let's fix the dates to be deterministic.
     # Mock datetime.now to return a Sunday
     fixed_now = datetime(2025, 12, 21, tzinfo=timezone.utc) # Sunday
-    with patch("quasar.services.datahub.core.datetime") as mock_datetime:
+    with patch("quasar.services.datahub.handlers.collection.datetime") as mock_datetime:
         mock_datetime.now.return_value = fixed_now
         mock_datetime.fromisoformat = datetime.fromisoformat # keep other methods
         
@@ -67,7 +67,7 @@ async def test_gatekeeper_skips_historical_on_weekend(mock_calendar, datahub_wit
         mock_calendar.has_sessions_in_range.assert_called_once()
 
 @pytest.mark.asyncio
-@patch("quasar.services.datahub.core.TradingCalendar")
+@patch("quasar.services.datahub.handlers.collection.TradingCalendar")
 async def test_gatekeeper_allows_historical_backfill(mock_calendar, datahub_with_mocks):
     """Verify that a weekend run still triggers a pull if the gap contains sessions."""
     hub = datahub_with_mocks
@@ -89,7 +89,7 @@ async def test_gatekeeper_allows_historical_backfill(mock_calendar, datahub_with
     assert reqs[0].sym == "AAPL"
 
 @pytest.mark.asyncio
-@patch("quasar.services.datahub.core.TradingCalendar")
+@patch("quasar.services.datahub.handlers.collection.TradingCalendar")
 async def test_new_subscription_exemption(mock_calendar, datahub_with_mocks):
     """Verify that new subscriptions (no last_updated) bypass the calendar check."""
     hub = datahub_with_mocks
@@ -107,7 +107,7 @@ async def test_new_subscription_exemption(mock_calendar, datahub_with_mocks):
     mock_calendar.has_sessions_in_range.assert_not_called()
 
 @pytest.mark.asyncio
-@patch("quasar.services.datahub.core.TradingCalendar")
+@patch("quasar.services.datahub.handlers.collection.TradingCalendar")
 async def test_live_gatekeeper_filters_closed_markets(mock_calendar, datahub_with_mocks):
     """Verify that live WebSocket connections are only opened for open markets."""
     hub = datahub_with_mocks
