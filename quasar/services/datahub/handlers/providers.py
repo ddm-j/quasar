@@ -22,6 +22,7 @@ from ..schemas import (
     ProviderValidateResponse,
     AvailableSymbolsResponse,
     ConstituentsResponse,
+    ProviderUnloadResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -337,3 +338,56 @@ class ProviderHandlersMixin(HandlerMixin):
         except Exception as e:
             logger.error(f"Error validating provider: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f'Internal API Error: {e}')
+
+    async def handle_unload_provider(self, name: str) -> ProviderUnloadResponse:
+        """Unload a provider instance, releasing its resources.
+
+        This endpoint allows external services (e.g., Registry) to trigger
+        provider unload after credential updates or configuration changes.
+
+        Args:
+            name: Provider class name to unload.
+
+        Returns:
+            ProviderUnloadResponse: Status of the unload operation.
+        """
+        logger.info(f"API request: Unload provider '{name}'")
+
+        # Check if provider is loaded
+        if name not in self._providers:
+            logger.info(f"Provider '{name}' not currently loaded, nothing to unload")
+            return ProviderUnloadResponse(
+                status="not_loaded",
+                provider=name,
+                message=f"Provider '{name}' was not loaded"
+            )
+
+        try:
+            # Get provider instance and clean up its async resources
+            provider_instance = self._providers[name]
+            await provider_instance.__aexit__(None, None, None)
+            logger.info(f"Provider '{name}' async resources released")
+
+            # Remove from providers dict
+            del self._providers[name]
+
+            # Remove from preferences dict
+            if name in self._provider_preferences:
+                del self._provider_preferences[name]
+
+            logger.info(f"Provider '{name}' unloaded successfully")
+            return ProviderUnloadResponse(
+                status="success",
+                provider=name,
+                message=f"Provider '{name}' unloaded successfully"
+            )
+
+        except Exception as e:
+            logger.error(f"Error unloading provider '{name}': {e}", exc_info=True)
+            # Still try to remove from dicts even if cleanup failed
+            self._providers.pop(name, None)
+            self._provider_preferences.pop(name, None)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error unloading provider '{name}': {e}"
+            )

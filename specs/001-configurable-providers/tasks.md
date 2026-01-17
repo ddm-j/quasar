@@ -75,7 +75,7 @@
 
 - [x] T022 Update SQL query in `load_provider_cls()` to SELECT preferences column in `quasar/services/datahub/handlers/providers.py`
 - [x] T023 Pass preferences to provider constructor in `load_provider_cls()` in `quasar/services/datahub/handlers/providers.py`
-- [ ] T024 Add `_provider_preferences` dict to store loaded preferences for runtime access in `quasar/services/datahub/handlers/providers.py`
+- [x] T024 Add `_provider_preferences` dict to store loaded preferences for runtime access in `quasar/services/datahub/handlers/providers.py`
 - [ ] T025 Add `POST /api/datahub/providers/{name}/unload` endpoint handler in `quasar/services/datahub/handlers/providers.py`
 - [ ] T026 Register unload endpoint route in datahub service in `quasar/services/datahub/app.py`
 
