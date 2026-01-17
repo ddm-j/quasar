@@ -9,6 +9,7 @@ import {
   CButton,
   CFormSelect,
   CFormLabel,
+  CFormRange,
   CRow,
   CCol,
   CSpinner,
@@ -18,6 +19,7 @@ import {
   CNavLink,
   CTabContent,
   CTabPane,
+  CBadge,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilLockLocked, cilChartLine, cilClock } from '@coreui/icons'
@@ -28,7 +30,10 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const showSchedulingTab = classSubtype === 'historical' || classSubtype === 'realtime'
 
   const [activeTab, setActiveTab] = useState('trading')
-  const [config, setConfig] = useState({ crypto: { preferred_quote_currency: null } })
+  const [config, setConfig] = useState({
+    crypto: { preferred_quote_currency: null },
+    scheduling: { delay_hours: 0 }
+  })
   const [availableCurrencies, setAvailableCurrencies] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -47,12 +52,19 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setError('')
     try {
       const response = await getProviderConfig(classType, className)
-      setConfig(response.preferences || { crypto: { preferred_quote_currency: null } })
+      const prefs = response.preferences || {}
+      setConfig({
+        crypto: prefs.crypto || { preferred_quote_currency: null },
+        scheduling: prefs.scheduling || { delay_hours: 0 }
+      })
     } catch (err) {
       console.error('Failed to load provider configuration:', err)
       setError(`Failed to load configuration: ${err.message}`)
       // Set default empty config on error
-      setConfig({ crypto: { preferred_quote_currency: null } })
+      setConfig({
+        crypto: { preferred_quote_currency: null },
+        scheduling: { delay_hours: 0 }
+      })
     } finally {
       setLoading(false)
     }
@@ -73,7 +85,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setError('')
     try {
       const updateData = {
-        crypto: config.crypto
+        crypto: config.crypto,
+        scheduling: config.scheduling
       }
       const response = await updateProviderConfig(classType, className, updateData)
 
@@ -110,6 +123,23 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
         [field]: value || null
       }
     }))
+  }
+
+  const handleSchedulingChange = (field, value) => {
+    setConfig(prevConfig => ({
+      ...prevConfig,
+      scheduling: {
+        ...prevConfig.scheduling,
+        [field]: value
+      }
+    }))
+  }
+
+  // Helper to format pull time based on delay hours
+  const formatPullTime = (delayHours) => {
+    const hours = parseInt(delayHours, 10) || 0
+    const formattedHour = hours.toString().padStart(2, '0')
+    return `${formattedHour}:00 UTC`
   }
 
   const hasChanges = () => {
@@ -212,18 +242,62 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                   </p>
 
                   {classSubtype === 'historical' && (
-                    <CRow className="mb-3">
-                      <CCol>
-                        <CAlert color="info">
-                          <CIcon icon={cilClock} className="me-2" />
-                          Configure the delay offset for daily data collection.
-                          Historical providers pull data at midnight UTC by default.
-                        </CAlert>
-                        <p className="text-body-secondary">
-                          Delay hours configuration will be available in the next update.
-                        </p>
-                      </CCol>
-                    </CRow>
+                    <>
+                      <CRow className="mb-3">
+                        <CCol>
+                          <CAlert color="info">
+                            <CIcon icon={cilClock} className="me-2" />
+                            Configure the delay offset for daily data collection.
+                            Historical providers pull data at midnight UTC by default.
+                          </CAlert>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-4">
+                        <CCol md={8}>
+                          <CFormLabel htmlFor="delayHours">
+                            Delay Hours
+                          </CFormLabel>
+                          <div className="d-flex align-items-center gap-3">
+                            <CFormRange
+                              id="delayHours"
+                              min={0}
+                              max={24}
+                              step={1}
+                              value={config.scheduling?.delay_hours || 0}
+                              onChange={(e) => handleSchedulingChange('delay_hours', parseInt(e.target.value, 10))}
+                              disabled={saving}
+                              className="flex-grow-1"
+                            />
+                            <CBadge color="primary" className="px-3 py-2" style={{ minWidth: '50px' }}>
+                              {config.scheduling?.delay_hours || 0}h
+                            </CBadge>
+                          </div>
+                          <small className="form-text text-body-secondary">
+                            Offset data collection from midnight UTC. Range: 0-24 hours.
+                          </small>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-3">
+                        <CCol md={8}>
+                          <div className="p-3 border rounded bg-light">
+                            <strong>Pull Time Preview</strong>
+                            <p className="mb-0 mt-2">
+                              Daily data collection will run at{' '}
+                              <CBadge color="success" className="ms-1">
+                                {formatPullTime(config.scheduling?.delay_hours || 0)}
+                              </CBadge>
+                            </p>
+                            <small className="text-body-secondary">
+                              {config.scheduling?.delay_hours === 0
+                                ? 'Data will be pulled immediately at midnight UTC.'
+                                : `Data will be pulled ${config.scheduling?.delay_hours} hour${config.scheduling?.delay_hours !== 1 ? 's' : ''} after midnight UTC.`}
+                            </small>
+                          </div>
+                        </CCol>
+                      </CRow>
+                    </>
                   )}
 
                   {classSubtype === 'realtime' && (
