@@ -303,6 +303,66 @@ class ProviderPreferencesUpdate(BaseModel):
     crypto: Optional[CryptoPreferences] = Field(default=None)
 
 
+# Scheduling Preferences Models (Configurable Providers Feature)
+class HistoricalSchedulingPreferences(BaseModel):
+    """Scheduling preferences for historical data providers."""
+    delay_hours: Optional[int] = Field(
+        default=None, ge=0, le=24,
+        description="Hours after default cron time to run data pulls"
+    )
+
+
+class LiveSchedulingPreferences(BaseModel):
+    """Scheduling preferences for live data providers."""
+    pre_close_seconds: Optional[int] = Field(
+        default=None, ge=0, le=300,
+        description="Seconds before bar close to start listening"
+    )
+    post_close_seconds: Optional[int] = Field(
+        default=None, ge=0, le=60,
+        description="Seconds after bar close to continue listening"
+    )
+
+
+class DataPreferences(BaseModel):
+    """Data preferences for historical providers."""
+    lookback_days: Optional[int] = Field(
+        default=None, ge=1, le=8000,
+        description="Days of historical data for new subscriptions"
+    )
+
+
+# Configuration Schema Response
+class ConfigSchemaResponse(BaseModel):
+    """Response model for GET /api/registry/config/schema endpoint."""
+    class_name: str
+    class_type: str
+    class_subtype: str
+    schema: Dict[str, Any]
+
+
+# Secret Keys Response
+class SecretKeysResponse(BaseModel):
+    """Response model for GET /api/registry/config/secret-keys endpoint."""
+    class_name: str
+    class_type: str
+    keys: List[str]
+
+
+# Secrets Update Request/Response
+class SecretsUpdateRequest(BaseModel):
+    """Request model for PATCH /api/registry/config/secrets endpoint."""
+    secrets: Dict[str, str] = Field(
+        ..., description="All credential key-value pairs (full replacement)"
+    )
+
+
+class SecretsUpdateResponse(BaseModel):
+    """Response model for PATCH /api/registry/config/secrets endpoint."""
+    status: str
+    keys: List[str]
+
+
 class AvailableQuoteCurrenciesResponse(BaseModel):
     """Response model for available quote currencies endpoint."""
     class_name: str
