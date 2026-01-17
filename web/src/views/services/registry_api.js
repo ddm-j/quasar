@@ -515,6 +515,34 @@ export const getCommonSymbols = async (params = {}) => {
 };
 
 /**
+ * Renames a common symbol, cascading to all asset mappings and index memberships.
+ * @param {string} symbol - The current common symbol name.
+ * @param {string} newSymbol - The new symbol name.
+ * @returns {Promise<object>} - { old_symbol, new_symbol, asset_mappings_updated, index_memberships_updated }
+ */
+export const renameCommonSymbol = async (symbol, newSymbol) => {
+  const response = await fetch(
+    `${API_BASE}asset-mappings/common-symbol/${encodeURIComponent(symbol)}/rename`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ new_symbol: newSymbol }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
  * Fetches asset mappings for a specific common symbol.
  * @param {string} commonSymbol - The common symbol to filter by.
  * @returns {Promise<object[]>} - Array of asset mapping objects.
