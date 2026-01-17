@@ -535,7 +535,7 @@ export const renameCommonSymbol = async (symbol, newSymbol) => {
   const data = await response.json();
 
   if (!response.ok) {
-    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    const errorMessage = formatErrorMessage(data, response.status);
     throw new Error(errorMessage);
   }
 
