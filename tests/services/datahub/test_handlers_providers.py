@@ -411,7 +411,8 @@ class TestLoadProviderCls:
             'file_path': '/unauthorized/path/provider.py',
             'file_hash': b'somehash',
             'nonce': b'nonce',
-            'ciphertext': b'ciphertext'
+            'ciphertext': b'ciphertext',
+            'preferences': None
         })
 
         import warnings
@@ -436,7 +437,8 @@ class TestLoadProviderCls:
             'file_path': non_existent_path,
             'file_hash': b'somehash',
             'nonce': b'nonce',
-            'ciphertext': b'ciphertext'
+            'ciphertext': b'ciphertext',
+            'preferences': None
         })
 
         import warnings
@@ -461,7 +463,8 @@ class TestLoadProviderCls:
             'file_path': valid_provider_file['file_path'],
             'file_hash': wrong_hash,
             'nonce': b'nonce',
-            'ciphertext': b'ciphertext'
+            'ciphertext': b'ciphertext',
+            'preferences': None
         })
 
         import warnings
@@ -494,7 +497,8 @@ class TestLoadProviderCls:
             'file_path': str(invalid_file),
             'file_hash': file_hash,
             'nonce': b'nonce',
-            'ciphertext': b'ciphertext'
+            'ciphertext': b'ciphertext',
+            'preferences': None
         })
 
         import warnings
@@ -518,7 +522,8 @@ class TestLoadProviderCls:
             'file_path': valid_provider_file['file_path'],
             'file_hash': valid_provider_file['file_hash'],
             'nonce': b'test_nonce',
-            'ciphertext': b'test_ciphertext'
+            'ciphertext': b'test_ciphertext',
+            'preferences': {'scheduling': {'delay_hours': 2}}
         })
 
         result = await hub.load_provider_cls("TEST_LIVE_PROVIDER")

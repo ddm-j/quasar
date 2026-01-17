@@ -68,12 +68,12 @@
 
 ### Validation Enhancement
 
-- [ ] T020 Enhance `handle_update_provider_config()` to validate updates against provider-type-specific schema in `quasar/services/registry/handlers/config.py`
-- [ ] T021 Add logging for preference validation failures (FR-026) in `quasar/services/registry/handlers/config.py`
+- [x] T020 Enhance `handle_update_provider_config()` to validate updates against provider-type-specific schema in `quasar/services/registry/handlers/config.py`
+- [x] T021 Add logging for preference validation failures (FR-026) in `quasar/services/registry/handlers/config.py`
 
 ### DataHub Preferences Loading
 
-- [ ] T022 Update SQL query in `load_provider_cls()` to SELECT preferences column in `quasar/services/datahub/handlers/providers.py`
+- [x] T022 Update SQL query in `load_provider_cls()` to SELECT preferences column in `quasar/services/datahub/handlers/providers.py`
 - [ ] T023 Pass preferences to provider constructor in `load_provider_cls()` in `quasar/services/datahub/handlers/providers.py`
 - [ ] T024 Add `_provider_preferences` dict to store loaded preferences for runtime access in `quasar/services/datahub/handlers/providers.py`
 - [ ] T025 Add `POST /api/datahub/providers/{name}/unload` endpoint handler in `quasar/services/datahub/handlers/providers.py`

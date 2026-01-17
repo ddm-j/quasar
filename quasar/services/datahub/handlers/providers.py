@@ -127,6 +127,7 @@ class ProviderHandlersMixin(HandlerMixin):
             FILE_HASH = provider_reg_data['file_hash']
             NONCE = provider_reg_data['nonce']
             CIPHERTEXT = provider_reg_data['ciphertext']
+            PREFERENCES = provider_reg_data['preferences']  # May be None
 
             # Ensure the File Exists
             if not FILE_PATH.startswith(ALLOWED_DYNAMIC_PATH):
@@ -164,7 +165,8 @@ class ProviderHandlersMixin(HandlerMixin):
 
             # Create Provider Instance
             prov = ProviderCls(
-                context=context
+                context=context,
+                preferences=PREFERENCES
             )
             # Initialize the provider's async resources (e.g., aiohttp session)
             await prov.__aenter__()
