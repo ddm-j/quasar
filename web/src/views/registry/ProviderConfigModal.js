@@ -22,16 +22,20 @@ import {
   CBadge,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
-import { cilSettings, cilLockLocked, cilChartLine, cilClock } from '@coreui/icons'
+import { cilSettings, cilLockLocked, cilChartLine, cilClock, cilStorage } from '@coreui/icons'
 import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies } from '../services/registry_api'
 
 // Default values for live provider scheduling
 const DEFAULT_PRE_CLOSE_SECONDS = 30
 const DEFAULT_POST_CLOSE_SECONDS = 5
 
+// Default lookback days for historical providers
+const DEFAULT_LOOKBACK_DAYS = 8000
+
 const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
   // Determine which tabs should be visible based on class_subtype
   const showSchedulingTab = classSubtype === 'Historical' || classSubtype === 'Live'
+  const showDataTab = classSubtype === 'Historical'
 
   const [activeTab, setActiveTab] = useState('trading')
   const [config, setConfig] = useState({
@@ -40,6 +44,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       delay_hours: 0,
       pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
       post_close_seconds: DEFAULT_POST_CLOSE_SECONDS
+    },
+    data: {
+      lookback_days: DEFAULT_LOOKBACK_DAYS
     }
   })
   const [availableCurrencies, setAvailableCurrencies] = useState([])
@@ -67,6 +74,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           delay_hours: prefs.scheduling?.delay_hours ?? 0,
           pre_close_seconds: prefs.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS,
           post_close_seconds: prefs.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS
+        },
+        data: {
+          lookback_days: prefs.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS
         }
       })
     } catch (err) {
@@ -79,6 +89,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           delay_hours: 0,
           pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
           post_close_seconds: DEFAULT_POST_CLOSE_SECONDS
+        },
+        data: {
+          lookback_days: DEFAULT_LOOKBACK_DAYS
         }
       })
     } finally {
@@ -102,7 +115,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     try {
       const updateData = {
         crypto: config.crypto,
-        scheduling: config.scheduling
+        scheduling: config.scheduling,
+        data: config.data
       }
       const response = await updateProviderConfig(classType, className, updateData)
 
@@ -146,6 +160,16 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       ...prevConfig,
       scheduling: {
         ...prevConfig.scheduling,
+        [field]: value
+      }
+    }))
+  }
+
+  const handleDataChange = (field, value) => {
+    setConfig(prevConfig => ({
+      ...prevConfig,
+      data: {
+        ...prevConfig.data,
         [field]: value
       }
     }))
@@ -202,6 +226,18 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                   >
                     <CIcon icon={cilClock} className="me-2" />
                     Scheduling
+                  </CNavLink>
+                </CNavItem>
+              )}
+              {showDataTab && (
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'data'}
+                    onClick={() => setActiveTab('data')}
+                    className="d-flex align-items-center"
+                  >
+                    <CIcon icon={cilStorage} className="me-2" />
+                    Data
                   </CNavLink>
                 </CNavItem>
               )}
@@ -471,6 +507,46 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                       </CRow>
                     </>
                   )}
+                </CTabPane>
+              )}
+
+              {showDataTab && (
+                <CTabPane visible={activeTab === 'data'}>
+                  <h6>Data</h6>
+                  <p className="text-body-secondary mb-3">
+                    Configure historical data collection settings.
+                  </p>
+
+                  <CRow className="mb-3">
+                    <CCol>
+                      <CAlert color="info">
+                        <CIcon icon={cilStorage} className="me-2" />
+                        Configure how much historical data to fetch for new symbol subscriptions.
+                        Existing subscriptions are not affected by changes to lookback period.
+                      </CAlert>
+                    </CCol>
+                  </CRow>
+
+                  <CRow className="mb-4">
+                    <CCol md={10}>
+                      <CFormLabel className="fw-semibold">Lookback Period</CFormLabel>
+                      <p className="text-body-secondary small mb-3">
+                        When subscribing to a new symbol, how much historical data should be fetched?
+                      </p>
+                      {/* Placeholder for preset buttons and custom input - T052 and T053 */}
+                      <div className="p-3 border rounded bg-light">
+                        <p className="mb-2 text-body-secondary small">
+                          Current lookback:{' '}
+                          <CBadge color="primary">
+                            {config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS} days
+                          </CBadge>
+                        </p>
+                        <p className="mb-0 text-body-secondary small">
+                          Preset selection and custom input options coming soon.
+                        </p>
+                      </div>
+                    </CCol>
+                  </CRow>
                 </CTabPane>
               )}
 
