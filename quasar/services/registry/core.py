@@ -51,6 +51,7 @@ from quasar.services.registry.schemas import (
     AssetResponse, AssetMappingCreateResponse, AssetMappingPaginatedResponse,
     AssetMappingResponse, SuggestionsResponse,
     ProviderPreferencesResponse, AvailableQuoteCurrenciesResponse,
+    SecretKeysResponse,
     CommonSymbolResponse, CommonSymbolRenameResponse,
     IndexListResponse, IndexDetailResponse, IndexMembersResponse,
     IndexSyncResponse, IndexHistoryResponse, IndexItem,
@@ -248,6 +249,12 @@ class Registry(
             self.handle_get_available_quote_currencies,
             methods=['GET'],
             response_model=AvailableQuoteCurrenciesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config/secret-keys',
+            self.handle_get_secret_keys,
+            methods=['GET'],
+            response_model=SecretKeysResponse
         )
 
         # Index Management Routes (public API)

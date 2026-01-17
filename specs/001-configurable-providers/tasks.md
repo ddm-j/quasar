@@ -181,7 +181,7 @@
 
 ### Backend Implementation for US4
 
-- [ ] T057 [US4] Add `handle_get_secret_keys()` endpoint handler that decrypts and returns key names (not values) in `quasar/services/registry/handlers/config.py`
+- [x] T057 [US4] Add `handle_get_secret_keys()` endpoint handler that decrypts and returns key names (not values) in `quasar/services/registry/handlers/config.py`
 - [ ] T058 [US4] Register GET /api/registry/config/secret-keys route in registry service in `quasar/services/registry/app.py`
 - [ ] T059 [US4] Add `handle_update_secrets()` endpoint handler with re-encryption logic (new nonce per update) in `quasar/services/registry/handlers/config.py`
 - [ ] T060 [US4] Register PATCH /api/registry/config/secrets route in registry service in `quasar/services/registry/app.py`
