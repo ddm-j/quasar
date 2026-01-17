@@ -97,8 +97,8 @@
 
 ### Backend Implementation for US1
 
-- [ ] T030 [US1] Read delay_hours from preferences in `refresh_subscriptions()` for historical providers in `quasar/services/datahub/handlers/collection.py`
-- [ ] T031 [US1] Apply positive offset (delay_hours * 3600) to `OffsetCronTrigger` for historical providers in `quasar/services/datahub/handlers/collection.py`
+- [x] T030 [US1] Read delay_hours from preferences in `refresh_subscriptions()` for historical providers in `quasar/services/datahub/handlers/collection.py`
+- [x] T031 [US1] Apply positive offset (delay_hours * 3600) to `OffsetCronTrigger` for historical providers in `quasar/services/datahub/handlers/collection.py`
 - [ ] T032 [US1] Add logging for preference changes (FR-025) when scheduling preferences are updated in `quasar/services/registry/handlers/config.py`
 
 ### Frontend Implementation for US1
