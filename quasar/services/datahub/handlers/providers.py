@@ -171,6 +171,7 @@ class ProviderHandlersMixin(HandlerMixin):
             # Initialize the provider's async resources (e.g., aiohttp session)
             await prov.__aenter__()
             self._providers[name] = prov
+            self._provider_preferences[name] = PREFERENCES
             logger.info(f"Provider {name} instance created successfully.")
             return True
         except Exception as e:

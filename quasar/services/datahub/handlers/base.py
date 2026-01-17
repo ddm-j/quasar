@@ -20,5 +20,6 @@ class HandlerMixin:
     system_context: 'SystemContext'
     _sched: 'AsyncIOScheduler'
     _providers: dict[str, 'DataProvider']
+    _provider_preferences: dict[str, dict | None]
     job_keys: set[str]
     _refresh_seconds: int

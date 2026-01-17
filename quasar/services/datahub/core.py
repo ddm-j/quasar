@@ -63,6 +63,9 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
         # Store DataProvider objects
         self._providers: dict[str, HistoricalDataProvider] = {}
 
+        # Store provider preferences for runtime access
+        self._provider_preferences: dict[str, dict | None] = {}
+
         # Job Key Tracking
         self.job_keys: set[str] = set()
 
