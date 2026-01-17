@@ -138,8 +138,8 @@
 
 ### Tests for US2
 
-- [ ] T046 [P] [US2] Write integration test: live provider job fires at configured pre_close offset in `tests/test_config_integration.py`
-- [ ] T047 [P] [US2] Write unit test: OffsetCronTrigger receives correct negative offset for live providers in `tests/test_configurable_providers.py`
+- [x] T046 [P] [US2] Write integration test: live provider job fires at configured pre_close offset in `tests/test_config_integration.py`
+- [x] T047 [P] [US2] Write unit test: OffsetCronTrigger receives correct negative offset for live providers in `tests/test_configurable_providers.py`
 - [ ] T048 [US2] Visual test with Playwright: Verify Scheduling tab displays pre/post close inputs for live provider (use playwright-visual-tester agent)
 
 **Checkpoint**: User Story 2 complete - Restart docker, run tests, verify UI via Playwright
