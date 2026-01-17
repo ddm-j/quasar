@@ -10,6 +10,7 @@ import {
   CFormSelect,
   CFormLabel,
   CFormRange,
+  CFormCheck,
   CRow,
   CCol,
   CSpinner,
@@ -31,6 +32,16 @@ const DEFAULT_POST_CLOSE_SECONDS = 5
 
 // Default lookback days for historical providers
 const DEFAULT_LOOKBACK_DAYS = 8000
+
+// Preset options for lookback period
+const LOOKBACK_PRESETS = [
+  { label: '1 month', value: 30 },
+  { label: '3 months', value: 90 },
+  { label: '1 year', value: 365 },
+  { label: '3 years', value: 1095 },
+  { label: '5 years', value: 1825 },
+  { label: 'Max', value: 8000 },
+]
 
 const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
   // Determine which tabs should be visible based on class_subtype
@@ -533,16 +544,28 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                       <p className="text-body-secondary small mb-3">
                         When subscribing to a new symbol, how much historical data should be fetched?
                       </p>
-                      {/* Placeholder for preset buttons and custom input - T052 and T053 */}
+                      <div className="d-flex flex-wrap gap-3 mb-3">
+                        {LOOKBACK_PRESETS.map((preset) => (
+                          <CFormCheck
+                            key={preset.value}
+                            type="radio"
+                            name="lookbackPreset"
+                            id={`lookback-${preset.value}`}
+                            label={preset.label}
+                            checked={(config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS) === preset.value}
+                            onChange={() => handleDataChange('lookback_days', preset.value)}
+                            disabled={saving}
+                          />
+                        ))}
+                      </div>
                       <div className="p-3 border rounded bg-light">
-                        <p className="mb-2 text-body-secondary small">
-                          Current lookback:{' '}
+                        <p className="mb-0 text-body-secondary small">
+                          Selected lookback:{' '}
                           <CBadge color="primary">
                             {config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS} days
                           </CBadge>
-                        </p>
-                        <p className="mb-0 text-body-secondary small">
-                          Preset selection and custom input options coming soon.
+                          {' '}
+                          ({LOOKBACK_PRESETS.find(p => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS))?.label || 'Custom'})
                         </p>
                       </div>
                     </CCol>
