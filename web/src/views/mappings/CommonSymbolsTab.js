@@ -276,6 +276,11 @@ const CommonSymbolsTab = () => {
                     setIsDetailModalVisible(false);
                     setSelectedSymbol(null);
                 }}
+                onRenameSuccess={() => {
+                    setIsDetailModalVisible(false);
+                    setSelectedSymbol(null);
+                    fetchData();
+                }}
                 commonSymbol={selectedSymbol}
             />
         </>

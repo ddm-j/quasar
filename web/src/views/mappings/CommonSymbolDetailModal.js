@@ -20,31 +20,41 @@ import {
 // API Imports
 import { getAssetMappingsForSymbol } from '../services/registry_api';
 
-const CommonSymbolDetailModal = ({ visible, onClose, commonSymbol }) => {
+// Component Imports
+import CommonSymbolRenameModal from './CommonSymbolRenameModal';
+
+const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymbol }) => {
   const [mappings, setMappings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
 
-  // Fetch detailed mappings for the common symbol
-  const fetchMappingsForSymbol = async () => {
-    if (!commonSymbol) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      // Use the new efficient API endpoint that filters by common symbol server-side
-      const mappings = await getAssetMappingsForSymbol(commonSymbol);
-      setMappings(mappings);
-    } catch (err) {
-      console.error('Error fetching mappings for symbol:', err);
-      setError(err.message || 'Failed to fetch mappings for this symbol');
-      setLoading(false); // Make sure loading is turned off on error
-    } finally {
-      setLoading(false);
+  const handleRenameSuccess = (result) => {
+    setIsRenameModalVisible(false);
+    if (onRenameSuccess) {
+      onRenameSuccess(result);
     }
+    onClose();
   };
 
   useEffect(() => {
+    const fetchMappingsForSymbol = async () => {
+      if (!commonSymbol) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        // Use the new efficient API endpoint that filters by common symbol server-side
+        const mappings = await getAssetMappingsForSymbol(commonSymbol);
+        setMappings(mappings);
+      } catch (err) {
+        console.error('Error fetching mappings for symbol:', err);
+        setError(err.message || 'Failed to fetch mappings for this symbol');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (visible && commonSymbol) {
       fetchMappingsForSymbol();
     }
@@ -156,10 +166,20 @@ const CommonSymbolDetailModal = ({ visible, onClose, commonSymbol }) => {
       </CModalBody>
 
       <CModalFooter>
+        <CButton color="primary" onClick={() => setIsRenameModalVisible(true)}>
+          Rename
+        </CButton>
         <CButton color="secondary" onClick={onClose}>
           Close
         </CButton>
       </CModalFooter>
+
+      <CommonSymbolRenameModal
+        visible={isRenameModalVisible}
+        onClose={() => setIsRenameModalVisible(false)}
+        onSuccess={handleRenameSuccess}
+        commonSymbol={commonSymbol}
+      />
     </CModal>
   );
 };

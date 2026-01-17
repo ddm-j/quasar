@@ -218,6 +218,20 @@ class AssetMappingUpdate(BaseModel):
     is_active: Optional[bool] = Field(default=None, description="Whether the mapping is active")
 
 
+# Common Symbol Rename
+class CommonSymbolRenameRequest(BaseModel):
+    """Request model for renaming a common symbol."""
+    new_symbol: str = Field(..., min_length=1, description="New symbol name")
+
+
+class CommonSymbolRenameResponse(BaseModel):
+    """Response model for common symbol rename endpoint."""
+    old_symbol: str
+    new_symbol: str
+    asset_mappings_updated: int
+    index_memberships_updated: int
+
+
 # Asset Mapping Suggestions
 class SuggestionItem(BaseModel):
     """Single suggested mapping candidate."""

@@ -15,6 +15,7 @@ from quasar.services.registry.schemas import (
     AssetMappingCreate, AssetMappingCreateRequest, AssetMappingCreateResponse,
     AssetMappingResponse, AssetMappingUpdate, AssetMappingQueryParams, AssetMappingPaginatedResponse,
     SuggestionsResponse, SuggestionItem,
+    CommonSymbolRenameRequest, CommonSymbolRenameResponse,
 )
 from quasar.services.registry.mapper import MappingCandidate
 
@@ -839,3 +840,126 @@ class MappingHandlersMixin(HandlerMixin):
         except Exception as e:
             logger.error(f"Registry.handle_delete_asset_mapping: Unexpected error deleting asset mapping: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+    async def handle_rename_common_symbol(
+        self,
+        symbol: str,
+        request: CommonSymbolRenameRequest = Body(...)
+    ) -> CommonSymbolRenameResponse:
+        """Rename a common symbol, cascading to asset_mapping and index_memberships.
+
+        The rename is performed as a single UPDATE on common_symbols.symbol,
+        which cascades to dependent tables via ON UPDATE CASCADE foreign keys.
+
+        Args:
+            symbol: Current symbol name (path parameter).
+            request: Contains the new_symbol value.
+
+        Returns:
+            CommonSymbolRenameResponse: Summary of the rename operation.
+
+        Raises:
+            HTTPException: 400 if new_symbol is empty or same as old.
+            HTTPException: 404 if the symbol does not exist.
+            HTTPException: 409 if new_symbol already exists.
+            HTTPException: 500 for unexpected errors.
+        """
+        old_symbol = symbol
+        new_symbol = request.new_symbol.strip()
+
+        logger.info(
+            "Registry.handle_rename_common_symbol: Renaming '%s' to '%s'",
+            old_symbol, new_symbol
+        )
+
+        # Validation: new_symbol must not be empty
+        if not new_symbol:
+            raise HTTPException(
+                status_code=400,
+                detail="new_symbol must be a non-empty string"
+            )
+
+        # Validation: new_symbol must differ from old_symbol
+        if new_symbol == old_symbol:
+            raise HTTPException(
+                status_code=400,
+                detail="new_symbol must be different from the current symbol"
+            )
+
+        try:
+            async with self.pool.acquire() as conn:
+                async with conn.transaction():
+                    # 1. Check if old_symbol exists
+                    exists_check = await conn.fetchval(
+                        "SELECT 1 FROM common_symbols WHERE symbol = $1",
+                        old_symbol
+                    )
+                    if not exists_check:
+                        raise HTTPException(
+                            status_code=404,
+                            detail=f"Common symbol '{old_symbol}' not found"
+                        )
+
+                    # 2. Check if new_symbol already exists (conflict)
+                    conflict_check = await conn.fetchval(
+                        "SELECT 1 FROM common_symbols WHERE symbol = $1",
+                        new_symbol
+                    )
+                    if conflict_check:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"Common symbol '{new_symbol}' already exists"
+                        )
+
+                    # 3. Perform the rename (CASCADE propagates to FK tables)
+                    result = await conn.fetchrow(
+                        """
+                        UPDATE common_symbols
+                        SET symbol = $1
+                        WHERE symbol = $2
+                        RETURNING symbol
+                        """,
+                        new_symbol,
+                        old_symbol
+                    )
+
+                    if not result:
+                        raise HTTPException(
+                            status_code=500,
+                            detail="Failed to rename common symbol"
+                        )
+
+                    # 4. Count affected rows AFTER cascade completes
+                    mapping_count = await conn.fetchval(
+                        "SELECT COUNT(*) FROM asset_mapping WHERE common_symbol = $1",
+                        new_symbol
+                    )
+                    membership_count = await conn.fetchval(
+                        "SELECT COUNT(*) FROM index_memberships WHERE common_symbol = $1",
+                        new_symbol
+                    )
+
+            logger.info(
+                "Registry.handle_rename_common_symbol: Successfully renamed '%s' to '%s'. "
+                "Updated %d asset_mapping rows, %d index_memberships rows.",
+                old_symbol, new_symbol, mapping_count, membership_count
+            )
+
+            return CommonSymbolRenameResponse(
+                old_symbol=old_symbol,
+                new_symbol=new_symbol,
+                asset_mappings_updated=mapping_count or 0,
+                index_memberships_updated=membership_count or 0
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                "Registry.handle_rename_common_symbol: Unexpected error: %s",
+                e, exc_info=True
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="An unexpected error occurred while renaming the symbol"
+            )
