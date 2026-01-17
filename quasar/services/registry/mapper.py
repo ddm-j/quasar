@@ -233,7 +233,19 @@ class AutomatedMapper(DatabaseHandler):
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, list(proposed_symbols))
 
-        return {row['common_symbol']: row['primary_id'] for row in rows}
+        # Build claimed dict with defensive logging for data integrity issues
+        claimed = {}
+        for row in rows:
+            symbol = row['common_symbol']
+            figi = row['primary_id']
+            if symbol in claimed and claimed[symbol] != figi:
+                logger.warning(
+                    f"Data integrity issue: common_symbol '{symbol}' is claimed by multiple FIGIs: "
+                    f"'{claimed[symbol]}' and '{figi}'. This indicates pre-existing data corruption."
+                )
+            claimed[symbol] = figi
+
+        return claimed
 
     def _group_assets_by_primary_id(self, assets: List[Dict]) -> List[PrimaryIdGroup]:
         """Group assets by primary_id and asset_class_group."""
