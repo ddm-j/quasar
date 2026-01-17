@@ -53,18 +53,18 @@
 
 ### Pydantic Models
 
-- [ ] T011 [P] Add `HistoricalSchedulingPreferences` model with delay_hours field (ge=0, le=24) in `quasar/services/registry/schemas.py`
-- [ ] T012 [P] Add `LiveSchedulingPreferences` model with pre_close_seconds (ge=0, le=300) and post_close_seconds (ge=0, le=60) in `quasar/services/registry/schemas.py`
-- [ ] T013 [P] Add `DataPreferences` model with lookback_days field (ge=1, le=8000) in `quasar/services/registry/schemas.py`
-- [ ] T014 [P] Add `ConfigSchemaResponse` model with class_name, class_type, class_subtype, schema fields in `quasar/services/registry/schemas.py`
-- [ ] T015 [P] Add `SecretKeysResponse` model with class_name, class_type, keys fields in `quasar/services/registry/schemas.py`
-- [ ] T016 [P] Add `SecretsUpdateRequest` model with secrets: dict[str, str] field in `quasar/services/registry/schemas.py`
-- [ ] T017 [P] Add `SecretsUpdateResponse` model with status and keys fields in `quasar/services/registry/schemas.py`
+- [x] T011 [P] Add `HistoricalSchedulingPreferences` model with delay_hours field (ge=0, le=24) in `quasar/services/registry/schemas.py`
+- [x] T012 [P] Add `LiveSchedulingPreferences` model with pre_close_seconds (ge=0, le=300) and post_close_seconds (ge=0, le=60) in `quasar/services/registry/schemas.py`
+- [x] T013 [P] Add `DataPreferences` model with lookback_days field (ge=1, le=8000) in `quasar/services/registry/schemas.py`
+- [x] T014 [P] Add `ConfigSchemaResponse` model with class_name, class_type, class_subtype, schema fields in `quasar/services/registry/schemas.py`
+- [x] T015 [P] Add `SecretKeysResponse` model with class_name, class_type, keys fields in `quasar/services/registry/schemas.py`
+- [x] T016 [P] Add `SecretsUpdateRequest` model with secrets: dict[str, str] field in `quasar/services/registry/schemas.py`
+- [x] T017 [P] Add `SecretsUpdateResponse` model with status and keys fields in `quasar/services/registry/schemas.py`
 
 ### Schema API Endpoint
 
-- [ ] T018 Add `GET /api/registry/config/schema` endpoint handler in `quasar/services/registry/handlers/config.py`
-- [ ] T019 Register schema endpoint route in registry service in `quasar/services/registry/app.py`
+- [x] T018 Add `GET /api/registry/config/schema` endpoint handler in `quasar/services/registry/handlers/config.py`
+- [x] T019 Register schema endpoint route in registry service in `quasar/services/registry/app.py`
 
 ### Validation Enhancement
 

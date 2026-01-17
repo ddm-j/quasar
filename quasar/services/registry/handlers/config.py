@@ -45,6 +45,84 @@ def get_schema_for_subtype(class_subtype: str) -> dict[str, dict[str, Any]] | No
     return SCHEMA_MAP.get(class_subtype)
 
 
+def validate_preferences_against_schema(
+    preferences: dict[str, Any],
+    schema: dict[str, dict[str, Any]],
+    class_name: str
+) -> list[str]:
+    """Validate preferences dict against a CONFIGURABLE schema.
+
+    Checks:
+    - Field existence: Only allows fields declared in schema
+    - Type checking: Values must match expected types
+    - Range checking: Numeric values must be within min/max bounds
+
+    Args:
+        preferences: The preferences dict to validate (e.g., {"scheduling": {"delay_hours": 6}}).
+        schema: The CONFIGURABLE schema dict for the provider type.
+        class_name: Provider name for error messages.
+
+    Returns:
+        List of validation error messages (empty if valid).
+    """
+    errors: list[str] = []
+
+    for category, fields in preferences.items():
+        # Check if category exists in schema
+        if category not in schema:
+            errors.append(f"Unknown preference category '{category}' for provider {class_name}")
+            continue
+
+        # Fields must be a dict
+        if not isinstance(fields, dict):
+            errors.append(f"Preference category '{category}' must be an object")
+            continue
+
+        schema_category = schema[category]
+
+        for field_name, value in fields.items():
+            # Check if field exists in schema category
+            if field_name not in schema_category:
+                errors.append(f"Unknown field '{category}.{field_name}' for provider {class_name}")
+                continue
+
+            field_schema = schema_category[field_name]
+            expected_type = field_schema.get("type")
+
+            # Skip None values (they're valid for optional fields)
+            if value is None:
+                continue
+
+            # Type validation
+            if expected_type is not None:
+                if expected_type == int and not isinstance(value, int):
+                    errors.append(
+                        f"Field '{category}.{field_name}' must be an integer, got {type(value).__name__}"
+                    )
+                    continue
+                elif expected_type == str and not isinstance(value, str):
+                    errors.append(
+                        f"Field '{category}.{field_name}' must be a string, got {type(value).__name__}"
+                    )
+                    continue
+
+            # Range validation for numeric types
+            if isinstance(value, (int, float)):
+                min_val = field_schema.get("min")
+                max_val = field_schema.get("max")
+
+                if min_val is not None and value < min_val:
+                    errors.append(
+                        f"Field '{category}.{field_name}' must be >= {min_val}, got {value}"
+                    )
+                if max_val is not None and value > max_val:
+                    errors.append(
+                        f"Field '{category}.{field_name}' must be <= {max_val}, got {value}"
+                    )
+
+    return errors
+
+
 class ConfigHandlersMixin(HandlerMixin):
     """Mixin providing provider/broker configuration handlers.
 
@@ -217,6 +295,9 @@ class ConfigHandlersMixin(HandlerMixin):
     ) -> ProviderPreferencesResponse:
         """Update provider configuration preferences.
 
+        Validates updates against the provider-type-specific CONFIGURABLE schema
+        before persisting to ensure field existence, type correctness, and range bounds.
+
         Args:
             update (ProviderPreferencesUpdate): Preferences to update.
             class_name (str): Provider/broker name.
@@ -224,17 +305,37 @@ class ConfigHandlersMixin(HandlerMixin):
 
         Returns:
             ProviderPreferencesResponse: Updated preferences for the provider.
+
+        Raises:
+            HTTPException: 404 if provider not found, 400 if validation fails.
         """
         logger.info(f"Registry.handle_update_provider_config: Updating config for {class_name}/{class_type}")
 
-        # First verify provider exists
-        exists_query = """
-            SELECT 1 FROM code_registry WHERE class_name = $1 AND class_type = $2
+        # First verify provider exists and get class_subtype for schema lookup
+        subtype_query = """
+            SELECT class_subtype FROM code_registry WHERE class_name = $1 AND class_type = $2
         """
-        exists = await self.pool.fetchval(exists_query, class_name, class_type)
-        if not exists:
+        class_subtype = await self.pool.fetchval(subtype_query, class_name, class_type)
+        if not class_subtype:
             logger.warning(f"Registry.handle_update_provider_config: Provider {class_name}/{class_type} not found")
             raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+        # Convert update model to dict, removing None values
+        update_dict = update.model_dump(exclude_unset=True, exclude_none=True)
+        if not update_dict:
+            logger.warning(f"Registry.handle_update_provider_config: No updates provided for {class_name}/{class_type}")
+            raise HTTPException(status_code=400, detail="No preferences provided for update")
+
+        # Validate against provider-type-specific schema
+        schema = get_schema_for_subtype(class_subtype)
+        if schema:
+            validation_errors = validate_preferences_against_schema(update_dict, schema, class_name)
+            if validation_errors:
+                error_detail = "; ".join(validation_errors)
+                logger.warning(
+                    f"Registry.handle_update_provider_config: Validation failed for {class_name}/{class_type}: {error_detail}"
+                )
+                raise HTTPException(status_code=400, detail=f"Validation error: {error_detail}")
 
         # Update preferences using JSONB merge
         update_query = """
@@ -245,11 +346,6 @@ class ConfigHandlersMixin(HandlerMixin):
         """
 
         try:
-            # Convert update model to dict, removing None values
-            update_dict = update.model_dump(exclude_unset=True, exclude_none=True)
-            if not update_dict:
-                logger.warning(f"Registry.handle_update_provider_config: No updates provided for {class_name}/{class_type}")
-                raise HTTPException(status_code=400, detail="No preferences provided for update")
 
             # Convert dict to JSON string for asyncpg JSONB parameter
             update_json = json.dumps(update_dict)
