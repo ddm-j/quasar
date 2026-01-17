@@ -264,3 +264,42 @@ class TestRegistryAutomatedMappingIntegration:
                 assert response.mappings_created == 2
                 assert response.mappings_skipped == 1
                 assert response.mappings_failed == 1
+
+    @pytest.mark.asyncio
+    async def test_figi_conflict_creates_unique_symbol_mapping(self, registry_with_mocks, mock_asyncpg_conn, mock_aiohttp_session):
+        """Behavior: FIGI conflicts result in unique SYMBOL:FIGI mappings."""
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=1)
+        mock_aiohttp_session["response"].json = AsyncMock(return_value=[
+            {"symbol": "BTC.NYSE", "matcher_symbol": "BTC.NYSE", "name": "BTC ETF"}
+        ])
+
+        mock_asyncpg_conn.prepare = AsyncMock(return_value=mock_asyncpg_conn)
+        mock_asyncpg_conn.fetchrow = AsyncMock(side_effect=[
+            MockRecord(class_subtype='Historical'),
+            {"xmax": 0},
+        ])
+
+        with patch.object(registry_with_mocks.matcher, 'identify_unidentified_assets', new_callable=AsyncMock) as mock_identify:
+            mock_identify.return_value = []
+
+            with patch.object(registry_with_mocks.mapper, 'generate_mapping_candidates_for_provider', new_callable=AsyncMock) as mock_generate, \
+                 patch.object(registry_with_mocks, '_apply_automated_mappings', new_callable=AsyncMock) as mock_apply:
+
+                # Mapper returns candidate with FIGI-suffixed symbol due to conflict
+                mock_generate.return_value = [
+                    make_mapping_candidate(
+                        class_name="TestProvider",
+                        class_symbol="BTC.NYSE",
+                        common_symbol="BTC:BBG000XYZ123",  # Unique symbol due to conflict
+                        primary_id="BBG000XYZ123"
+                    )
+                ]
+                mock_apply.return_value = {"created": 1, "skipped": 0, "failed": 0}
+
+                response = await registry_with_mocks.handle_update_assets("provider", "TestProvider")
+
+                # Verify the candidate with unique symbol was passed to apply
+                apply_call_args = mock_apply.call_args[0][0]
+                assert len(apply_call_args) == 1
+                assert apply_call_args[0].common_symbol == "BTC:BBG000XYZ123"
+                assert response.mappings_created == 1
