@@ -1,0 +1,429 @@
+openapi: 3.0.3
+info:
+  title: Configurable Providers API
+  description: |
+    API endpoints for configuring provider preferences, retrieving configuration schemas,
+    and updating API credentials.
+  version: 1.0.0
+
+paths:
+  # ============== Registry Service Endpoints ==============
+
+  /api/registry/config:
+    get:
+      summary: Get provider configuration
+      description: Retrieve the current preferences for a provider
+      operationId: getProviderConfig
+      tags:
+        - Registry
+      parameters:
+        - name: class_name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Provider class name (e.g., EODHD, KRAKEN)
+        - name: class_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [provider, broker]
+          description: Class type
+      responses:
+        '200':
+          description: Provider configuration retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderPreferencesResponse'
+        '404':
+          description: Provider not found
+
+    put:
+      summary: Update provider configuration
+      description: |
+        Update preferences for a provider. Performs partial merge with existing preferences.
+        Validates against provider-type-specific schema.
+      operationId: updateProviderConfig
+      tags:
+        - Registry
+      parameters:
+        - name: class_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: class_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [provider, broker]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderPreferencesUpdate'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderPreferencesResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Provider not found
+
+  /api/registry/config/schema:
+    get:
+      summary: Get provider configuration schema
+      description: |
+        Returns the configurable preferences schema for a provider based on its type.
+        The schema includes field types, defaults, constraints, and descriptions.
+      operationId: getConfigSchema
+      tags:
+        - Registry
+      parameters:
+        - name: class_name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Provider class name
+        - name: class_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [provider, broker]
+          description: Class type
+      responses:
+        '200':
+          description: Schema retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSchemaResponse'
+              example:
+                class_name: EODHD
+                class_type: provider
+                class_subtype: Historical
+                schema:
+                  crypto:
+                    preferred_quote_currency:
+                      type: string
+                      default: null
+                      description: Preferred quote currency for crypto pairs
+                  scheduling:
+                    delay_hours:
+                      type: integer
+                      default: 0
+                      min: 0
+                      max: 24
+                      description: Hours after default cron time to run data pulls
+                  data:
+                    lookback_days:
+                      type: integer
+                      default: 8000
+                      min: 1
+                      max: 8000
+                      description: Days of historical data for new subscriptions
+        '404':
+          description: Provider not found
+
+  /api/registry/config/secret-keys:
+    get:
+      summary: Get stored secret key names
+      description: |
+        Returns the names of stored secrets for a provider (not the actual values).
+        Used by the frontend to render credential update form fields.
+      operationId: getSecretKeys
+      tags:
+        - Registry
+      parameters:
+        - name: class_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: class_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [provider, broker]
+      responses:
+        '200':
+          description: Secret keys retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretKeysResponse'
+              example:
+                class_name: EODHD
+                class_type: provider
+                keys:
+                  - api_token
+        '404':
+          description: Provider not found
+
+  /api/registry/config/secrets:
+    patch:
+      summary: Update provider credentials
+      description: |
+        Re-encrypts and stores new credentials for a provider. All secret keys must be
+        provided (all-or-nothing update). Triggers provider unload in DataHub.
+      operationId: updateSecrets
+      tags:
+        - Registry
+      parameters:
+        - name: class_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: class_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [provider, broker]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretsUpdateRequest'
+            example:
+              secrets:
+                api_token: "new_api_token_value"
+      responses:
+        '200':
+          description: Credentials updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretsUpdateResponse'
+        '400':
+          description: Validation error (missing keys, invalid format)
+        '404':
+          description: Provider not found
+        '502':
+          description: Failed to notify DataHub for provider unload
+
+  # ============== DataHub Service Endpoints ==============
+
+  /api/datahub/providers/{name}/unload:
+    post:
+      summary: Unload a provider
+      description: |
+        Unloads a provider from DataHub memory, forcing reload on next data request.
+        Called by Registry after credential updates.
+      operationId: unloadProvider
+      tags:
+        - DataHub
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Provider name (class_name)
+      responses:
+        '200':
+          description: Provider unloaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [unloaded, not_loaded]
+                  provider:
+                    type: string
+              example:
+                status: unloaded
+                provider: EODHD
+        '404':
+          description: Provider not found
+
+components:
+  schemas:
+    # ============== Preferences Models ==============
+
+    CryptoPreferences:
+      type: object
+      properties:
+        preferred_quote_currency:
+          type: string
+          nullable: true
+          description: Preferred quote currency for crypto pairs
+      example:
+        preferred_quote_currency: USDC
+
+    HistoricalSchedulingPreferences:
+      type: object
+      description: Scheduling preferences for historical providers
+      properties:
+        delay_hours:
+          type: integer
+          minimum: 0
+          maximum: 24
+          default: 0
+          description: Hours after default cron time to run data pulls
+
+    LiveSchedulingPreferences:
+      type: object
+      description: Scheduling preferences for live providers
+      properties:
+        pre_close_seconds:
+          type: integer
+          minimum: 0
+          maximum: 300
+          default: 30
+          description: Seconds before bar close to start listening
+        post_close_seconds:
+          type: integer
+          minimum: 0
+          maximum: 60
+          default: 5
+          description: Seconds after bar close to continue listening
+
+    DataPreferences:
+      type: object
+      description: Data collection preferences (historical providers only)
+      properties:
+        lookback_days:
+          type: integer
+          minimum: 1
+          maximum: 8000
+          default: 8000
+          description: Days of historical data for new subscriptions
+
+    ProviderPreferences:
+      type: object
+      properties:
+        crypto:
+          $ref: '#/components/schemas/CryptoPreferences'
+        scheduling:
+          type: object
+          description: Scheduling preferences (structure varies by provider type)
+        data:
+          $ref: '#/components/schemas/DataPreferences'
+
+    ProviderPreferencesResponse:
+      type: object
+      required:
+        - class_name
+        - class_type
+        - preferences
+      properties:
+        class_name:
+          type: string
+        class_type:
+          type: string
+        preferences:
+          $ref: '#/components/schemas/ProviderPreferences'
+
+    ProviderPreferencesUpdate:
+      type: object
+      description: Partial update for provider preferences
+      properties:
+        crypto:
+          $ref: '#/components/schemas/CryptoPreferences'
+        scheduling:
+          type: object
+          description: Scheduling preferences (validated against provider type)
+        data:
+          $ref: '#/components/schemas/DataPreferences'
+
+    # ============== Schema Models ==============
+
+    ConfigSchemaResponse:
+      type: object
+      required:
+        - class_name
+        - class_type
+        - class_subtype
+        - schema
+      properties:
+        class_name:
+          type: string
+        class_type:
+          type: string
+        class_subtype:
+          type: string
+          enum: [Historical, Live, IndexProvider, UserIndex]
+        schema:
+          type: object
+          description: |
+            Nested object with categories (crypto, scheduling, data) containing
+            field definitions with type, default, min, max, and description.
+
+    # ============== Secrets Models ==============
+
+    SecretKeysResponse:
+      type: object
+      required:
+        - class_name
+        - class_type
+        - keys
+      properties:
+        class_name:
+          type: string
+        class_type:
+          type: string
+        keys:
+          type: array
+          items:
+            type: string
+          description: List of secret key names (not values)
+
+    SecretsUpdateRequest:
+      type: object
+      required:
+        - secrets
+      properties:
+        secrets:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            All secret key-value pairs. Must include all keys from the original
+            credential set (all-or-nothing update).
+
+    SecretsUpdateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [updated]
+        keys:
+          type: array
+          items:
+            type: string
+          description: List of updated key names
+
+    # ============== Error Models ==============
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Error message
+
+tags:
+  - name: Registry
+    description: Provider configuration and credential management
+  - name: DataHub
+    description: Provider lifecycle management
