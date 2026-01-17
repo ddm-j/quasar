@@ -173,8 +173,13 @@ class CollectionHandlersMixin(HandlerMixin):
                 )
             last_map = {r['sym']: r['d'] for r in rows}
 
+            # Get lookback_days from provider preferences, fallback to DEFAULT_LOOKBACK
+            prefs = self._provider_preferences.get(provider) or {}
+            data_prefs = prefs.get("data") or {}
+            lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+
             reqs: list[Req] = []
-            default_start = yday - timedelta(days=DEFAULT_LOOKBACK)
+            default_start = yday - timedelta(days=lookback_days)
             for sym, mic in zip(symbols, exchanges):
                 last_updated = last_map.get(sym)
 

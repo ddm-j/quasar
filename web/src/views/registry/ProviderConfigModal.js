@@ -31,7 +31,7 @@ const DEFAULT_POST_CLOSE_SECONDS = 5
 
 const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
   // Determine which tabs should be visible based on class_subtype
-  const showSchedulingTab = classSubtype === 'historical' || classSubtype === 'realtime'
+  const showSchedulingTab = classSubtype === 'Historical' || classSubtype === 'Live'
 
   const [activeTab, setActiveTab] = useState('trading')
   const [config, setConfig] = useState({
@@ -257,7 +257,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                     Configure when this provider collects data.
                   </p>
 
-                  {classSubtype === 'historical' && (
+                  {classSubtype === 'Historical' && (
                     <>
                       <CRow className="mb-3">
                         <CCol>
@@ -316,7 +316,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                     </>
                   )}
 
-                  {classSubtype === 'realtime' && (
+                  {classSubtype === 'Live' && (
                     <>
                       <CRow className="mb-3">
                         <CCol>
