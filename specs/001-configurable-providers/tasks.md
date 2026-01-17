@@ -161,7 +161,7 @@
 
 - [x] T051 [US3] Add Data tab to ProviderConfigModal (visible for historical providers only) in `web/src/views/registry/ProviderConfigModal.js`
 - [x] T052 [US3] Implement preset radio buttons (1 month=30, 3 months=90, 1 year=365, 3 years=1095, 5 years=1825, max=8000) in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T053 [US3] Implement custom lookback_days input field with validation (1-8000) in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T053 [US3] Implement custom lookback_days input field with validation (1-8000) in `web/src/views/registry/ProviderConfigModal.js`
 
 ### Tests for US3
 

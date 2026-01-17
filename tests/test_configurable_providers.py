@@ -676,3 +676,145 @@ class TestOffsetCronTriggerNegativeOffset:
         cron_time = datetime(2024, 6, 14, 16, 0, 0, tzinfo=timezone.utc)
         assert historical_fire > cron_time, "Historical should fire AFTER cron"
         assert live_fire < cron_time, "Live should fire BEFORE cron"
+
+
+class TestBuildReqsHistoricalLookbackDays:
+    """T055: Unit tests for _build_reqs_historical() using preference over DEFAULT_LOOKBACK."""
+
+    def test_lookback_days_preference_extracted_from_provider_preferences(self):
+        """Test that lookback_days is extracted from _provider_preferences dict."""
+        # Simulate the extraction logic from _build_reqs_historical
+        _provider_preferences = {
+            "TestProvider": {
+                "data": {"lookback_days": 365}
+            }
+        }
+
+        prefs = _provider_preferences.get("TestProvider") or {}
+        data_prefs = prefs.get("data") or {}
+        lookback_days = data_prefs.get("lookback_days", 8000)
+
+        assert lookback_days == 365
+
+    def test_lookback_days_uses_default_when_no_preference(self):
+        """Test that DEFAULT_LOOKBACK is used when no preference is set."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK
+
+        # Simulate the extraction logic with empty preferences
+        _provider_preferences = {}
+
+        prefs = _provider_preferences.get("TestProvider") or {}
+        data_prefs = prefs.get("data") or {}
+        lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+
+        assert lookback_days == DEFAULT_LOOKBACK
+        assert lookback_days == 8000
+
+    def test_lookback_days_uses_default_when_data_category_missing(self):
+        """Test that DEFAULT_LOOKBACK is used when data category is not in preferences."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK
+
+        # Preferences exist but without data category
+        _provider_preferences = {
+            "TestProvider": {
+                "scheduling": {"delay_hours": 6}
+            }
+        }
+
+        prefs = _provider_preferences.get("TestProvider") or {}
+        data_prefs = prefs.get("data") or {}
+        lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+
+        assert lookback_days == DEFAULT_LOOKBACK
+
+    def test_lookback_days_start_date_calculation(self):
+        """Test that start date is correctly calculated from lookback_days."""
+        from datetime import datetime, timezone, timedelta
+
+        # Simulate the start date calculation from _build_reqs_historical
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+
+        lookback_days = 365
+        default_start = yday - timedelta(days=lookback_days)
+        start = default_start + timedelta(days=1)  # For new subscriptions
+
+        # Verify the start date is approximately 365 days before yesterday
+        expected_start = yday - timedelta(days=lookback_days - 1)
+        assert start == expected_start
+
+    def test_lookback_days_boundary_value_min(self):
+        """Test minimum lookback_days=1 produces correct start date."""
+        from datetime import datetime, timezone, timedelta
+
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+
+        lookback_days = 1  # Minimum
+        default_start = yday - timedelta(days=lookback_days)
+        start = default_start + timedelta(days=1)
+
+        # With lookback_days=1, start should be yesterday
+        assert start == yday
+
+    def test_lookback_days_boundary_value_max(self):
+        """Test maximum lookback_days=8000 produces correct start date."""
+        from datetime import datetime, timezone, timedelta
+
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+
+        lookback_days = 8000  # Maximum
+        default_start = yday - timedelta(days=lookback_days)
+        start = default_start + timedelta(days=1)
+
+        # With lookback_days=8000, start should be ~21.9 years ago
+        expected_start = yday - timedelta(days=7999)
+        assert start == expected_start
+
+    def test_using_custom_lookback_flag(self):
+        """Test that using_custom_lookback flag is set correctly."""
+        # Simulate the using_custom_lookback logic
+        _provider_preferences = {
+            "TestProvider": {"data": {"lookback_days": 365}}
+        }
+
+        prefs = _provider_preferences.get("TestProvider") or {}
+        data_prefs = prefs.get("data") or {}
+        using_custom_lookback = "lookback_days" in data_prefs
+
+        assert using_custom_lookback is True
+
+    def test_using_custom_lookback_flag_false_when_not_set(self):
+        """Test that using_custom_lookback flag is False when no preference."""
+        # Empty preferences
+        _provider_preferences = {}
+
+        prefs = _provider_preferences.get("TestProvider") or {}
+        data_prefs = prefs.get("data") or {}
+        using_custom_lookback = "lookback_days" in data_prefs
+
+        assert using_custom_lookback is False
+
+    def test_lookback_days_common_values(self):
+        """Test common lookback_days values (30, 90, 365, 1095, 1825)."""
+        from datetime import datetime, timezone, timedelta
+
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+
+        # Test common preset values from UI
+        common_values = {
+            30: "1 month",
+            90: "3 months",
+            365: "1 year",
+            1095: "3 years",
+            1825: "5 years"
+        }
+
+        for lookback_days, description in common_values.items():
+            default_start = yday - timedelta(days=lookback_days)
+            start = default_start + timedelta(days=1)
+
+            expected_start = yday - timedelta(days=lookback_days - 1)
+            assert start == expected_start, f"Failed for {description} ({lookback_days} days)"

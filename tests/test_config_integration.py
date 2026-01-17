@@ -554,3 +554,182 @@ class TestLiveProviderPreCloseOffset:
         assert historical_fire == datetime(2024, 1, 15, 1, 0, 0, tzinfo=timezone.utc)
         # Live fires before historical
         assert live_fire < historical_fire
+
+
+class TestLookbackDaysIntegration:
+    """T054: Integration tests for lookback_days in new subscriptions."""
+
+    @pytest.fixture
+    def collection_handler_with_prefs(
+        self,
+        datahub_with_mocks,
+        mock_asyncpg_conn
+    ):
+        """Create a CollectionHandlersMixin instance with provider preferences."""
+        # The datahub_with_mocks has CollectionHandlersMixin mixed in
+        return datahub_with_mocks
+
+    @pytest.mark.asyncio
+    async def test_new_subscription_uses_configured_lookback_days(
+        self,
+        collection_handler_with_prefs,
+        mock_asyncpg_conn
+    ):
+        """New subscription start date uses configured lookback_days preference."""
+        from datetime import datetime, timezone, timedelta
+
+        handler = collection_handler_with_prefs
+
+        # Configure provider preferences with custom lookback_days=365
+        handler._provider_preferences = {
+            "TestHistoricalProvider": {
+                "data": {"lookback_days": 365}
+            }
+        }
+
+        # Mock database to return no last_updated (new subscription)
+        mock_asyncpg_conn.fetch.return_value = []
+
+        # Call _build_reqs_historical
+        reqs = await handler._build_reqs_historical(
+            provider="TestHistoricalProvider",
+            interval="1d",
+            symbols=["AAPL"],
+            exchanges=["XNAS"]
+        )
+
+        # Verify request was created
+        assert len(reqs) == 1
+        req = reqs[0]
+
+        # Calculate expected start date
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+        # lookback_days=365, so default_start = yday - 365 days
+        # start = default_start + 1 day
+        expected_start = yday - timedelta(days=365) + timedelta(days=1)
+
+        assert req.start == expected_start
+        assert req.sym == "AAPL"
+
+    @pytest.mark.asyncio
+    async def test_new_subscription_uses_default_lookback_when_no_preference(
+        self,
+        collection_handler_with_prefs,
+        mock_asyncpg_conn
+    ):
+        """New subscription uses DEFAULT_LOOKBACK when no preference is set."""
+        from datetime import datetime, timezone, timedelta
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK
+
+        handler = collection_handler_with_prefs
+
+        # No preferences configured
+        handler._provider_preferences = {}
+
+        # Mock database to return no last_updated (new subscription)
+        mock_asyncpg_conn.fetch.return_value = []
+
+        # Call _build_reqs_historical
+        reqs = await handler._build_reqs_historical(
+            provider="TestHistoricalProvider",
+            interval="1d",
+            symbols=["AAPL"],
+            exchanges=["XNAS"]
+        )
+
+        # Verify request was created
+        assert len(reqs) == 1
+        req = reqs[0]
+
+        # Calculate expected start date with DEFAULT_LOOKBACK
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+        expected_start = yday - timedelta(days=DEFAULT_LOOKBACK) + timedelta(days=1)
+
+        assert req.start == expected_start
+
+    @pytest.mark.asyncio
+    async def test_lookback_days_only_applies_to_new_subscriptions(
+        self,
+        collection_handler_with_prefs,
+        mock_asyncpg_conn
+    ):
+        """Existing subscriptions use incremental update, not lookback_days."""
+        from datetime import datetime, timezone, timedelta
+
+        handler = collection_handler_with_prefs
+
+        # Configure provider with custom lookback_days
+        handler._provider_preferences = {
+            "TestHistoricalProvider": {
+                "data": {"lookback_days": 30}  # Short lookback
+            }
+        }
+
+        # Mock database to return existing last_updated
+        last_updated = datetime.now(timezone.utc).date() - timedelta(days=5)
+        mock_asyncpg_conn.fetch.return_value = [
+            {"sym": "AAPL", "d": last_updated}
+        ]
+
+        # Call _build_reqs_historical
+        reqs = await handler._build_reqs_historical(
+            provider="TestHistoricalProvider",
+            interval="1d",
+            symbols=["AAPL"],
+            exchanges=["XNAS"]
+        )
+
+        # Verify request was created with incremental start (day after last_updated)
+        assert len(reqs) == 1
+        req = reqs[0]
+
+        # For existing subscriptions, start = last_updated + 1 day
+        expected_start = last_updated + timedelta(days=1)
+        assert req.start == expected_start
+
+    @pytest.mark.asyncio
+    async def test_lookback_days_boundary_values(
+        self,
+        collection_handler_with_prefs,
+        mock_asyncpg_conn
+    ):
+        """Lookback days boundary values (1 and 8000) work correctly."""
+        from datetime import datetime, timezone, timedelta
+
+        handler = collection_handler_with_prefs
+
+        # Mock database to return no last_updated (new subscription)
+        mock_asyncpg_conn.fetch.return_value = []
+
+        today = datetime.now(timezone.utc).date()
+        yday = today - timedelta(days=1)
+
+        # Test minimum lookback_days=1
+        handler._provider_preferences = {
+            "TestHistoricalProvider": {"data": {"lookback_days": 1}}
+        }
+        reqs = await handler._build_reqs_historical(
+            provider="TestHistoricalProvider",
+            interval="1d",
+            symbols=["AAPL"],
+            exchanges=["XNAS"]
+        )
+        assert len(reqs) == 1
+        expected_start_min = yday - timedelta(days=1) + timedelta(days=1)
+        assert reqs[0].start == expected_start_min
+
+        # Test maximum lookback_days=8000
+        handler._provider_preferences = {
+            "TestHistoricalProvider": {"data": {"lookback_days": 8000}}
+        }
+        reqs = await handler._build_reqs_historical(
+            provider="TestHistoricalProvider",
+            interval="1d",
+            symbols=["MSFT"],
+            exchanges=["XNAS"]
+        )
+        assert len(reqs) == 1
+        expected_start_max = yday - timedelta(days=8000) + timedelta(days=1)
+        assert reqs[0].start == expected_start_max
