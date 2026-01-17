@@ -104,9 +104,9 @@
 ### Frontend Implementation for US1
 
 - [x] T033 [US1] Add Scheduling tab to ProviderConfigModal with conditional rendering based on class_subtype in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T034 [US1] Implement delay_hours slider (0-24) with preview showing resulting pull time for historical providers in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T035 [US1] Add `getConfigSchema()` API call to fetch schema for dynamic UI rendering in `web/src/services/registry_api.js`
-- [ ] T036 [US1] Add `updateProviderConfig()` API call (if not already exists) for saving scheduling preferences in `web/src/services/registry_api.js`
+- [x] T034 [US1] Implement delay_hours slider (0-24) with preview showing resulting pull time for historical providers in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T035 [US1] Add `getConfigSchema()` API call to fetch schema for dynamic UI rendering in `web/src/services/registry_api.js`
+- [x] T036 [US1] Add `updateProviderConfig()` API call (if not already exists) for saving scheduling preferences in `web/src/services/registry_api.js`
 
 ### Tests for US1
 
