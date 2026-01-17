@@ -126,9 +126,9 @@
 
 ### Backend Implementation for US2
 
-- [ ] T040 [US2] Read pre_close_seconds from preferences in `refresh_subscriptions()` for live providers in `quasar/services/datahub/handlers/collection.py`
-- [ ] T041 [US2] Apply negative offset (-pre_close_seconds) to `OffsetCronTrigger` for live providers in `quasar/services/datahub/handlers/collection.py`
-- [ ] T042 [US2] Read post_close_seconds from preferences and use in timeout calculation in `get_data()` in `quasar/services/datahub/handlers/collection.py`
+- [x] T040 [US2] Read pre_close_seconds from preferences in `refresh_subscriptions()` for live providers in `quasar/services/datahub/handlers/collection.py`
+- [x] T041 [US2] Apply negative offset (-pre_close_seconds) to `OffsetCronTrigger` for live providers in `quasar/services/datahub/handlers/collection.py`
+- [x] T042 [US2] Read post_close_seconds from preferences and use in timeout calculation in `get_data()` in `quasar/services/datahub/handlers/collection.py`
 
 ### Frontend Implementation for US2
 

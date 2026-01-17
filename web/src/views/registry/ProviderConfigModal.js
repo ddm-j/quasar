@@ -25,6 +25,10 @@ import CIcon from '@coreui/icons-react'
 import { cilSettings, cilLockLocked, cilChartLine, cilClock } from '@coreui/icons'
 import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies } from '../services/registry_api'
 
+// Default values for live provider scheduling
+const DEFAULT_PRE_CLOSE_SECONDS = 30
+const DEFAULT_POST_CLOSE_SECONDS = 5
+
 const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
   // Determine which tabs should be visible based on class_subtype
   const showSchedulingTab = classSubtype === 'historical' || classSubtype === 'realtime'
@@ -32,7 +36,11 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const [activeTab, setActiveTab] = useState('trading')
   const [config, setConfig] = useState({
     crypto: { preferred_quote_currency: null },
-    scheduling: { delay_hours: 0 }
+    scheduling: {
+      delay_hours: 0,
+      pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
+      post_close_seconds: DEFAULT_POST_CLOSE_SECONDS
+    }
   })
   const [availableCurrencies, setAvailableCurrencies] = useState([])
   const [loading, setLoading] = useState(false)
@@ -55,7 +63,11 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       const prefs = response.preferences || {}
       setConfig({
         crypto: prefs.crypto || { preferred_quote_currency: null },
-        scheduling: prefs.scheduling || { delay_hours: 0 }
+        scheduling: {
+          delay_hours: prefs.scheduling?.delay_hours ?? 0,
+          pre_close_seconds: prefs.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS,
+          post_close_seconds: prefs.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS
+        }
       })
     } catch (err) {
       console.error('Failed to load provider configuration:', err)
@@ -63,7 +75,11 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       // Set default empty config on error
       setConfig({
         crypto: { preferred_quote_currency: null },
-        scheduling: { delay_hours: 0 }
+        scheduling: {
+          delay_hours: 0,
+          pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
+          post_close_seconds: DEFAULT_POST_CLOSE_SECONDS
+        }
       })
     } finally {
       setLoading(false)
@@ -301,17 +317,159 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                   )}
 
                   {classSubtype === 'realtime' && (
-                    <CRow className="mb-3">
-                      <CCol>
-                        <CAlert color="info">
-                          <CIcon icon={cilClock} className="me-2" />
-                          Configure pre-close and post-close timing buffers for live data collection.
-                        </CAlert>
-                        <p className="text-body-secondary">
-                          Pre-close and post-close timing configuration will be available in the next update.
-                        </p>
-                      </CCol>
-                    </CRow>
+                    <>
+                      <CRow className="mb-3">
+                        <CCol>
+                          <CAlert color="info">
+                            <CIcon icon={cilClock} className="me-2" />
+                            Configure timing buffers for live data collection around bar close time.
+                          </CAlert>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-4">
+                        <CCol md={8}>
+                          <CFormLabel htmlFor="preCloseSeconds">
+                            Pre-Close Seconds
+                          </CFormLabel>
+                          <div className="d-flex align-items-center gap-3">
+                            <CFormRange
+                              id="preCloseSeconds"
+                              min={0}
+                              max={300}
+                              step={5}
+                              value={config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}
+                              onChange={(e) => handleSchedulingChange('pre_close_seconds', parseInt(e.target.value, 10))}
+                              disabled={saving}
+                              className="flex-grow-1"
+                            />
+                            <CBadge color="primary" className="px-3 py-2" style={{ minWidth: '60px' }}>
+                              {config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}s
+                            </CBadge>
+                          </div>
+                          <small className="form-text text-body-secondary">
+                            Start listening this many seconds before bar close. Range: 0-300 seconds.
+                          </small>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-4">
+                        <CCol md={8}>
+                          <CFormLabel htmlFor="postCloseSeconds">
+                            Post-Close Seconds
+                          </CFormLabel>
+                          <div className="d-flex align-items-center gap-3">
+                            <CFormRange
+                              id="postCloseSeconds"
+                              min={0}
+                              max={60}
+                              step={1}
+                              value={config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS}
+                              onChange={(e) => handleSchedulingChange('post_close_seconds', parseInt(e.target.value, 10))}
+                              disabled={saving}
+                              className="flex-grow-1"
+                            />
+                            <CBadge color="primary" className="px-3 py-2" style={{ minWidth: '60px' }}>
+                              {config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS}s
+                            </CBadge>
+                          </div>
+                          <small className="form-text text-body-secondary">
+                            Continue listening this many seconds after bar close to capture late data. Range: 0-60 seconds.
+                          </small>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-3">
+                        <CCol md={10}>
+                          <div className="p-3 border rounded bg-light">
+                            <strong>Listening Window Preview</strong>
+                            <div className="mt-3 position-relative" style={{ height: '60px' }}>
+                              {/* Timeline visualization */}
+                              <div
+                                className="position-absolute bg-secondary"
+                                style={{
+                                  left: '0%',
+                                  right: '0%',
+                                  top: '25px',
+                                  height: '4px',
+                                  borderRadius: '2px'
+                                }}
+                              />
+
+                              {/* Pre-close window (before bar close) */}
+                              <div
+                                className="position-absolute bg-info"
+                                style={{
+                                  left: `${Math.max(0, 50 - ((config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS) / 300) * 45)}%`,
+                                  width: `${((config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS) / 300) * 45}%`,
+                                  top: '20px',
+                                  height: '14px',
+                                  borderRadius: '4px 0 0 4px',
+                                  opacity: 0.8
+                                }}
+                              />
+
+                              {/* Bar close marker */}
+                              <div
+                                className="position-absolute bg-danger"
+                                style={{
+                                  left: '50%',
+                                  top: '15px',
+                                  width: '3px',
+                                  height: '24px',
+                                  marginLeft: '-1.5px',
+                                  borderRadius: '2px'
+                                }}
+                              />
+
+                              {/* Post-close window (after bar close) */}
+                              <div
+                                className="position-absolute bg-success"
+                                style={{
+                                  left: '50%',
+                                  width: `${((config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS) / 60) * 45}%`,
+                                  top: '20px',
+                                  height: '14px',
+                                  borderRadius: '0 4px 4px 0',
+                                  opacity: 0.8
+                                }}
+                              />
+
+                              {/* Labels */}
+                              <div className="position-absolute text-muted small" style={{ left: '0%', top: '45px' }}>
+                                -{config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}s
+                              </div>
+                              <div className="position-absolute text-danger small fw-bold" style={{ left: '50%', top: '0px', transform: 'translateX(-50%)' }}>
+                                Bar Close
+                              </div>
+                              <div className="position-absolute text-muted small" style={{ right: '0%', top: '45px' }}>
+                                +{config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS}s
+                              </div>
+                            </div>
+                            <div className="mt-4 d-flex justify-content-between small text-body-secondary">
+                              <span>
+                                <span className="d-inline-block me-1" style={{ width: '12px', height: '12px', backgroundColor: 'var(--cui-info)', borderRadius: '2px', opacity: 0.8 }}></span>
+                                Pre-close listening
+                              </span>
+                              <span>
+                                <span className="d-inline-block me-1" style={{ width: '12px', height: '12px', backgroundColor: 'var(--cui-danger)', borderRadius: '2px' }}></span>
+                                Bar close time
+                              </span>
+                              <span>
+                                <span className="d-inline-block me-1" style={{ width: '12px', height: '12px', backgroundColor: 'var(--cui-success)', borderRadius: '2px', opacity: 0.8 }}></span>
+                                Post-close listening
+                              </span>
+                            </div>
+                            <p className="mb-0 mt-3 small">
+                              Total listening window:{' '}
+                              <CBadge color="success">
+                                {(config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS) + (config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS)} seconds
+                              </CBadge>
+                            </p>
+                          </div>
+                        </CCol>
+                      </CRow>
+                    </>
                   )}
                 </CTabPane>
               )}
