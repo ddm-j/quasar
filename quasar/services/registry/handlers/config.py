@@ -23,6 +23,8 @@ from quasar.services.registry.schemas import (
     ProviderPreferencesResponse,
     ProviderPreferencesUpdate,
     SecretKeysResponse,
+    SecretsUpdateRequest,
+    SecretsUpdateResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -579,3 +581,77 @@ class ConfigHandlersMixin(HandlerMixin):
         except Exception as e:
             logger.error(f"Registry.handle_get_secret_keys: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while retrieving secret keys")
+
+    async def handle_update_secrets(
+        self,
+        update: SecretsUpdateRequest,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> SecretsUpdateResponse:
+        """Update stored credentials for a provider with re-encryption.
+
+        Re-encrypts and stores new credentials using a new nonce (FR-016).
+        All secret keys must be provided (all-or-nothing update per FR-015).
+
+        Args:
+            update (SecretsUpdateRequest): New credentials to store.
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            SecretsUpdateResponse: Status and list of updated key names.
+
+        Raises:
+            HTTPException: 404 if provider not found, 400 if secrets empty, 500 on encryption failure.
+        """
+        logger.info(f"Registry.handle_update_secrets: Updating secrets for {class_name}/{class_type}")
+
+        # Validate that secrets dict is not empty
+        if not update.secrets:
+            logger.warning(f"Registry.handle_update_secrets: Empty secrets provided for {class_name}/{class_type}")
+            raise HTTPException(status_code=400, detail="Secrets dict cannot be empty")
+
+        # Query to get file_hash for key derivation
+        query = """
+            SELECT file_hash
+            FROM code_registry
+            WHERE class_name = $1 AND class_type = $2
+        """
+
+        try:
+            file_hash = await self.pool.fetchval(query, class_name, class_type)
+
+            if not file_hash:
+                logger.warning(f"Registry.handle_update_secrets: Provider {class_name}/{class_type} not found")
+                raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+            # Convert secrets dict to JSON bytes for encryption
+            secrets_bytes = json.dumps(update.secrets).encode('utf-8')
+
+            # Re-encrypt with new nonce (FR-016)
+            try:
+                new_nonce, new_ciphertext = self.system_context.create_context_data(file_hash, secrets_bytes)
+            except Exception as e:
+                logger.error(f"Registry.handle_update_secrets: Failed to encrypt secrets for {class_name}/{class_type}: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Failed to encrypt secrets")
+
+            # Update database with new nonce and ciphertext
+            update_query = """
+                UPDATE code_registry
+                SET nonce = $3, ciphertext = $4
+                WHERE class_name = $1 AND class_type = $2
+            """
+            await self.pool.execute(update_query, class_name, class_type, new_nonce, new_ciphertext)
+
+            keys = list(update.secrets.keys())
+            logger.info(f"Registry.handle_update_secrets: Successfully updated {len(keys)} secrets for {class_name}/{class_type}")
+
+            return SecretsUpdateResponse(
+                status="updated",
+                keys=keys
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_update_secrets: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while updating secrets")
