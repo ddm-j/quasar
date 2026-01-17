@@ -95,7 +95,8 @@ class CollectionHandlersMixin(HandlerMixin):
                     offset_seconds = delay_hours * 3600
                 else:
                     # Live providers: negative offset starts before close
-                    offset_seconds = -1 * DEFAULT_LIVE_OFFSET
+                    pre_close_seconds = scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET)
+                    offset_seconds = -1 * pre_close_seconds
                 logger.debug(f"Scheduling new job: {key}, with offset: {offset_seconds}, from specified cron: {r['cron']}")
                 self._sched.add_job(
                     func=self.get_data,
@@ -306,7 +307,13 @@ class CollectionHandlersMixin(HandlerMixin):
             # Create Request for Live Data Provider
             args = [interval, open_symbols]
             # Add Timeout to prevent hung jobs
-            kwargs = {'timeout': DEFAULT_LIVE_OFFSET+prov.close_buffer_seconds+30}
+            # Get scheduling preferences for timeout calculation
+            prefs = self._provider_preferences.get(provider) or {}
+            scheduling_prefs = prefs.get("scheduling") or {}
+            pre_close_seconds = scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET)
+            post_close_seconds = scheduling_prefs.get("post_close_seconds", prov.close_buffer_seconds)
+            # Timeout = pre_close + post_close + 30s buffer for processing
+            kwargs = {'timeout': pre_close_seconds + post_close_seconds + 30}
         else:
             logger.error(f"Provider {provider} is not a valid provider type.")
             raise ValueError(f"Provider {provider} is not a valid provider type.")
