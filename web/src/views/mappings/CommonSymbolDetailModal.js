@@ -37,26 +37,24 @@ const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymb
     onClose();
   };
 
-  // Fetch detailed mappings for the common symbol
-  const fetchMappingsForSymbol = async () => {
-    if (!commonSymbol) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      // Use the new efficient API endpoint that filters by common symbol server-side
-      const mappings = await getAssetMappingsForSymbol(commonSymbol);
-      setMappings(mappings);
-    } catch (err) {
-      console.error('Error fetching mappings for symbol:', err);
-      setError(err.message || 'Failed to fetch mappings for this symbol');
-      setLoading(false); // Make sure loading is turned off on error
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchMappingsForSymbol = async () => {
+      if (!commonSymbol) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        // Use the new efficient API endpoint that filters by common symbol server-side
+        const mappings = await getAssetMappingsForSymbol(commonSymbol);
+        setMappings(mappings);
+      } catch (err) {
+        console.error('Error fetching mappings for symbol:', err);
+        setError(err.message || 'Failed to fetch mappings for this symbol');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (visible && commonSymbol) {
       fetchMappingsForSymbol();
     }
