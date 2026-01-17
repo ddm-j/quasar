@@ -185,7 +185,7 @@
 - [x] T058 [US4] Register GET /api/registry/config/secret-keys route in registry service in `quasar/services/registry/app.py`
 - [x] T059 [US4] Add `handle_update_secrets()` endpoint handler with re-encryption logic (new nonce per update) in `quasar/services/registry/handlers/config.py`
 - [x] T060 [US4] Register PATCH /api/registry/config/secrets route in registry service in `quasar/services/registry/app.py`
-- [ ] T061 [US4] Call DataHub unload endpoint after successful credential update in `handle_update_secrets()` in `quasar/services/registry/handlers/config.py`
+- [x] T061 [US4] Call DataHub unload endpoint after successful credential update in `handle_update_secrets()` in `quasar/services/registry/handlers/config.py`
 - [ ] T062 [US4] Add logging for credential updates (provider name, timestamp, unload triggered) in `quasar/services/registry/handlers/config.py`
 
 ### Frontend Implementation for US4

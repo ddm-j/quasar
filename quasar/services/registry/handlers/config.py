@@ -121,6 +121,31 @@ def log_preference_change(
     )
 
 
+def log_credential_update(
+    class_name: str,
+    class_type: str,
+    key_count: int,
+    unload_triggered: bool
+) -> None:
+    """Log a credential update operation.
+
+    Logs credential updates with provider name, timestamp, and unload status.
+    Uses structured logging format for consistency and searchability.
+
+    Args:
+        class_name: The provider/broker name.
+        class_type: The class type (provider/broker).
+        key_count: Number of credential keys updated.
+        unload_triggered: Whether the DataHub unload was successfully triggered.
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    logger.info(
+        f"Credential update: provider={class_name}, "
+        f"type={class_type}, timestamp={timestamp}, "
+        f"keys_updated={key_count}, unload_triggered={unload_triggered}"
+    )
+
+
 def validate_preferences_against_schema(
     preferences: dict[str, Any],
     schema: dict[str, dict[str, Any]],
@@ -649,12 +674,14 @@ class ConfigHandlersMixin(HandlerMixin):
 
             # Call DataHub unload endpoint to force provider reload with new credentials
             # This is best-effort - we don't fail the secret update if DataHub is unreachable
+            unload_triggered = False
             if class_type == "provider":
                 unload_url = f"http://datahub:8080/api/datahub/providers/{class_name}/unload"
                 try:
                     async with aiohttp.ClientSession() as session:
                         async with session.post(unload_url) as response:
                             if response.status == 200:
+                                unload_triggered = True
                                 logger.info(f"Registry.handle_update_secrets: Triggered unload for provider {class_name}")
                             elif response.status == 404:
                                 # Provider not loaded in DataHub - this is fine
@@ -666,6 +693,9 @@ class ConfigHandlersMixin(HandlerMixin):
                     logger.warning(f"Registry.handle_update_secrets: Cannot connect to DataHub for unload: {e_conn}")
                 except Exception as e_unload:
                     logger.warning(f"Registry.handle_update_secrets: Error calling DataHub unload for {class_name}: {e_unload}")
+
+            # Log credential update with structured format
+            log_credential_update(class_name, class_type, len(keys), unload_triggered)
 
             return SecretsUpdateResponse(
                 status="updated",
