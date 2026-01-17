@@ -15,6 +15,7 @@ def datahub_with_mocks():
     mock_conn = AsyncMock()
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
     hub._pool = mock_pool
     
     # Mock prov.get_data for realtime tests
