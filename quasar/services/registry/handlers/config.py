@@ -46,6 +46,32 @@ def get_schema_for_subtype(class_subtype: str) -> dict[str, dict[str, Any]] | No
     return SCHEMA_MAP.get(class_subtype)
 
 
+def serialize_schema(schema: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Convert schema with Python type objects to JSON-serializable format.
+
+    Converts Python type objects (int, str, etc.) to string representations
+    so the schema can be serialized to JSON.
+
+    Args:
+        schema: The CONFIGURABLE schema dict with Python type objects.
+
+    Returns:
+        A JSON-serializable copy of the schema with types as strings.
+    """
+    result: dict[str, dict[str, Any]] = {}
+    for category, fields in schema.items():
+        result[category] = {}
+        for field_name, field_def in fields.items():
+            result[category][field_name] = {}
+            for key, value in field_def.items():
+                if key == "type" and isinstance(value, type):
+                    # Convert Python type to string representation
+                    result[category][field_name][key] = value.__name__
+                else:
+                    result[category][field_name][key] = value
+    return result
+
+
 def log_validation_failure(
     class_name: str,
     class_type: str,
@@ -306,14 +332,17 @@ class ConfigHandlersMixin(HandlerMixin):
             if schema is None:
                 logger.warning(f"Registry.handle_get_config_schema: No schema found for subtype '{class_subtype}'")
                 # Return empty schema if subtype not recognized
-                schema = {}
+                serialized_schema: dict[str, dict[str, Any]] = {}
+            else:
+                # Convert Python type objects to JSON-serializable strings
+                serialized_schema = serialize_schema(schema)
 
             logger.info(f"Registry.handle_get_config_schema: Returning schema for {class_name}/{class_type} (subtype: {class_subtype})")
             return ConfigSchemaResponse(
                 class_name=class_name,
                 class_type=class_type,
                 class_subtype=class_subtype,
-                schema=schema
+                schema=serialized_schema
             )
         except HTTPException:
             raise
