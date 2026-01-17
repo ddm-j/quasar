@@ -17,6 +17,7 @@ from quasar.services.registry.schemas import (
     AvailableQuoteCurrenciesResponse,
     ClassSummaryItem,
     ClassType,
+    ConfigSchemaResponse,
     ProviderPreferences,
     ProviderPreferencesResponse,
     ProviderPreferencesUpdate,
@@ -154,6 +155,59 @@ class ConfigHandlersMixin(HandlerMixin):
         except Exception as e:
             logger.error(f"Registry.handle_get_provider_config: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while retrieving provider config")
+
+    async def handle_get_config_schema(
+        self,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> ConfigSchemaResponse:
+        """Get the configuration schema for a provider.
+
+        Returns the CONFIGURABLE schema defining available preferences
+        for a provider based on its class_subtype (historical, realtime, index).
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            ConfigSchemaResponse: Schema with configurable fields.
+        """
+        logger.info(f"Registry.handle_get_config_schema: Getting schema for {class_name}/{class_type}")
+
+        # Query to get provider's class_subtype
+        query = """
+            SELECT class_subtype
+            FROM code_registry
+            WHERE class_name = $1 AND class_type = $2
+        """
+
+        try:
+            class_subtype = await self.pool.fetchval(query, class_name, class_type)
+
+            if not class_subtype:
+                logger.warning(f"Registry.handle_get_config_schema: Provider {class_name}/{class_type} not found")
+                raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+            # Get the schema for this subtype
+            schema = get_schema_for_subtype(class_subtype)
+            if schema is None:
+                logger.warning(f"Registry.handle_get_config_schema: No schema found for subtype '{class_subtype}'")
+                # Return empty schema if subtype not recognized
+                schema = {}
+
+            logger.info(f"Registry.handle_get_config_schema: Returning schema for {class_name}/{class_type} (subtype: {class_subtype})")
+            return ConfigSchemaResponse(
+                class_name=class_name,
+                class_type=class_type,
+                class_subtype=class_subtype,
+                schema=schema
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_config_schema: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving config schema")
 
     async def handle_update_provider_config(
         self,
