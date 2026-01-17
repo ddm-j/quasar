@@ -473,6 +473,36 @@ export const updateProviderConfig = async (classType, className, config) => {
 };
 
 /**
+ * Fetches secret key names for a provider (not the values).
+ * Used to render credential update form fields.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Secret keys response: { class_name, class_type, keys: string[] }
+ */
+export const getSecretKeys = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config/secret-keys?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
  * Fetches available quote currencies for a provider's crypto assets.
  * @param {string} classType - Class type: 'provider' or 'broker'.
  * @param {string} className - Class name (provider/broker name).
