@@ -154,7 +154,7 @@
 
 ### Backend Implementation for US3
 
-- [ ] T049 [US3] Read lookback_days from preferences in `_build_reqs_historical()` instead of DEFAULT_LOOKBACK in `quasar/services/datahub/handlers/collection.py`
+- [x] T049 [US3] Read lookback_days from preferences in `_build_reqs_historical()` instead of DEFAULT_LOOKBACK in `quasar/services/datahub/handlers/collection.py`
 - [ ] T050 [US3] Add logging when lookback preference is applied to new subscription in `quasar/services/datahub/handlers/collection.py`
 
 ### Frontend Implementation for US3

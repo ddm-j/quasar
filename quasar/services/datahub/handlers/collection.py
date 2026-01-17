@@ -177,6 +177,7 @@ class CollectionHandlersMixin(HandlerMixin):
             prefs = self._provider_preferences.get(provider) or {}
             data_prefs = prefs.get("data") or {}
             lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+            using_custom_lookback = "lookback_days" in data_prefs
 
             reqs: list[Req] = []
             default_start = yday - timedelta(days=lookback_days)
@@ -184,9 +185,16 @@ class CollectionHandlersMixin(HandlerMixin):
                 last_updated = last_map.get(sym)
 
                 if last_updated is None:
-                    # New Subscription: Bypass calendar check and pull 8000 bars
+                    # New Subscription: Bypass calendar check and pull lookback_days bars
                     start = default_start + timedelta(days=1)
-                    logger.info(f"New subscription for {sym} ({mic}). Requesting full backfill from {start}.")
+                    if using_custom_lookback:
+                        logger.info(
+                            f"New subscription for {sym} ({mic}). "
+                            f"Applying configured lookback_days={lookback_days} (preference). "
+                            f"Requesting backfill from {start}."
+                        )
+                    else:
+                        logger.info(f"New subscription for {sym} ({mic}). Requesting full backfill from {start}.")
                 else:
                     # Incremental Update: Apply Smart Gap detection
                     start = last_updated + timedelta(days=1)
