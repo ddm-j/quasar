@@ -99,11 +99,11 @@
 
 - [x] T030 [US1] Read delay_hours from preferences in `refresh_subscriptions()` for historical providers in `quasar/services/datahub/handlers/collection.py`
 - [x] T031 [US1] Apply positive offset (delay_hours * 3600) to `OffsetCronTrigger` for historical providers in `quasar/services/datahub/handlers/collection.py`
-- [ ] T032 [US1] Add logging for preference changes (FR-025) when scheduling preferences are updated in `quasar/services/registry/handlers/config.py`
+- [x] T032 [US1] Add logging for preference changes (FR-025) when scheduling preferences are updated in `quasar/services/registry/handlers/config.py`
 
 ### Frontend Implementation for US1
 
-- [ ] T033 [US1] Add Scheduling tab to ProviderConfigModal with conditional rendering based on class_subtype in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T033 [US1] Add Scheduling tab to ProviderConfigModal with conditional rendering based on class_subtype in `web/src/views/registry/ProviderConfigModal.js`
 - [ ] T034 [US1] Implement delay_hours slider (0-24) with preview showing resulting pull time for historical providers in `web/src/views/registry/ProviderConfigModal.js`
 - [ ] T035 [US1] Add `getConfigSchema()` API call to fetch schema for dynamic UI rendering in `web/src/services/registry_api.js`
 - [ ] T036 [US1] Add `updateProviderConfig()` API call (if not already exists) for saving scheduling preferences in `web/src/services/registry_api.js`

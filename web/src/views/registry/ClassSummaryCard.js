@@ -231,6 +231,7 @@ const ClassSummaryCard = ({ class_summary, displayToast, onAssetsRefreshed }) =>
         onClose={() => setIsConfigModalVisible(false)}
         classType={class_summary.class_type}
         className={class_summary.class_name}
+        classSubtype={class_summary.class_subtype}
         displayToast={displayToast}
       />
     </>

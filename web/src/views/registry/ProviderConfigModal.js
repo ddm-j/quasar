@@ -20,10 +20,13 @@ import {
   CTabPane,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
-import { cilSettings, cilLockLocked, cilChartLine } from '@coreui/icons'
+import { cilSettings, cilLockLocked, cilChartLine, cilClock } from '@coreui/icons'
 import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies } from '../services/registry_api'
 
-const ProviderConfigModal = ({ visible, onClose, classType, className, displayToast }) => {
+const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
+  // Determine which tabs should be visible based on class_subtype
+  const showSchedulingTab = classSubtype === 'historical' || classSubtype === 'realtime'
+
   const [activeTab, setActiveTab] = useState('trading')
   const [config, setConfig] = useState({ crypto: { preferred_quote_currency: null } })
   const [availableCurrencies, setAvailableCurrencies] = useState([])
@@ -144,6 +147,18 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, displayTo
                   Trading Preferences
                 </CNavLink>
               </CNavItem>
+              {showSchedulingTab && (
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'scheduling'}
+                    onClick={() => setActiveTab('scheduling')}
+                    className="d-flex align-items-center"
+                  >
+                    <CIcon icon={cilClock} className="me-2" />
+                    Scheduling
+                  </CNavLink>
+                </CNavItem>
+              )}
               <CNavItem>
                 <CNavLink
                   active={activeTab === 'api'}
@@ -188,6 +203,44 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, displayTo
                   </CCol>
                 </CRow>
               </CTabPane>
+
+              {showSchedulingTab && (
+                <CTabPane visible={activeTab === 'scheduling'}>
+                  <h6>Scheduling</h6>
+                  <p className="text-body-secondary mb-3">
+                    Configure when this provider collects data.
+                  </p>
+
+                  {classSubtype === 'historical' && (
+                    <CRow className="mb-3">
+                      <CCol>
+                        <CAlert color="info">
+                          <CIcon icon={cilClock} className="me-2" />
+                          Configure the delay offset for daily data collection.
+                          Historical providers pull data at midnight UTC by default.
+                        </CAlert>
+                        <p className="text-body-secondary">
+                          Delay hours configuration will be available in the next update.
+                        </p>
+                      </CCol>
+                    </CRow>
+                  )}
+
+                  {classSubtype === 'realtime' && (
+                    <CRow className="mb-3">
+                      <CCol>
+                        <CAlert color="info">
+                          <CIcon icon={cilClock} className="me-2" />
+                          Configure pre-close and post-close timing buffers for live data collection.
+                        </CAlert>
+                        <p className="text-body-secondary">
+                          Pre-close and post-close timing configuration will be available in the next update.
+                        </p>
+                      </CCol>
+                    </CRow>
+                  )}
+                </CTabPane>
+              )}
 
               <CTabPane visible={activeTab === 'api'}>
                 <h6>API Secrets</h6>
@@ -240,6 +293,7 @@ ProviderConfigModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   classType: PropTypes.string.isRequired,
   className: PropTypes.string.isRequired,
+  classSubtype: PropTypes.string,
   displayToast: PropTypes.func,
 }
 
