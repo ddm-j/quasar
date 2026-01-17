@@ -165,8 +165,8 @@
 
 ### Tests for US3
 
-- [ ] T054 [P] [US3] Write integration test: new subscription uses configured lookback_days for start date in `tests/test_config_integration.py`
-- [ ] T055 [P] [US3] Write unit test: _build_reqs_historical() uses preference over DEFAULT_LOOKBACK in `tests/test_configurable_providers.py`
+- [x] T054 [P] [US3] Write integration test: new subscription uses configured lookback_days for start date in `tests/test_config_integration.py`
+- [x] T055 [P] [US3] Write unit test: _build_reqs_historical() uses preference over DEFAULT_LOOKBACK in `tests/test_configurable_providers.py`
 - [ ] T056 [US3] Visual test with Playwright: Verify Data tab displays preset options and custom input (use playwright-visual-tester agent)
 
 **Checkpoint**: User Story 3 complete - Restart docker, run tests, verify UI via Playwright

@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     import asyncpg
     from quasar.services.registry.matcher import IdentityMatcher
     from quasar.services.registry.mapper import AutomatedMapper
+    from quasar.lib.common.context import SystemContext
 
 
 class HandlerMixin:
@@ -22,3 +23,4 @@ class HandlerMixin:
     pool: 'asyncpg.Pool'
     matcher: 'IdentityMatcher'
     mapper: 'AutomatedMapper'
+    system_context: 'SystemContext'

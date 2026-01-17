@@ -22,6 +22,7 @@ from quasar.services.registry.schemas import (
     ProviderPreferences,
     ProviderPreferencesResponse,
     ProviderPreferencesUpdate,
+    SecretKeysResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -507,3 +508,74 @@ class ConfigHandlersMixin(HandlerMixin):
         except Exception as e:
             logger.error(f"Registry.handle_get_available_quote_currencies: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Database error while retrieving available quote currencies")
+
+    async def handle_get_secret_keys(
+        self,
+        class_name: str = Query(..., description="Class name (provider/broker name)"),
+        class_type: ClassType = Query(..., description="Class type: 'provider' or 'broker'")
+    ) -> SecretKeysResponse:
+        """Get stored secret key names for a provider (not the values).
+
+        Decrypts the stored secrets and returns only the key names,
+        used by the frontend to render credential update form fields.
+
+        Args:
+            class_name (str): Provider/broker name.
+            class_type (ClassType): Provider or broker.
+
+        Returns:
+            SecretKeysResponse: List of secret key names.
+
+        Raises:
+            HTTPException: 404 if provider not found, 500 on decryption failure.
+        """
+        logger.info(f"Registry.handle_get_secret_keys: Getting secret keys for {class_name}/{class_type}")
+
+        # Query to get file_hash, nonce, and ciphertext for the provider
+        query = """
+            SELECT file_hash, nonce, ciphertext
+            FROM code_registry
+            WHERE class_name = $1 AND class_type = $2
+        """
+
+        try:
+            row = await self.pool.fetchrow(query, class_name, class_type)
+
+            if not row:
+                logger.warning(f"Registry.handle_get_secret_keys: Provider {class_name}/{class_type} not found")
+                raise HTTPException(status_code=404, detail=f"Provider '{class_name}' ({class_type}) not found")
+
+            file_hash = row['file_hash']
+            nonce = row['nonce']
+            ciphertext = row['ciphertext']
+
+            # Check if provider has stored secrets
+            if not nonce or not ciphertext:
+                logger.info(f"Registry.handle_get_secret_keys: No secrets stored for {class_name}/{class_type}")
+                return SecretKeysResponse(
+                    class_name=class_name,
+                    class_type=class_type,
+                    keys=[]
+                )
+
+            # Decrypt secrets to extract key names
+            try:
+                derived_context = self.system_context.get_derived_context(file_hash)
+                decrypted = derived_context.decrypt(nonce, ciphertext, None)
+                secrets_dict = json.loads(decrypted.decode('utf-8'))
+                keys = list(secrets_dict.keys())
+            except Exception as e:
+                logger.error(f"Registry.handle_get_secret_keys: Failed to decrypt secrets for {class_name}/{class_type}: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Failed to decrypt provider secrets")
+
+            logger.info(f"Registry.handle_get_secret_keys: Found {len(keys)} secret keys for {class_name}/{class_type}")
+            return SecretKeysResponse(
+                class_name=class_name,
+                class_type=class_type,
+                keys=keys
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Registry.handle_get_secret_keys: Unexpected error for {class_name}/{class_type}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Database error while retrieving secret keys")
