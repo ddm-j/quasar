@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, List
 
+import aiohttp
 from fastapi import HTTPException, Query
 
 from quasar.lib.providers.core import (
@@ -645,6 +646,26 @@ class ConfigHandlersMixin(HandlerMixin):
 
             keys = list(update.secrets.keys())
             logger.info(f"Registry.handle_update_secrets: Successfully updated {len(keys)} secrets for {class_name}/{class_type}")
+
+            # Call DataHub unload endpoint to force provider reload with new credentials
+            # This is best-effort - we don't fail the secret update if DataHub is unreachable
+            if class_type == "provider":
+                unload_url = f"http://datahub:8080/api/datahub/providers/{class_name}/unload"
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(unload_url) as response:
+                            if response.status == 200:
+                                logger.info(f"Registry.handle_update_secrets: Triggered unload for provider {class_name}")
+                            elif response.status == 404:
+                                # Provider not loaded in DataHub - this is fine
+                                logger.info(f"Registry.handle_update_secrets: Provider {class_name} not loaded in DataHub, skipping unload")
+                            else:
+                                error_text = await response.text()
+                                logger.warning(f"Registry.handle_update_secrets: DataHub unload returned {response.status} for {class_name}: {error_text}")
+                except aiohttp.ClientConnectorError as e_conn:
+                    logger.warning(f"Registry.handle_update_secrets: Cannot connect to DataHub for unload: {e_conn}")
+                except Exception as e_unload:
+                    logger.warning(f"Registry.handle_update_secrets: Error calling DataHub unload for {class_name}: {e_unload}")
 
             return SecretsUpdateResponse(
                 status="updated",
