@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, List
 
 from fastapi import HTTPException, Query
@@ -45,10 +46,33 @@ def get_schema_for_subtype(class_subtype: str) -> dict[str, dict[str, Any]] | No
     return SCHEMA_MAP.get(class_subtype)
 
 
+def log_validation_failure(
+    class_name: str,
+    class_type: str,
+    reason: str
+) -> None:
+    """Log a preference validation failure per FR-026.
+
+    Logs validation failures with provider name, timestamp, and reason for rejection.
+    Uses structured logging format for consistency and searchability.
+
+    Args:
+        class_name: The provider/broker name.
+        class_type: The class type (provider/broker).
+        reason: The specific validation failure reason.
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    logger.warning(
+        f"Preference validation failure: provider={class_name}, "
+        f"type={class_type}, timestamp={timestamp}, reason={reason}"
+    )
+
+
 def validate_preferences_against_schema(
     preferences: dict[str, Any],
     schema: dict[str, dict[str, Any]],
-    class_name: str
+    class_name: str,
+    class_type: str = "provider"
 ) -> list[str]:
     """Validate preferences dict against a CONFIGURABLE schema.
 
@@ -57,10 +81,14 @@ def validate_preferences_against_schema(
     - Type checking: Values must match expected types
     - Range checking: Numeric values must be within min/max bounds
 
+    Each validation failure is logged per FR-026 with provider name,
+    timestamp, and reason for rejection.
+
     Args:
         preferences: The preferences dict to validate (e.g., {"scheduling": {"delay_hours": 6}}).
         schema: The CONFIGURABLE schema dict for the provider type.
         class_name: Provider name for error messages.
+        class_type: Class type (provider/broker) for logging.
 
     Returns:
         List of validation error messages (empty if valid).
@@ -70,12 +98,16 @@ def validate_preferences_against_schema(
     for category, fields in preferences.items():
         # Check if category exists in schema
         if category not in schema:
-            errors.append(f"Unknown preference category '{category}' for provider {class_name}")
+            reason = f"Unknown preference category '{category}'"
+            errors.append(f"{reason} for provider {class_name}")
+            log_validation_failure(class_name, class_type, reason)
             continue
 
         # Fields must be a dict
         if not isinstance(fields, dict):
-            errors.append(f"Preference category '{category}' must be an object")
+            reason = f"Preference category '{category}' must be an object"
+            errors.append(reason)
+            log_validation_failure(class_name, class_type, reason)
             continue
 
         schema_category = schema[category]
@@ -83,7 +115,9 @@ def validate_preferences_against_schema(
         for field_name, value in fields.items():
             # Check if field exists in schema category
             if field_name not in schema_category:
-                errors.append(f"Unknown field '{category}.{field_name}' for provider {class_name}")
+                reason = f"Unknown field '{category}.{field_name}'"
+                errors.append(f"{reason} for provider {class_name}")
+                log_validation_failure(class_name, class_type, reason)
                 continue
 
             field_schema = schema_category[field_name]
@@ -96,14 +130,14 @@ def validate_preferences_against_schema(
             # Type validation
             if expected_type is not None:
                 if expected_type == int and not isinstance(value, int):
-                    errors.append(
-                        f"Field '{category}.{field_name}' must be an integer, got {type(value).__name__}"
-                    )
+                    reason = f"Field '{category}.{field_name}' must be an integer, got {type(value).__name__}"
+                    errors.append(reason)
+                    log_validation_failure(class_name, class_type, reason)
                     continue
                 elif expected_type == str and not isinstance(value, str):
-                    errors.append(
-                        f"Field '{category}.{field_name}' must be a string, got {type(value).__name__}"
-                    )
+                    reason = f"Field '{category}.{field_name}' must be a string, got {type(value).__name__}"
+                    errors.append(reason)
+                    log_validation_failure(class_name, class_type, reason)
                     continue
 
             # Range validation for numeric types
@@ -112,13 +146,13 @@ def validate_preferences_against_schema(
                 max_val = field_schema.get("max")
 
                 if min_val is not None and value < min_val:
-                    errors.append(
-                        f"Field '{category}.{field_name}' must be >= {min_val}, got {value}"
-                    )
+                    reason = f"Field '{category}.{field_name}' must be >= {min_val}, got {value}"
+                    errors.append(reason)
+                    log_validation_failure(class_name, class_type, reason)
                 if max_val is not None and value > max_val:
-                    errors.append(
-                        f"Field '{category}.{field_name}' must be <= {max_val}, got {value}"
-                    )
+                    reason = f"Field '{category}.{field_name}' must be <= {max_val}, got {value}"
+                    errors.append(reason)
+                    log_validation_failure(class_name, class_type, reason)
 
     return errors
 
@@ -329,12 +363,12 @@ class ConfigHandlersMixin(HandlerMixin):
         # Validate against provider-type-specific schema
         schema = get_schema_for_subtype(class_subtype)
         if schema:
-            validation_errors = validate_preferences_against_schema(update_dict, schema, class_name)
+            validation_errors = validate_preferences_against_schema(
+                update_dict, schema, class_name, class_type
+            )
             if validation_errors:
                 error_detail = "; ".join(validation_errors)
-                logger.warning(
-                    f"Registry.handle_update_provider_config: Validation failed for {class_name}/{class_type}: {error_detail}"
-                )
+                # Note: Individual validation failures are already logged by log_validation_failure (FR-026)
                 raise HTTPException(status_code=400, detail=f"Validation error: {error_detail}")
 
         # Update preferences using JSONB merge
