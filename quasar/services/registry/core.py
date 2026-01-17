@@ -50,7 +50,7 @@ from quasar.services.registry.schemas import (
     AssetResponse, AssetMappingCreateResponse, AssetMappingPaginatedResponse,
     AssetMappingResponse, SuggestionsResponse,
     ProviderPreferencesResponse, AvailableQuoteCurrenciesResponse,
-    CommonSymbolResponse,
+    CommonSymbolResponse, CommonSymbolRenameResponse,
     IndexListResponse, IndexDetailResponse, IndexMembersResponse,
     IndexSyncResponse, IndexHistoryResponse, IndexItem,
 )
@@ -199,6 +199,12 @@ class Registry(
             self.handle_get_asset_mappings_for_symbol,
             methods=['GET'],
             response_model=List[AssetMappingResponse]
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/common-symbol/{symbol}/rename',
+            self.handle_rename_common_symbol,
+            methods=['PUT'],
+            response_model=CommonSymbolRenameResponse
         )
 
         # Common Symbols Routes (public API)

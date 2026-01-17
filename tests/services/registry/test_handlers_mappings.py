@@ -10,6 +10,7 @@ from quasar.services.registry.core import _encode_cursor, _decode_cursor
 from quasar.services.registry.schemas import (
     AssetMappingCreate, AssetMappingUpdate, AssetMappingQueryParams,
     AssetMappingPaginatedResponse, AssetMappingResponse,
+    CommonSymbolRenameRequest, CommonSymbolRenameResponse,
 )
 from .conftest import MockRecord
 
@@ -1233,3 +1234,192 @@ class TestSuggestionsErrors:
         # Should default to 0.0
         assert response.items[0].sym_root_similarity == 0.0
         assert response.items[0].name_similarity == 0.0
+
+
+class TestRenameCommonSymbol:
+    """Tests for common symbol rename endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_success(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test successful rename of a common symbol."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # Mock the sequence of fetchval/fetchrow calls
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=[
+            1,    # old_symbol exists
+            None, # new_symbol doesn't exist
+            5,    # asset_mapping count
+            2,    # index_memberships count
+        ])
+        mock_asyncpg_conn.fetchrow = AsyncMock(
+            return_value=MockRecord(symbol="BITCOIN")
+        )
+
+        request = CommonSymbolRenameRequest(new_symbol="BITCOIN")
+        response = await reg.handle_rename_common_symbol("BTC", request)
+
+        assert isinstance(response, CommonSymbolRenameResponse)
+        assert response.old_symbol == "BTC"
+        assert response.new_symbol == "BITCOIN"
+        assert response.asset_mappings_updated == 5
+        assert response.index_memberships_updated == 2
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_not_found(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test 404 when symbol doesn't exist."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # old_symbol does not exist
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=None)
+
+        request = CommonSymbolRenameRequest(new_symbol="BITCOIN")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_rename_common_symbol("NONEXISTENT", request)
+
+        assert exc_info.value.status_code == 404
+        assert "not found" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_conflict(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test 409 when new_symbol already exists."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # Both symbols exist
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=[
+            1,  # old_symbol exists
+            1,  # new_symbol also exists (conflict)
+        ])
+
+        request = CommonSymbolRenameRequest(new_symbol="ETH")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_rename_common_symbol("BTC", request)
+
+        assert exc_info.value.status_code == 409
+        assert "already exists" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_empty_new_symbol(
+        self, registry_with_mocks
+    ):
+        """Test 400 when new_symbol is empty or whitespace."""
+        reg = registry_with_mocks
+
+        request = CommonSymbolRenameRequest(new_symbol="   ")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_rename_common_symbol("BTC", request)
+
+        assert exc_info.value.status_code == 400
+        assert "non-empty" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_same_name(
+        self, registry_with_mocks
+    ):
+        """Test 400 when new_symbol equals old_symbol."""
+        reg = registry_with_mocks
+
+        request = CommonSymbolRenameRequest(new_symbol="BTC")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_rename_common_symbol("BTC", request)
+
+        assert exc_info.value.status_code == 400
+        assert "different" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_database_error(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test 500 on unexpected database error."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        mock_asyncpg_conn.fetchval = AsyncMock(
+            side_effect=Exception("Database connection failed")
+        )
+
+        request = CommonSymbolRenameRequest(new_symbol="BITCOIN")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_rename_common_symbol("BTC", request)
+
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_zero_affected_rows(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test rename succeeds even when no mappings or memberships exist."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=[
+            1,    # old_symbol exists
+            None, # new_symbol doesn't exist
+            0,    # zero asset_mappings
+            0,    # zero index_memberships
+        ])
+        mock_asyncpg_conn.fetchrow = AsyncMock(
+            return_value=MockRecord(symbol="NEW_SYMBOL")
+        )
+
+        request = CommonSymbolRenameRequest(new_symbol="NEW_SYMBOL")
+        response = await reg.handle_rename_common_symbol("OLD_SYMBOL", request)
+
+        assert response.asset_mappings_updated == 0
+        assert response.index_memberships_updated == 0
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_whitespace_trimmed(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test that whitespace is trimmed from new_symbol."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        mock_asyncpg_conn.fetchval = AsyncMock(side_effect=[
+            1,    # old_symbol exists
+            None, # new_symbol doesn't exist
+            1,    # asset_mapping count
+            0,    # index_memberships count
+        ])
+        mock_asyncpg_conn.fetchrow = AsyncMock(
+            return_value=MockRecord(symbol="BITCOIN")
+        )
+
+        # Request with leading/trailing whitespace
+        request = CommonSymbolRenameRequest(new_symbol="  BITCOIN  ")
+        response = await reg.handle_rename_common_symbol("BTC", request)
+
+        # Verify trimmed value is used
+        assert response.new_symbol == "BITCOIN"
