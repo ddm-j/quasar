@@ -1,4 +1,5 @@
 """Provider lifecycle handlers: loading, validation, capability queries."""
+import asyncio
 import hashlib
 import importlib.util
 import inspect
@@ -78,6 +79,22 @@ def load_provider_from_file_path(file_path: str, expected_class_name: str) -> ty
     return loaded_class
 
 
+def _compute_file_hash(file_path: str) -> bytes:
+    """Compute SHA256 hash of a file.
+
+    Args:
+        file_path: Path to the file to hash.
+
+    Returns:
+        SHA256 digest as bytes.
+    """
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(8192):
+            sha256.update(chunk)
+    return sha256.digest()
+
+
 class ProviderHandlersMixin(HandlerMixin):
     """Mixin providing provider lifecycle methods for DataHub."""
 
@@ -111,7 +128,7 @@ class ProviderHandlersMixin(HandlerMixin):
             NONCE = provider_reg_data['nonce']
             CIPHERTEXT = provider_reg_data['ciphertext']
 
-            # Ensure the File Exsits
+            # Ensure the File Exists
             if not FILE_PATH.startswith(ALLOWED_DYNAMIC_PATH):
                 logger.warning(f"File {FILE_PATH} not in allowed path {ALLOWED_DYNAMIC_PATH}")
                 warnings.warn(f"File {FILE_PATH} not in allowed path {ALLOWED_DYNAMIC_PATH}")
@@ -121,12 +138,8 @@ class ProviderHandlersMixin(HandlerMixin):
                 warnings.warn(f"File {FILE_PATH} not found")
                 return False
 
-            # Verify File Hash
-            sha256 = hashlib.sha256()
-            with open(FILE_PATH, 'rb') as f:
-                while chunk := f.read(8192):
-                    sha256.update(chunk)
-            sha256_hash = sha256.digest()
+            # Verify File Hash (run in thread pool to avoid blocking event loop)
+            sha256_hash = await asyncio.to_thread(_compute_file_hash, FILE_PATH)
             if sha256_hash != FILE_HASH:
                 logger.warning(f"File {FILE_PATH} hash does not match database hash. {FILE_HASH} != {sha256_hash}")
                 warnings.warn(f"File {FILE_PATH} hash does not match database hash")
