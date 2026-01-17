@@ -34,7 +34,7 @@ QUERIES = {
                             WHERE  provider = $1
                             AND  sym = ANY($2::text[])
                             """,
-    'get_registered_provider': """SELECT file_path, file_hash, nonce, ciphertext
+    'get_registered_provider': """SELECT file_path, file_hash, nonce, ciphertext, preferences, class_subtype
                                   FROM code_registry
                                   WHERE class_name = $1 AND class_type = 'provider';
                                   """
