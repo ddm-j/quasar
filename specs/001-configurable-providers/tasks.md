@@ -132,9 +132,9 @@
 
 ### Frontend Implementation for US2
 
-- [ ] T043 [US2] Implement pre_close_seconds input (0-300) for live providers in Scheduling tab in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T044 [US2] Implement post_close_seconds input (0-60) for live providers in Scheduling tab in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T045 [US2] Add visual timeline showing listening window in Scheduling tab for live providers in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T043 [US2] Implement pre_close_seconds input (0-300) for live providers in Scheduling tab in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T044 [US2] Implement post_close_seconds input (0-60) for live providers in Scheduling tab in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T045 [US2] Add visual timeline showing listening window in Scheduling tab for live providers in `web/src/views/registry/ProviderConfigModal.js`
 
 ### Tests for US2
 

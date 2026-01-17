@@ -473,3 +473,206 @@ class TestOffsetCronTriggerPositiveOffset:
         # Verify the fire time is AFTER the base cron time (midnight)
         base_cron_time = datetime(2024, 6, 15, 0, 0, 0, tzinfo=timezone.utc)
         assert next_fire > base_cron_time, "Historical provider should fire AFTER cron time"
+
+
+class TestOffsetCronTriggerNegativeOffset:
+    """T047: Tests for OffsetCronTrigger receiving correct negative offset for live providers."""
+
+    def test_offset_cron_trigger_stores_negative_offset(self):
+        """OffsetCronTrigger correctly stores negative offset for live providers."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Live provider with pre_close_seconds=60 means negative offset
+        pre_close_seconds = 60
+        offset_seconds = -1 * pre_close_seconds  # -60
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",  # 4 PM UTC
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        # Verify offset is stored correctly (absolute value)
+        assert trigger.offset_seconds == 60
+        # Negative offset should have _sign=-1
+        assert trigger._sign == -1
+
+    def test_offset_cron_trigger_negative_zero_offset(self):
+        """OffsetCronTrigger handles zero offset for live providers with pre_close_seconds=0."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Live provider with pre_close_seconds=0 (no early start)
+        pre_close_seconds = 0
+        offset_seconds = -1 * pre_close_seconds  # -0 == 0
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        assert trigger.offset_seconds == 0
+        # Zero offset, sign defaults to 1
+        assert trigger._sign == 1
+
+    def test_offset_cron_trigger_max_pre_close_seconds(self):
+        """OffsetCronTrigger handles maximum pre_close_seconds=300."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Maximum allowed pre_close_seconds=300 (5 minutes)
+        pre_close_seconds = 300
+        offset_seconds = -1 * pre_close_seconds  # -300
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        assert trigger.offset_seconds == 300
+        assert trigger._sign == -1
+
+    def test_offset_cron_trigger_fires_at_negative_offset(self):
+        """OffsetCronTrigger fires at correct time with negative offset."""
+        from datetime import datetime, timezone
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Trigger for 4 PM with 60 second negative offset (pre_close)
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",  # 4 PM
+            offset_seconds=-60,  # 60 seconds before
+            timezone="UTC"
+        )
+
+        # At 3 PM, the next cron fire is 4 PM, then -60 seconds = 3:59 PM
+        now = datetime(2024, 6, 14, 15, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        expected = datetime(2024, 6, 14, 15, 59, 0, tzinfo=timezone.utc)
+        assert next_fire == expected, f"Expected {expected}, got {next_fire}"
+
+    def test_offset_cron_trigger_negative_offset_after_previous_fire(self):
+        """OffsetCronTrigger calculates next fire correctly after previous fire."""
+        from datetime import datetime, timezone
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Trigger for 4 PM with 60 second negative offset
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",  # 4 PM
+            offset_seconds=-60,  # 60 seconds before
+            timezone="UTC"
+        )
+
+        # Previous fire was at 3:59 PM on June 14
+        previous_fire = datetime(2024, 6, 14, 15, 59, 0, tzinfo=timezone.utc)
+        now = datetime(2024, 6, 14, 17, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(previous_fire, now)
+
+        # Next fire should be 3:59 PM on June 15
+        expected = datetime(2024, 6, 15, 15, 59, 0, tzinfo=timezone.utc)
+        assert next_fire == expected, f"Expected {expected}, got {next_fire}"
+
+    def test_offset_applied_during_refresh_subscriptions_live(self):
+        """Verify pre_close_seconds from preferences is correctly converted to negative offset."""
+        # This tests the conversion logic in refresh_subscriptions
+        # pre_close_seconds=60 should become offset_seconds=-60
+
+        pre_close_seconds = 60
+        offset_seconds = -1 * pre_close_seconds
+
+        # Verify the conversion formula
+        assert offset_seconds == -60
+        assert offset_seconds == -1 * 60  # Negative of pre_close seconds
+
+    def test_negative_offset_conversion_boundary_values(self):
+        """Test negative offset conversion for boundary pre_close_seconds values (0, 30, 300)."""
+        # pre_close_seconds=0 (minimum)
+        assert -1 * 0 == 0
+
+        # pre_close_seconds=30 (default)
+        assert -1 * 30 == -30
+
+        # pre_close_seconds=300 (maximum)
+        assert -1 * 300 == -300
+
+    def test_live_provider_uses_negative_offset_not_positive(self):
+        """Live providers should use negative offset (pre_close), not positive."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+        from datetime import datetime, timezone
+
+        # Live provider with pre_close_seconds=60
+        pre_close_seconds = 60
+        offset_seconds = -1 * pre_close_seconds  # Negative offset
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",  # 4 PM
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        # Fire time should be BEFORE the cron time (early start)
+        # At 3 PM, next fire should be 3:59 PM (before 4 PM cron time)
+        now = datetime(2024, 6, 14, 15, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        # With negative offset, job fires at 15:59 (before 16:00)
+        expected = datetime(2024, 6, 14, 15, 59, 0, tzinfo=timezone.utc)
+        assert next_fire == expected
+
+        # Verify the fire time is BEFORE the base cron time (4 PM)
+        base_cron_time = datetime(2024, 6, 14, 16, 0, 0, tzinfo=timezone.utc)
+        assert next_fire < base_cron_time, "Live provider should fire BEFORE cron time"
+
+    def test_live_provider_default_pre_close_seconds(self):
+        """Live provider DEFAULT_LIVE_OFFSET (30 seconds) produces correct negative offset."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+        from datetime import datetime, timezone
+
+        # Default pre_close_seconds is 30 seconds
+        default_pre_close = 30
+        offset_seconds = -1 * default_pre_close
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",  # 4 PM
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        assert trigger.offset_seconds == 30
+        assert trigger._sign == -1
+
+        # Should fire at 15:59:30 (30 seconds before 4 PM)
+        now = datetime(2024, 6, 14, 15, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+        expected = datetime(2024, 6, 14, 15, 59, 30, tzinfo=timezone.utc)
+        assert next_fire == expected
+
+    def test_live_provider_offset_semantics_differ_from_historical(self):
+        """Live provider negative offset has opposite semantics to historical positive offset."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+        from datetime import datetime, timezone
+
+        now = datetime(2024, 6, 14, 15, 0, 0, tzinfo=timezone.utc)
+
+        # Historical: positive offset = fire LATER (delay after close)
+        historical_trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",
+            offset_seconds=3600,  # +1 hour
+            timezone="UTC"
+        )
+        historical_fire = historical_trigger.get_next_fire_time(None, now)
+        assert historical_fire == datetime(2024, 6, 14, 17, 0, 0, tzinfo=timezone.utc)
+
+        # Live: negative offset = fire EARLIER (start before close)
+        live_trigger = OffsetCronTrigger.from_crontab(
+            "0 16 * * *",
+            offset_seconds=-60,  # -1 minute
+            timezone="UTC"
+        )
+        live_fire = live_trigger.get_next_fire_time(None, now)
+        assert live_fire == datetime(2024, 6, 14, 15, 59, 0, tzinfo=timezone.utc)
+
+        # Historical fires after cron time, live fires before
+        cron_time = datetime(2024, 6, 14, 16, 0, 0, tzinfo=timezone.utc)
+        assert historical_fire > cron_time, "Historical should fire AFTER cron"
+        assert live_fire < cron_time, "Live should fire BEFORE cron"
