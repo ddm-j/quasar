@@ -2,10 +2,16 @@
 
 import json
 import logging
-from typing import List
+from typing import Any, List
 
 from fastapi import HTTPException, Query
 
+from quasar.lib.providers.core import (
+    DataProvider,
+    HistoricalDataProvider,
+    LiveDataProvider,
+    IndexProvider,
+)
 from quasar.services.registry.handlers.base import HandlerMixin
 from quasar.services.registry.schemas import (
     AvailableQuoteCurrenciesResponse,
@@ -17,6 +23,25 @@ from quasar.services.registry.schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Schema map: class_subtype -> CONFIGURABLE dict
+SCHEMA_MAP: dict[str, dict[str, dict[str, Any]]] = {
+    "historical": HistoricalDataProvider.CONFIGURABLE,
+    "realtime": LiveDataProvider.CONFIGURABLE,
+    "index": IndexProvider.CONFIGURABLE,
+}
+
+
+def get_schema_for_subtype(class_subtype: str) -> dict[str, dict[str, Any]] | None:
+    """Get the CONFIGURABLE schema for a given class_subtype.
+
+    Args:
+        class_subtype: The provider subtype (e.g., "historical", "realtime", "index").
+
+    Returns:
+        The CONFIGURABLE dict for the subtype, or None if not found.
+    """
+    return SCHEMA_MAP.get(class_subtype)
 
 
 class ConfigHandlersMixin(HandlerMixin):

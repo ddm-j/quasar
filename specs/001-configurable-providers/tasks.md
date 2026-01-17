@@ -48,8 +48,8 @@
 
 ### Registry Schema Lookup
 
-- [ ] T009 Create SCHEMA_MAP dict mapping class_subtype to CONFIGURABLE in `quasar/services/registry/handlers/config.py`
-- [ ] T010 Create `get_schema_for_subtype()` utility function in `quasar/services/registry/handlers/config.py`
+- [x] T009 Create SCHEMA_MAP dict mapping class_subtype to CONFIGURABLE in `quasar/services/registry/handlers/config.py`
+- [x] T010 Create `get_schema_for_subtype()` utility function in `quasar/services/registry/handlers/config.py`
 
 ### Pydantic Models
 
