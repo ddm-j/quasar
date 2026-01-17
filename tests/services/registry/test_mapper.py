@@ -98,6 +98,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             eodhd_assets,  # Provider assets query
             [],            # Existing mappings query (no existing mappings found)
+            [],            # Conflict check query (no conflicts)
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
@@ -124,6 +125,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             eodhd_assets,       # Provider assets query
             existing_mappings,  # Existing mappings query
+            [],                 # Conflict check query (not needed - reusing existing)
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
@@ -148,6 +150,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             eodhd_assets,       # Provider assets query
             existing_mappings,  # Existing mappings query
+            [],                 # Conflict check query (not needed - reusing existing)
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
@@ -172,6 +175,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             assets,  # Provider assets query
             [],      # Existing mappings query
+            [],      # Conflict check query
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("KRAKEN", "provider")
@@ -192,6 +196,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             assets,  # Provider assets query
             [],      # Existing mappings query
+            [],      # Conflict check query
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("KRAKEN", "provider")
@@ -216,6 +221,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             assets,  # Provider assets query
             [],      # Existing mappings query
+            [],      # Conflict check query
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("KRAKEN", "provider")
@@ -240,6 +246,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             assets,  # Provider assets query
             [],      # Existing mappings query
+            [],      # Conflict check query
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("KRAKEN", "provider")
@@ -263,6 +270,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             eodhd_assets,       # Provider assets query
             existing_mappings,  # Existing mappings query
+            [],                 # Conflict check query (not needed - reusing existing)
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
@@ -284,6 +292,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             eodhd_assets,  # Provider assets query
             [],            # Existing mappings query
+            [],            # Conflict check query
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
@@ -305,6 +314,7 @@ class TestGenerateMappingCandidatesForProvider:
         mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
             eodhd_assets,  # Provider assets query
             [],            # Existing mappings query
+            [],            # Conflict check query
         ])
 
         candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
@@ -313,3 +323,156 @@ class TestGenerateMappingCandidatesForProvider:
         assert len(candidates) == 1
         assert candidates[0].class_name == "EODHD"
         assert candidates[0].asset_class_group == "securities"
+
+
+class TestFigiConflictResolution:
+    """Tests for cross-provider FIGI conflict detection and resolution."""
+
+    @pytest.mark.asyncio
+    async def test_new_symbol_no_conflict_uses_proposed_symbol(self, mapper_with_mocks, mock_asyncpg_conn):
+        """Behavior: When no conflict exists, use the proposed symbol directly."""
+        assets = [
+            make_asset_row_for_mapping(
+                class_name="EODHD", symbol="AAPL.US",
+                primary_id="FIGI_AAPL", sym_norm_root="aapl"
+            ),
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            assets,  # Provider assets query
+            [],      # Existing mappings query (none for this FIGI)
+            [],      # Conflict check query (no conflicts)
+        ])
+
+        candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
+
+        assert len(candidates) == 1
+        assert candidates[0].common_symbol == "AAPL"
+
+    @pytest.mark.asyncio
+    async def test_conflict_different_figi_uses_unique_symbol(self, mapper_with_mocks, mock_asyncpg_conn):
+        """Behavior: When symbol is claimed by different FIGI, use SYMBOL:FIGI format."""
+        # New asset trying to use "BTC" as common symbol
+        assets = [
+            make_asset_row_for_mapping(
+                class_name="EODHD", symbol="BTC.NYSE",
+                primary_id="BBG000XYZ123",  # Different FIGI than existing
+                sym_norm_root="btc",
+                asset_class_group="securities"
+            ),
+        ]
+
+        # "BTC" is already claimed by a crypto asset with different FIGI
+        existing_claim = [
+            MockRecord(common_symbol="BTC", primary_id="KKG00000DV14")
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            assets,          # Provider assets query
+            [],              # Existing mappings for this FIGI (none)
+            existing_claim,  # Conflict check: BTC claimed by different FIGI
+        ])
+
+        candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
+
+        assert len(candidates) == 1
+        assert candidates[0].common_symbol == "BTC:BBG000XYZ123"
+
+    @pytest.mark.asyncio
+    async def test_conflict_same_figi_reuses_existing_symbol(self, mapper_with_mocks, mock_asyncpg_conn):
+        """Behavior: When mapping exists for same FIGI, reuse existing common_symbol."""
+        assets = [
+            make_asset_row_for_mapping(
+                class_name="EODHD", symbol="AAPL.US",
+                primary_id="FIGI_AAPL", sym_norm_root="aapl"
+            ),
+        ]
+
+        # Existing mapping for same FIGI from another provider
+        existing_mappings = [
+            MockRecord(
+                class_name="BINANCE", class_type="provider",
+                class_symbol="AAPL", common_symbol="AAPL_COMMON",
+                primary_id="FIGI_AAPL"
+            )
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            assets,            # Provider assets query
+            existing_mappings, # Existing mappings for this FIGI
+            [],                # Conflict check (empty - not needed when reusing)
+        ])
+
+        candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
+
+        assert len(candidates) == 1
+        assert candidates[0].common_symbol == "AAPL_COMMON"  # Reuses existing
+
+    @pytest.mark.asyncio
+    async def test_multiple_groups_with_mixed_conflicts(self, mapper_with_mocks, mock_asyncpg_conn):
+        """Behavior: Multiple groups processed correctly with some having conflicts."""
+        assets = [
+            # Group 1: BTC security (will conflict with existing crypto BTC)
+            make_asset_row_for_mapping(
+                id=1, class_name="EODHD", symbol="BTC.NYSE",
+                primary_id="BBG000XYZ123", sym_norm_root="btc",
+                asset_class_group="securities"
+            ),
+            # Group 2: AAPL (no conflict)
+            make_asset_row_for_mapping(
+                id=2, class_name="EODHD", symbol="AAPL.US",
+                primary_id="FIGI_AAPL", sym_norm_root="aapl",
+                asset_class_group="securities"
+            ),
+        ]
+
+        # BTC is claimed by crypto FIGI, AAPL is not claimed
+        conflict_results = [
+            MockRecord(common_symbol="BTC", primary_id="KKG00000DV14")
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            assets,           # Provider assets query
+            [],               # Existing mappings (none)
+            conflict_results, # Conflict check: only BTC is claimed
+        ])
+
+        candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
+
+        assert len(candidates) == 2
+
+        btc_candidate = next(c for c in candidates if "BTC" in c.common_symbol)
+        aapl_candidate = next(c for c in candidates if "AAPL" in c.common_symbol)
+
+        assert btc_candidate.common_symbol == "BTC:BBG000XYZ123"  # Conflict resolved
+        assert aapl_candidate.common_symbol == "AAPL"  # No conflict
+
+    @pytest.mark.asyncio
+    async def test_conflict_logged_with_info_message(self, mapper_with_mocks, mock_asyncpg_conn):
+        """Behavior: FIGI conflicts are logged with info level message."""
+        assets = [
+            make_asset_row_for_mapping(
+                class_name="EODHD", symbol="BTC.NYSE",
+                primary_id="BBG000XYZ123", sym_norm_root="btc"
+            ),
+        ]
+
+        existing_claim = [
+            MockRecord(common_symbol="BTC", primary_id="KKG00000DV14")
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            assets,
+            [],
+            existing_claim,
+        ])
+
+        with patch('quasar.services.registry.mapper.logger') as mock_logger:
+            candidates = await mapper_with_mocks.generate_mapping_candidates_for_provider("EODHD", "provider")
+
+            # Verify info log was called with conflict resolution message
+            mock_logger.info.assert_called()
+            # Check all info calls for the conflict resolution message
+            all_calls_str = str(mock_logger.info.call_args_list)
+            assert "FIGI conflict resolved" in all_calls_str
+            assert "BTC" in all_calls_str

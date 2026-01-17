@@ -95,16 +95,26 @@ class AutomatedMapper(DatabaseHandler):
             # Load existing mappings for fast lookup (both asset-specific and cross-provider)
             asset_lookup, primary_id_lookup = await self._load_all_existing_mappings(assets)
 
-            # Process each group to generate candidates
+            # First pass: check existing mappings and collect proposed symbols for conflict checking
+            proposed_symbols = set()
+            for group in primary_id_groups:
+                self._check_existing_mappings_fast(group, asset_lookup, primary_id_lookup)
+                if not group.existing_mappings:
+                    # This group will need a new symbol - collect it for conflict checking
+                    proposed = self._get_proposed_symbol(group)
+                    if proposed:
+                        proposed_symbols.add(proposed)
+
+            # Batch-query for conflicts (symbols already claimed by different FIGIs)
+            claimed_symbols = await self._check_common_symbol_conflicts(proposed_symbols)
+
+            # Second pass: determine common symbols and generate candidates
             all_candidates = []
 
             for group in primary_id_groups:
                 try:
-                    # Check existing mappings
-                    self._check_existing_mappings_fast(group, asset_lookup, primary_id_lookup)
-
-                    # Determine common symbol
-                    self._determine_common_symbol(group)
+                    # Determine common symbol (with conflict resolution)
+                    self._determine_common_symbol(group, claimed_symbols)
 
                     # Apply crypto preferences if needed
                     if group.asset_class_group == 'crypto':
@@ -194,6 +204,37 @@ class AutomatedMapper(DatabaseHandler):
 
         return asset_lookup, primary_id_lookup
 
+    async def _check_common_symbol_conflicts(self, proposed_symbols: set) -> Dict[str, str]:
+        """
+        Check which proposed common_symbols are already claimed by existing mappings.
+
+        This method queries the database to find existing mappings for the proposed
+        symbols and returns the FIGI (primary_id) that claims each symbol.
+
+        Args:
+            proposed_symbols: Set of common_symbol strings to check
+
+        Returns:
+            Dict mapping common_symbol -> primary_id for symbols that are already claimed
+        """
+        if not proposed_symbols:
+            return {}
+
+        query = """
+            SELECT DISTINCT am.common_symbol, a.primary_id
+            FROM asset_mapping am
+            JOIN assets a ON am.class_name = a.class_name
+                          AND am.class_type = a.class_type
+                          AND am.class_symbol = a.symbol
+            WHERE am.common_symbol = ANY($1)
+              AND a.primary_id IS NOT NULL
+        """
+
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query, list(proposed_symbols))
+
+        return {row['common_symbol']: row['primary_id'] for row in rows}
+
     def _group_assets_by_primary_id(self, assets: List[Dict]) -> List[PrimaryIdGroup]:
         """Group assets by primary_id and asset_class_group."""
         groups_by_key = {}
@@ -214,6 +255,30 @@ class AutomatedMapper(DatabaseHandler):
             groups_by_key[key].assets.append(asset)
 
         return list(groups_by_key.values())
+
+    def _get_proposed_symbol(self, group: PrimaryIdGroup) -> Optional[str]:
+        """
+        Get the proposed common_symbol for a group without assigning it.
+
+        Used to collect symbols for batch conflict checking before the main
+        processing loop.
+
+        Args:
+            group: The PrimaryIdGroup to get proposed symbol for
+
+        Returns:
+            The proposed common_symbol string, or None if no symbol can be determined
+        """
+        assets_with_norm_root = [a for a in group.assets if a.get('sym_norm_root')]
+        if assets_with_norm_root:
+            best_asset = min(
+                assets_with_norm_root,
+                key=lambda a: (len(a['sym_norm_root'] or ''), a['sym_norm_root'] or '')
+            )
+            return (best_asset['sym_norm_root'] or '').upper()
+        elif group.assets:
+            return group.assets[0]['symbol'].upper()
+        return None
 
     def _check_existing_mappings_fast(self, group: PrimaryIdGroup,
                                     asset_lookup: Dict[Tuple[str, str, str], str],
@@ -240,22 +305,47 @@ class AutomatedMapper(DatabaseHandler):
                 f"Multiple existing common_symbols found: {', '.join(common_symbols)}"
             )
 
-    def _determine_common_symbol(self, group: PrimaryIdGroup):
-        """Determine the common_symbol for this group."""
+    def _determine_common_symbol(self, group: PrimaryIdGroup, claimed_symbols: Dict[str, str]):
+        """
+        Determine the common_symbol for this group.
+
+        If the proposed symbol is already claimed by a different FIGI,
+        generates a unique symbol using the format SYMBOL:FIGI.
+
+        Args:
+            group: The PrimaryIdGroup to determine symbol for
+            claimed_symbols: Dict of common_symbol -> primary_id for already-claimed symbols
+        """
         if group.existing_mappings:
-            # Use existing common_symbol
+            # Use existing common_symbol (same FIGI group, already validated)
             group.determined_common_symbol = group.existing_mappings[0]['common_symbol']
-        else:
-            # Generate new common_symbol from sym_norm_root
-            assets_with_norm_root = [a for a in group.assets if a.get('sym_norm_root')]
-            if assets_with_norm_root:
-                # Sort by length then alphabetically
-                best_asset = min(assets_with_norm_root,
-                               key=lambda a: (len(a['sym_norm_root'] or ''), a['sym_norm_root'] or ''))
-                group.determined_common_symbol = (best_asset['sym_norm_root'] or '').upper()
-            else:
-                # Fallback to first symbol
-                group.determined_common_symbol = group.assets[0]['symbol'].upper()
+            return
+
+        # Generate proposed common_symbol
+        proposed_symbol = self._get_proposed_symbol(group)
+        if not proposed_symbol:
+            group.conflicts.append("Could not determine a proposed symbol")
+            return
+
+        # Check if proposed symbol is claimed by a different FIGI
+        if proposed_symbol in claimed_symbols:
+            existing_figi = claimed_symbols[proposed_symbol]
+            if existing_figi != group.primary_id:
+                # Conflict: different FIGI owns this symbol
+                # Use SYMBOL:FIGI format to guarantee uniqueness
+                unique_symbol = f"{proposed_symbol}:{group.primary_id}"
+                group.determined_common_symbol = unique_symbol
+                group.conflicts.append(
+                    f"Symbol '{proposed_symbol}' already claimed by FIGI '{existing_figi}'. "
+                    f"Using unique symbol '{unique_symbol}'"
+                )
+                logger.info(
+                    f"FIGI conflict resolved: '{proposed_symbol}' claimed by '{existing_figi}', "
+                    f"using '{unique_symbol}' for FIGI '{group.primary_id}'"
+                )
+                return
+
+        group.determined_common_symbol = proposed_symbol
 
     async def _apply_crypto_preferences_for_provider(self, group: PrimaryIdGroup, provider_name: str, provider_type: str):
         """Apply crypto preferences for a specific provider in this group."""
