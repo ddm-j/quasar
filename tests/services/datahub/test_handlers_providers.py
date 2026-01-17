@@ -653,3 +653,105 @@ class Provider2(HistoricalDataProvider):
         assert result is not None
         assert result.name == valid_provider_file['class_name']
         assert issubclass(result, LiveDataProvider)
+
+
+class TestGetConstituents:
+    """Tests for handle_get_constituents endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_handle_get_constituents_success(self, datahub_with_mocks):
+        """Test that handle_get_constituents returns constituents for loaded IndexProvider."""
+        hub = datahub_with_mocks
+
+        # Create a mock IndexProvider with get_constituents
+        mock_provider = Mock()
+        mock_provider.get_constituents = AsyncMock(return_value=[
+            {"symbol": "AAPL", "weight": 0.15, "name": "Apple Inc."},
+            {"symbol": "MSFT", "weight": 0.12, "name": "Microsoft Corp."}
+        ])
+        # Add fetch_constituents to pass the hasattr check
+        mock_provider.fetch_constituents = AsyncMock()
+        hub._providers["TestIndex"] = mock_provider
+
+        response = await hub.handle_get_constituents("TestIndex")
+
+        assert len(response.items) == 2
+        assert response.items[0]["symbol"] == "AAPL"
+        assert response.items[1]["symbol"] == "MSFT"
+
+    @pytest.mark.asyncio
+    async def test_handle_get_constituents_provider_auto_loads(self, datahub_with_mocks):
+        """Test that handle_get_constituents auto-loads provider if not loaded."""
+        hub = datahub_with_mocks
+
+        mock_provider = Mock()
+        mock_provider.get_constituents = AsyncMock(return_value=[{"symbol": "BTC"}])
+        mock_provider.fetch_constituents = AsyncMock()
+
+        async def mock_load_provider(name):
+            hub._providers[name] = mock_provider
+            return True
+
+        with patch.object(hub, 'load_provider_cls', side_effect=mock_load_provider):
+            response = await hub.handle_get_constituents("CryptoIndex")
+
+            assert len(response.items) == 1
+
+    @pytest.mark.asyncio
+    async def test_handle_get_constituents_provider_not_found(self, datahub_with_mocks):
+        """Test that handle_get_constituents returns 404 for non-existent provider."""
+        hub = datahub_with_mocks
+
+        with patch.object(hub, 'load_provider_cls', return_value=False):
+            with pytest.raises(HTTPException) as exc_info:
+                await hub.handle_get_constituents("NonExistentProvider")
+
+            assert exc_info.value.status_code == 404
+            assert "not found" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_handle_get_constituents_not_index_provider(self, datahub_with_mocks):
+        """Test that handle_get_constituents returns 501 if provider is not an IndexProvider."""
+        hub = datahub_with_mocks
+
+        # Create a provider without fetch_constituents method
+        mock_provider = Mock(spec=['get_available_symbols'])
+        hub._providers["RegularProvider"] = mock_provider
+
+        with pytest.raises(HTTPException) as exc_info:
+            await hub.handle_get_constituents("RegularProvider")
+
+        assert exc_info.value.status_code == 501
+        assert "not an IndexProvider" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_handle_get_constituents_not_implemented(self, datahub_with_mocks):
+        """Test that handle_get_constituents returns 501 when provider raises NotImplementedError."""
+        hub = datahub_with_mocks
+
+        mock_provider = Mock()
+        mock_provider.fetch_constituents = AsyncMock()
+        mock_provider.get_constituents = AsyncMock(side_effect=NotImplementedError("Not implemented"))
+        hub._providers["TestIndex"] = mock_provider
+
+        with pytest.raises(HTTPException) as exc_info:
+            await hub.handle_get_constituents("TestIndex")
+
+        assert exc_info.value.status_code == 501
+        assert "not implemented" in exc_info.value.detail.lower()
+
+    @pytest.mark.asyncio
+    async def test_handle_get_constituents_internal_error(self, datahub_with_mocks):
+        """Test that handle_get_constituents returns 500 on internal error."""
+        hub = datahub_with_mocks
+
+        mock_provider = Mock()
+        mock_provider.fetch_constituents = AsyncMock()
+        mock_provider.get_constituents = AsyncMock(side_effect=Exception("Database connection failed"))
+        hub._providers["TestIndex"] = mock_provider
+
+        with pytest.raises(HTTPException) as exc_info:
+            await hub.handle_get_constituents("TestIndex")
+
+        assert exc_info.value.status_code == 500
+        assert "Error fetching constituents" in exc_info.value.detail
