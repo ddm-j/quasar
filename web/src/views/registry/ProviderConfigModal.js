@@ -11,6 +11,9 @@ import {
   CFormLabel,
   CFormRange,
   CFormCheck,
+  CFormInput,
+  CInputGroup,
+  CInputGroupText,
   CRow,
   CCol,
   CSpinner,
@@ -557,7 +560,58 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                             disabled={saving}
                           />
                         ))}
+                        <CFormCheck
+                          type="radio"
+                          name="lookbackPreset"
+                          id="lookback-custom"
+                          label="Custom"
+                          checked={!LOOKBACK_PRESETS.some(p => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS))}
+                          onChange={() => {
+                            // When switching to custom, keep current value if valid, otherwise set to a reasonable default
+                            const currentValue = config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS
+                            if (!LOOKBACK_PRESETS.some(p => p.value === currentValue)) {
+                              // Already custom, keep value
+                              return
+                            }
+                            // Switch to a custom value (default to 180 days as a reasonable non-preset value)
+                            handleDataChange('lookback_days', 180)
+                          }}
+                          disabled={saving}
+                        />
                       </div>
+                      {!LOOKBACK_PRESETS.some(p => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS)) && (
+                        <div className="mb-3">
+                          <CFormLabel htmlFor="customLookbackDays" className="small">
+                            Custom Lookback Days
+                          </CFormLabel>
+                          <CInputGroup style={{ maxWidth: '200px' }}>
+                            <CFormInput
+                              id="customLookbackDays"
+                              type="number"
+                              min={1}
+                              max={8000}
+                              value={config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value, 10)
+                                if (!isNaN(value)) {
+                                  // Clamp value to valid range
+                                  const clampedValue = Math.max(1, Math.min(8000, value))
+                                  handleDataChange('lookback_days', clampedValue)
+                                }
+                              }}
+                              disabled={saving}
+                              invalid={
+                                config.data?.lookback_days !== undefined &&
+                                (config.data.lookback_days < 1 || config.data.lookback_days > 8000)
+                              }
+                            />
+                            <CInputGroupText>days</CInputGroupText>
+                          </CInputGroup>
+                          <small className="form-text text-body-secondary">
+                            Enter a value between 1 and 8,000 days.
+                          </small>
+                        </div>
+                      )}
                       <div className="p-3 border rounded bg-light">
                         <p className="mb-0 text-body-secondary small">
                           Selected lookback:{' '}

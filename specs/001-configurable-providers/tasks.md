@@ -155,12 +155,12 @@
 ### Backend Implementation for US3
 
 - [x] T049 [US3] Read lookback_days from preferences in `_build_reqs_historical()` instead of DEFAULT_LOOKBACK in `quasar/services/datahub/handlers/collection.py`
-- [ ] T050 [US3] Add logging when lookback preference is applied to new subscription in `quasar/services/datahub/handlers/collection.py`
+- [x] T050 [US3] Add logging when lookback preference is applied to new subscription in `quasar/services/datahub/handlers/collection.py`
 
 ### Frontend Implementation for US3
 
-- [ ] T051 [US3] Add Data tab to ProviderConfigModal (visible for historical providers only) in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T052 [US3] Implement preset radio buttons (1 month=30, 3 months=90, 1 year=365, 3 years=1095, 5 years=1825, max=8000) in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T051 [US3] Add Data tab to ProviderConfigModal (visible for historical providers only) in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T052 [US3] Implement preset radio buttons (1 month=30, 3 months=90, 1 year=365, 3 years=1095, 5 years=1825, max=8000) in `web/src/views/registry/ProviderConfigModal.js`
 - [ ] T053 [US3] Implement custom lookback_days input field with validation (1-8000) in `web/src/views/registry/ProviderConfigModal.js`
 
 ### Tests for US3
