@@ -110,8 +110,8 @@
 
 ### Tests for US1
 
-- [ ] T037 [P] [US1] Write integration test: historical provider job fires at configured delay offset in `tests/test_config_integration.py`
-- [ ] T038 [P] [US1] Write unit test: OffsetCronTrigger receives correct positive offset in `tests/test_configurable_providers.py`
+- [x] T037 [P] [US1] Write integration test: historical provider job fires at configured delay offset in `tests/test_config_integration.py`
+- [x] T038 [P] [US1] Write unit test: OffsetCronTrigger receives correct positive offset in `tests/test_configurable_providers.py`
 - [ ] T039 [US1] Visual test with Playwright: Verify Scheduling tab displays delay slider for historical provider (use playwright-visual-tester agent)
 
 **Checkpoint**: User Story 1 complete - Restart docker (`docker compose down && docker compose up -d`), run backend tests (`conda activate quasar && pytest tests/test_config*.py -v`), verify UI scheduling tab via Playwright testing
