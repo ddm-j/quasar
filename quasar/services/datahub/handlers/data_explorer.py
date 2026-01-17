@@ -5,6 +5,7 @@ from typing import Optional, Annotated
 
 from fastapi import Query, HTTPException
 
+from quasar.lib.enums import Interval
 from .base import HandlerMixin
 from ..schemas import (
     SymbolSearchResponse,
@@ -154,7 +155,7 @@ class DataExplorerHandlersMixin(HandlerMixin):
                     if hist_records:
                         has_historical = True
                         for hrec in hist_records:
-                            interval = hrec['interval']
+                            interval = Interval(hrec['interval'])
                             if interval not in available_intervals:
                                 available_intervals.append(interval)
                             max_ts = hrec['max_ts']
@@ -172,7 +173,7 @@ class DataExplorerHandlersMixin(HandlerMixin):
                     if live_records:
                         has_live = True
                         for lrec in live_records:
-                            interval = lrec['interval']
+                            interval = Interval(lrec['interval'])
                             if interval not in available_intervals:
                                 available_intervals.append(interval)
                             max_ts = lrec['max_ts']
