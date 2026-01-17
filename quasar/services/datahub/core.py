@@ -14,7 +14,8 @@ from quasar.lib.common.context import SystemContext
 from quasar.lib.providers import HistoricalDataProvider
 from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
-    ProviderValidateResponse, AvailableSymbolsResponse, ConstituentsResponse
+    ProviderValidateResponse, AvailableSymbolsResponse, ConstituentsResponse,
+    SymbolSearchResponse, OHLCDataResponse, SymbolMetadataResponse
 )
 from quasar.services.datahub.utils.constants import ALLOWED_DYNAMIC_PATH
 from quasar.services.datahub.handlers.collection import CollectionHandlersMixin, safe_job
@@ -103,17 +104,20 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
         self._api_app.router.add_api_route(
             '/api/datahub/symbols/search',
             self.handle_search_symbols,
-            methods=['GET']
+            methods=['GET'],
+            response_model=SymbolSearchResponse
         )
         self._api_app.router.add_api_route(
             '/api/datahub/data',
             self.handle_get_ohlc_data,
-            methods=['GET']
+            methods=['GET'],
+            response_model=OHLCDataResponse
         )
         self._api_app.router.add_api_route(
             '/api/datahub/symbols/{provider}/{symbol}',
             self.handle_get_symbol_metadata,
-            methods=['GET']
+            methods=['GET'],
+            response_model=SymbolMetadataResponse
         )
 
     # OBJECT LIFECYCLE
