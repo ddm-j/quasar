@@ -85,7 +85,17 @@ class CollectionHandlersMixin(HandlerMixin):
             prov_type = self._providers[r["provider"]].provider_type
             if key not in self.job_keys:
                 # Subscription Schedule Detected
-                offset_seconds = 0 if prov_type == ProviderType.HISTORICAL else -1*DEFAULT_LIVE_OFFSET
+                # Get scheduling preferences for the provider
+                prefs = self._provider_preferences.get(r["provider"]) or {}
+                scheduling_prefs = prefs.get("scheduling") or {}
+
+                if prov_type == ProviderType.HISTORICAL:
+                    # Historical providers: positive offset delays job execution
+                    delay_hours = scheduling_prefs.get("delay_hours", 0)
+                    offset_seconds = delay_hours * 3600
+                else:
+                    # Live providers: negative offset starts before close
+                    offset_seconds = -1 * DEFAULT_LIVE_OFFSET
                 logger.debug(f"Scheduling new job: {key}, with offset: {offset_seconds}, from specified cron: {r['cron']}")
                 self._sched.add_job(
                     func=self.get_data,
