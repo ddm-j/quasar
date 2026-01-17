@@ -81,9 +81,9 @@
 
 ### Foundation Tests
 
-- [ ] T027 [P] Write unit tests for CONFIGURABLE schema inheritance in `tests/test_configurable_providers.py`
-- [ ] T028 [P] Write unit tests for schema lookup utility in `tests/test_configurable_providers.py`
-- [ ] T029 [P] Write contract test for GET /api/registry/config/schema endpoint in `tests/test_config_integration.py`
+- [x] T027 [P] Write unit tests for CONFIGURABLE schema inheritance in `tests/test_configurable_providers.py`
+- [x] T028 [P] Write unit tests for schema lookup utility in `tests/test_configurable_providers.py`
+- [x] T029 [P] Write contract test for GET /api/registry/config/schema endpoint in `tests/test_config_integration.py`
 
 **Checkpoint**: Foundation ready - Restart docker containers (`docker compose down && docker compose up -d`) and verify schema endpoint returns correct data. Run `conda activate quasar && pytest tests/test_configurable_providers.py tests/test_config_integration.py -v`
 
