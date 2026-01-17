@@ -208,8 +208,9 @@ class Registry(
         )
 
         # Common Symbols Routes (public API)
+        # Note: Placed under asset-mappings/ since common symbols are derived from mappings
         self._api_app.router.add_api_route(
-            '/api/registry/common-symbols',
+            '/api/registry/asset-mappings/common-symbols',
             self.handle_get_common_symbols,
             methods=['GET'],
             response_model=CommonSymbolResponse
