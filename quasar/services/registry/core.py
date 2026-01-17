@@ -46,6 +46,7 @@ from quasar.services.registry.utils.pagination import (
 # Schema imports for route response models
 from quasar.services.registry.schemas import (
     ClassSummaryItem,
+    ConfigSchemaResponse,
     FileUploadResponse, UpdateAssetsResponse, DeleteClassResponse,
     AssetResponse, AssetMappingCreateResponse, AssetMappingPaginatedResponse,
     AssetMappingResponse, SuggestionsResponse,
@@ -235,6 +236,12 @@ class Registry(
             self.handle_update_provider_config,
             methods=['PUT'],
             response_model=ProviderPreferencesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config/schema',
+            self.handle_get_config_schema,
+            methods=['GET'],
+            response_model=ConfigSchemaResponse
         )
         self._api_app.router.add_api_route(
             '/api/registry/config/available-quote-currencies',
