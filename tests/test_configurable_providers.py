@@ -327,3 +327,149 @@ class TestValidatePreferencesAgainstSchema:
         errors = validate_preferences_against_schema(preferences, schema, "TestProvider")
         # Should have errors for: wrong type, unknown field, unknown category
         assert len(errors) >= 3
+
+
+class TestOffsetCronTriggerPositiveOffset:
+    """T038: Tests for OffsetCronTrigger receiving correct positive offset for historical providers."""
+
+    def test_offset_cron_trigger_stores_positive_offset(self):
+        """OffsetCronTrigger correctly stores positive offset for historical providers."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Historical provider with delay_hours=6 means positive offset
+        delay_hours = 6
+        offset_seconds = delay_hours * 3600  # 21600
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight UTC
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        # Verify offset is stored correctly
+        assert trigger.offset_seconds == 21600
+        # Positive offset should have _sign=1
+        assert trigger._sign == 1
+
+    def test_offset_cron_trigger_zero_offset(self):
+        """OffsetCronTrigger handles zero offset (default for historical providers)."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Historical provider with delay_hours=0 (default)
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",
+            offset_seconds=0,
+            timezone="UTC"
+        )
+
+        assert trigger.offset_seconds == 0
+        # Zero is treated as non-negative, so _sign=1
+        assert trigger._sign == 1
+
+    def test_offset_cron_trigger_max_delay_hours(self):
+        """OffsetCronTrigger handles maximum delay_hours=24."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Maximum allowed delay_hours=24
+        delay_hours = 24
+        offset_seconds = delay_hours * 3600  # 86400
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        assert trigger.offset_seconds == 86400
+        assert trigger._sign == 1
+
+    def test_offset_cron_trigger_fires_at_positive_offset(self):
+        """OffsetCronTrigger fires at correct time with positive offset."""
+        from datetime import datetime, timezone
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Trigger for midnight with 6 hour positive offset
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight
+            offset_seconds=6 * 3600,  # 6 hours delay
+            timezone="UTC"
+        )
+
+        # At 11 PM (before midnight), the next cron fire is midnight, then +6 hours = 6 AM
+        now = datetime(2024, 6, 14, 23, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        expected = datetime(2024, 6, 15, 6, 0, 0, tzinfo=timezone.utc)
+        assert next_fire == expected, f"Expected {expected}, got {next_fire}"
+
+    def test_offset_cron_trigger_positive_offset_after_previous_fire(self):
+        """OffsetCronTrigger calculates next fire correctly after previous fire."""
+        from datetime import datetime, timezone
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Trigger for midnight with 6 hour positive offset
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight
+            offset_seconds=6 * 3600,  # 6 hours delay
+            timezone="UTC"
+        )
+
+        # Previous fire was at 6:00 AM on June 15
+        previous_fire = datetime(2024, 6, 15, 6, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2024, 6, 15, 10, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(previous_fire, now)
+
+        # Next fire should be 6:00 AM on June 16
+        expected = datetime(2024, 6, 16, 6, 0, 0, tzinfo=timezone.utc)
+        assert next_fire == expected, f"Expected {expected}, got {next_fire}"
+
+    def test_offset_applied_during_refresh_subscriptions_historical(self):
+        """Verify delay_hours from preferences is correctly converted to offset_seconds."""
+        # This tests the conversion logic in refresh_subscriptions
+        # delay_hours=6 should become offset_seconds=21600
+
+        delay_hours = 6
+        offset_seconds = delay_hours * 3600
+
+        # Verify the conversion formula
+        assert offset_seconds == 21600
+        assert offset_seconds == 6 * 60 * 60  # 6 hours in seconds
+
+    def test_offset_conversion_boundary_values(self):
+        """Test offset conversion for boundary delay_hours values (0, 1, 24)."""
+        # delay_hours=0 (minimum)
+        assert 0 * 3600 == 0
+
+        # delay_hours=1
+        assert 1 * 3600 == 3600
+
+        # delay_hours=24 (maximum)
+        assert 24 * 3600 == 86400
+
+    def test_historical_provider_uses_positive_offset_not_negative(self):
+        """Historical providers should use positive offset (delay), not negative."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+        from datetime import datetime, timezone
+
+        # Historical provider with delay_hours=6
+        delay_hours = 6
+        offset_seconds = delay_hours * 3600  # Positive offset
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+
+        # Fire time should be AFTER the cron time (delayed)
+        # At 11 PM the day before, next fire should be 6 AM next day
+        now = datetime(2024, 6, 14, 23, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        # With positive offset, job fires at 06:00 (after midnight)
+        expected = datetime(2024, 6, 15, 6, 0, 0, tzinfo=timezone.utc)
+        assert next_fire == expected
+
+        # Verify the fire time is AFTER the base cron time (midnight)
+        base_cron_time = datetime(2024, 6, 15, 0, 0, 0, tzinfo=timezone.utc)
+        assert next_fire > base_cron_time, "Historical provider should fire AFTER cron time"

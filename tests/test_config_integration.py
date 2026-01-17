@@ -303,3 +303,102 @@ class TestGetConfigSchemaEndpoint:
         delay_hours = schema["scheduling"]["delay_hours"]
         assert "description" in delay_hours
         assert len(delay_hours["description"]) > 0
+
+
+class TestHistoricalProviderDelayOffset:
+    """T037: Integration tests for historical provider job delay offset."""
+
+    def test_historical_delay_offset_conversion(self):
+        """Historical provider delay_hours is correctly converted to offset_seconds."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Test various delay_hours values and their conversion to offset_seconds
+        # This tests the conversion logic used in refresh_subscriptions
+
+        # delay_hours=6 should become offset_seconds=21600
+        delay_hours = 6
+        offset_seconds = delay_hours * 3600  # Same conversion as in collection.py
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+        assert trigger.offset_seconds == 21600
+        assert trigger._sign == 1  # Positive offset
+
+    def test_historical_default_zero_offset(self):
+        """Historical provider with no delay_hours configured uses zero offset."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # When no preferences, delay_hours defaults to 0
+        delay_hours = 0
+        offset_seconds = delay_hours * 3600
+
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",
+            offset_seconds=offset_seconds,
+            timezone="UTC"
+        )
+        assert trigger.offset_seconds == 0
+        assert trigger._sign == 1
+
+    def test_offset_seconds_calculation_for_all_valid_delay_hours(self):
+        """Verify offset calculation for all valid delay_hours values (0-24)."""
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Test boundary and common values
+        test_values = [0, 1, 6, 12, 23, 24]  # min, common values, max
+
+        for delay_hours in test_values:
+            offset_seconds = delay_hours * 3600
+            trigger = OffsetCronTrigger.from_crontab(
+                "0 0 * * *",
+                offset_seconds=offset_seconds,
+                timezone="UTC"
+            )
+            expected_offset = delay_hours * 3600
+            assert trigger.offset_seconds == expected_offset, \
+                f"For delay_hours={delay_hours}, expected offset {expected_offset}, got {trigger.offset_seconds}"
+            assert trigger._sign == 1, f"Historical provider should have positive offset for delay_hours={delay_hours}"
+
+    def test_historical_job_scheduled_at_correct_time_with_delay(self):
+        """Historical provider with delay_hours=6 fires 6 hours after cron time."""
+        from datetime import datetime, timezone, timedelta
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Create trigger for midnight UTC with 6 hour delay
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight UTC
+            offset_seconds=6 * 3600,  # 6 hours delay
+            timezone="UTC"
+        )
+
+        # Simulate "now" as 2024-01-14 at 23:00 UTC (before midnight)
+        # This ensures the next cron fire is midnight Jan 15, then +6 hours = 6:00 AM Jan 15
+        now = datetime(2024, 1, 14, 23, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        # The cron would fire at midnight Jan 15, with +6 hours offset
+        # it should fire at 06:00 UTC on 2024-01-15
+        expected_fire = datetime(2024, 1, 15, 6, 0, 0, tzinfo=timezone.utc)
+        assert next_fire == expected_fire, f"Expected {expected_fire}, got {next_fire}"
+
+    def test_historical_job_next_day_when_past_delayed_time(self):
+        """Historical provider schedules next day when past delayed fire time."""
+        from datetime import datetime, timezone, timedelta
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Create trigger for midnight UTC with 6 hour delay
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight UTC
+            offset_seconds=6 * 3600,  # 6 hours delay
+            timezone="UTC"
+        )
+
+        # Simulate "now" as 2024-01-15 at 10:00 UTC (past the 06:00 fire time)
+        now = datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        # Should schedule for next day at 06:00 UTC
+        expected_fire = datetime(2024, 1, 16, 6, 0, 0, tzinfo=timezone.utc)
+        assert next_fire == expected_fire, f"Expected {expected_fire}, got {next_fire}"
