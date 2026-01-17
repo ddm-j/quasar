@@ -94,6 +94,29 @@ def log_validation_failure(
     )
 
 
+def log_preference_change(
+    class_name: str,
+    class_type: str,
+    change_categories: list[str]
+) -> None:
+    """Log a preference change per FR-025.
+
+    Logs preference changes with provider name, timestamp, and change type.
+    Uses structured logging format for consistency and searchability.
+
+    Args:
+        class_name: The provider/broker name.
+        class_type: The class type (provider/broker).
+        change_categories: List of changed preference categories (e.g., ["scheduling", "data", "crypto"]).
+    """
+    timestamp = datetime.now(timezone.utc).isoformat()
+    change_type = ", ".join(change_categories)
+    logger.info(
+        f"Preference change: provider={class_name}, "
+        f"type={class_type}, timestamp={timestamp}, change_type={change_type}"
+    )
+
+
 def validate_preferences_against_schema(
     preferences: dict[str, Any],
     schema: dict[str, dict[str, Any]],
@@ -428,6 +451,10 @@ class ConfigHandlersMixin(HandlerMixin):
                 preferences = ProviderPreferences(**updated_preferences)
             else:
                 preferences = ProviderPreferences()
+
+            # Log preference change per FR-025
+            change_categories = list(update_dict.keys())
+            log_preference_change(class_name, class_type, change_categories)
 
             logger.info(f"Registry.handle_update_provider_config: Updated config for {class_name}/{class_type}")
             return ProviderPreferencesResponse(
