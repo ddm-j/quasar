@@ -1423,3 +1423,27 @@ class TestRenameCommonSymbol:
 
         # Verify trimmed value is used
         assert response.new_symbol == "BITCOIN"
+
+    @pytest.mark.asyncio
+    async def test_rename_common_symbol_transaction_rollback_on_404(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Verify transaction context manager exits properly on 404 error."""
+        reg = registry_with_mocks
+
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # old_symbol does not exist
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=None)
+
+        request = CommonSymbolRenameRequest(new_symbol="BITCOIN")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_rename_common_symbol("NONEXISTENT", request)
+
+        assert exc_info.value.status_code == 404
+        # Verify transaction context manager was entered and exited
+        txn.__aenter__.assert_awaited_once()
+        txn.__aexit__.assert_awaited_once()
