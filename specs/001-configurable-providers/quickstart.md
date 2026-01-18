@@ -274,13 +274,32 @@ Response:
 {
   "class_name": "EODHD",
   "class_type": "provider",
-  "class_subtype": "Historical",
+  "class_subtype": "historical",
   "schema": {
+    "crypto": {
+      "preferred_quote_currency": {
+        "type": "str",
+        "default": null,
+        "description": "Preferred quote currency for crypto pairs"
+      }
+    },
     "scheduling": {
-      "delay_hours": {"type": "integer", "default": 0, "min": 0, "max": 24}
+      "delay_hours": {
+        "type": "int",
+        "default": 0,
+        "min": 0,
+        "max": 24,
+        "description": "Hours after default cron time to run data pulls"
+      }
     },
     "data": {
-      "lookback_days": {"type": "integer", "default": 8000, "min": 1, "max": 8000}
+      "lookback_days": {
+        "type": "int",
+        "default": 8000,
+        "min": 1,
+        "max": 8000,
+        "description": "Days of historical data for new subscriptions"
+      }
     }
   }
 }
@@ -299,12 +318,30 @@ curl -X PUT "http://localhost:8080/api/registry/config?class_name=EODHD&class_ty
 ```bash
 # Get secret key names
 curl "http://localhost:8080/api/registry/config/secret-keys?class_name=EODHD&class_type=provider"
-# Response: {"keys": ["api_token"]}
+```
 
+Response:
+```json
+{
+  "class_name": "EODHD",
+  "class_type": "provider",
+  "keys": ["api_token"]
+}
+```
+
+```bash
 # Update credentials
 curl -X PATCH "http://localhost:8080/api/registry/config/secrets?class_name=EODHD&class_type=provider" \
   -H "Content-Type: application/json" \
   -d '{"secrets": {"api_token": "new_token_value"}}'
+```
+
+Response:
+```json
+{
+  "status": "updated",
+  "keys": ["api_token"]
+}
 ```
 
 ---

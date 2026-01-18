@@ -286,9 +286,39 @@ class CryptoPreferences(BaseModel):
     )
 
 
+class SchedulingPreferences(BaseModel):
+    """Unified scheduling preferences model for all provider types.
+
+    For historical providers: use delay_hours
+    For live providers: use pre_close_seconds and post_close_seconds
+    """
+    delay_hours: Optional[int] = Field(
+        default=None, ge=0, le=24,
+        description="Hours after default cron time to run data pulls (historical only)"
+    )
+    pre_close_seconds: Optional[int] = Field(
+        default=None, ge=0, le=300,
+        description="Seconds before bar close to start listening (live only)"
+    )
+    post_close_seconds: Optional[int] = Field(
+        default=None, ge=0, le=60,
+        description="Seconds after bar close to continue listening (live only)"
+    )
+
+
+class DataPreferencesField(BaseModel):
+    """Data preferences for historical providers."""
+    lookback_days: Optional[int] = Field(
+        default=None, ge=1, le=8000,
+        description="Days of historical data for new subscriptions"
+    )
+
+
 class ProviderPreferences(BaseModel):
     """Provider configuration preferences."""
     crypto: Optional[CryptoPreferences] = Field(default=None)
+    scheduling: Optional[SchedulingPreferences] = Field(default=None)
+    data: Optional[DataPreferencesField] = Field(default=None)
 
 
 class ProviderPreferencesResponse(BaseModel):
@@ -301,6 +331,8 @@ class ProviderPreferencesResponse(BaseModel):
 class ProviderPreferencesUpdate(BaseModel):
     """Request model for updating provider preferences (partial update)."""
     crypto: Optional[CryptoPreferences] = Field(default=None)
+    scheduling: Optional[SchedulingPreferences] = Field(default=None)
+    data: Optional[DataPreferencesField] = Field(default=None)
 
 
 # Scheduling Preferences Models (Configurable Providers Feature)

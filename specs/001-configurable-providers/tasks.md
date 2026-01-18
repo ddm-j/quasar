@@ -238,8 +238,8 @@
 - [x] T080 [P] Verify backward compatibility: Providers with no preferences behave like current defaults
 - [ ] T081 Final visual QA with Playwright: Full workflow - configure scheduling, data, credentials for a provider (use playwright-visual-tester agent)
 - [x] T082 Verify all success criteria from spec.md are met (SC-001 through SC-008)
-- [ ] T083 Code cleanup: Remove any debug logging, ensure consistent error messages
-- [ ] T084 Run quickstart.md validation: Execute API usage examples and verify responses match documentation
+- [x] T083 Code cleanup: Remove any debug logging, ensure consistent error messages
+- [x] T084 Run quickstart.md validation: Execute API usage examples and verify responses match documentation
 
 ---
 
