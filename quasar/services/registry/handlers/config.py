@@ -50,17 +50,33 @@ def get_schema_for_subtype(class_subtype: str) -> dict[str, dict[str, Any]] | No
     return SCHEMA_MAP.get(class_subtype)
 
 
+# Mapping from Python types to JSON Schema type names
+PYTHON_TYPE_TO_JSON: dict[type, str] = {
+    int: "integer",
+    str: "string",
+    float: "number",
+    bool: "boolean",
+}
+
+
 def serialize_schema(schema: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """Convert schema with Python type objects to JSON-serializable format.
 
-    Converts Python type objects (int, str, etc.) to string representations
-    so the schema can be serialized to JSON.
+    Converts Python type objects to JSON Schema-friendly string representations
+    so the schema can be serialized to JSON:
+    - int → "integer"
+    - str → "string"
+    - float → "number"
+    - bool → "boolean"
+
+    The output includes complete metadata for each field: type, default,
+    min, max (where applicable), and description.
 
     Args:
         schema: The CONFIGURABLE schema dict with Python type objects.
 
     Returns:
-        A JSON-serializable copy of the schema with types as strings.
+        A JSON-serializable copy of the schema with types as JSON Schema strings.
     """
     result: dict[str, dict[str, Any]] = {}
     for category, fields in schema.items():
@@ -69,8 +85,10 @@ def serialize_schema(schema: dict[str, dict[str, Any]]) -> dict[str, dict[str, A
             result[category][field_name] = {}
             for key, value in field_def.items():
                 if key == "type" and isinstance(value, type):
-                    # Convert Python type to string representation
-                    result[category][field_name][key] = value.__name__
+                    # Convert Python type to JSON Schema type name
+                    result[category][field_name][key] = PYTHON_TYPE_TO_JSON.get(
+                        value, value.__name__
+                    )
                 else:
                     result[category][field_name][key] = value
     return result

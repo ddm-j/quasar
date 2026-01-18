@@ -199,9 +199,9 @@
 
 ### Tests for US4
 
-- [ ] T069 [P] [US4] Write contract test for GET /api/registry/config/secret-keys endpoint in `tests/test_config_integration.py`
-- [ ] T070 [P] [US4] Write contract test for PATCH /api/registry/config/secrets endpoint in `tests/test_config_integration.py`
-- [ ] T071 [P] [US4] Write integration test: credential update triggers provider unload in `tests/test_config_integration.py`
+- [x] T069 [P] [US4] Write contract test for GET /api/registry/config/secret-keys endpoint in `tests/test_config_integration.py`
+- [x] T070 [P] [US4] Write contract test for PATCH /api/registry/config/secrets endpoint in `tests/test_config_integration.py`
+- [x] T071 [P] [US4] Write integration test: credential update triggers provider unload in `tests/test_config_integration.py`
 - [ ] T072 [US4] Visual test with Playwright: Verify API Secrets tab renders password fields from key names (use playwright-visual-tester agent)
 
 **Checkpoint**: User Story 4 complete - Restart docker, run tests, verify UI via Playwright
@@ -216,8 +216,8 @@
 
 ### Backend Implementation for US5
 
-- [ ] T073 [US5] Enhance schema endpoint to return complete metadata (type as string, min, max, description) in `quasar/services/registry/handlers/config.py`
-- [ ] T074 [US5] Add type conversion from Python types to JSON-friendly strings (int→"integer", str→"string") in `quasar/services/registry/handlers/config.py`
+- [x] T073 [US5] Enhance schema endpoint to return complete metadata (type as string, min, max, description) in `quasar/services/registry/handlers/config.py`
+- [x] T074 [US5] Add type conversion from Python types to JSON-friendly strings (int→"integer", str→"string") in `quasar/services/registry/handlers/config.py`
 
 ### Tests for US5
 

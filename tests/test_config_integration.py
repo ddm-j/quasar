@@ -241,9 +241,9 @@ class TestGetConfigSchemaEndpoint:
         assert response.status_code == 200
         schema = response.json()["schema"]
         delay_hours = schema["scheduling"]["delay_hours"]
-        # Type is serialized as string (e.g., "int", "str")
+        # Type is serialized as JSON Schema type name (e.g., "integer", "string")
         assert "type" in delay_hours
-        assert delay_hours["type"] == "int"
+        assert delay_hours["type"] == "integer"
 
     def test_schema_field_has_bounds_info(
         self,

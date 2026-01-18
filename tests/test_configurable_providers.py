@@ -182,16 +182,16 @@ class TestSerializeSchema:
     """Tests for serialize_schema function."""
 
     def test_serialize_schema_converts_int_type(self):
-        """serialize_schema converts int type to string."""
+        """serialize_schema converts int type to JSON Schema 'integer'."""
         schema = {"scheduling": {"delay_hours": {"type": int, "default": 0}}}
         result = serialize_schema(schema)
-        assert result["scheduling"]["delay_hours"]["type"] == "int"
+        assert result["scheduling"]["delay_hours"]["type"] == "integer"
 
     def test_serialize_schema_converts_str_type(self):
-        """serialize_schema converts str type to string."""
+        """serialize_schema converts str type to JSON Schema 'string'."""
         schema = {"crypto": {"quote": {"type": str, "default": None}}}
         result = serialize_schema(schema)
-        assert result["crypto"]["quote"]["type"] == "str"
+        assert result["crypto"]["quote"]["type"] == "string"
 
     def test_serialize_schema_preserves_other_fields(self):
         """serialize_schema preserves non-type fields."""
@@ -215,15 +215,15 @@ class TestSerializeSchema:
     def test_serialize_schema_handles_historical_provider(self):
         """serialize_schema correctly serializes HistoricalDataProvider schema."""
         result = serialize_schema(HistoricalDataProvider.CONFIGURABLE)
-        assert result["scheduling"]["delay_hours"]["type"] == "int"
-        assert result["data"]["lookback_days"]["type"] == "int"
-        assert result["crypto"]["preferred_quote_currency"]["type"] == "str"
+        assert result["scheduling"]["delay_hours"]["type"] == "integer"
+        assert result["data"]["lookback_days"]["type"] == "integer"
+        assert result["crypto"]["preferred_quote_currency"]["type"] == "string"
 
     def test_serialize_schema_handles_live_provider(self):
         """serialize_schema correctly serializes LiveDataProvider schema."""
         result = serialize_schema(LiveDataProvider.CONFIGURABLE)
-        assert result["scheduling"]["pre_close_seconds"]["type"] == "int"
-        assert result["scheduling"]["post_close_seconds"]["type"] == "int"
+        assert result["scheduling"]["pre_close_seconds"]["type"] == "integer"
+        assert result["scheduling"]["post_close_seconds"]["type"] == "integer"
 
     def test_serialize_schema_returns_new_dict(self):
         """serialize_schema returns a new dict, not mutating original."""
@@ -231,8 +231,8 @@ class TestSerializeSchema:
         result = serialize_schema(original)
         # Original should still have Python type
         assert original["cat"]["field"]["type"] == int
-        # Result should have string
-        assert result["cat"]["field"]["type"] == "int"
+        # Result should have JSON Schema type name
+        assert result["cat"]["field"]["type"] == "integer"
 
 
 class TestValidatePreferencesAgainstSchema:
