@@ -18,6 +18,8 @@ nul
 
 # development related research
 docs/throwaway/
+docs/archived-specs/
+specs/
 
 # local config & secrets
 .secrets/
