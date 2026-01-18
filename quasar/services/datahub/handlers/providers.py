@@ -279,17 +279,17 @@ class ProviderHandlersMixin(HandlerMixin):
         try:
             file_path = request.file_path
             if not file_path:
-                raise HTTPException(status_code=500, detail='Internal API Error, file path not provided to datahub')
+                raise HTTPException(status_code=500, detail="Internal API error: file path not provided to datahub")
             if not file_path.startswith(ALLOWED_DYNAMIC_PATH):
-                raise HTTPException(status_code=403, detail=f'File {file_path} not in allowed path {ALLOWED_DYNAMIC_PATH}')
+                raise HTTPException(status_code=403, detail=f"File '{file_path}' not in allowed path {ALLOWED_DYNAMIC_PATH}")
             if not Path(file_path).is_file():
-                raise HTTPException(status_code=404, detail=f'File {file_path} not found')
+                raise HTTPException(status_code=404, detail=f"File '{file_path}' not found")
 
             # Dynamically Import the Module
             module_name = Path(file_path).stem
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             if spec is None or spec.loader is None:
-                raise HTTPException(status_code=500, detail=f'Unable to load module {module_name} from {file_path}')
+                raise HTTPException(status_code=500, detail=f"Unable to load module '{module_name}' from '{file_path}'")
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
@@ -299,9 +299,9 @@ class ProviderHandlersMixin(HandlerMixin):
                 if member_class.__module__ == module.__name__:
                     defined_classes.append(member_class)
             if not defined_classes:
-                raise HTTPException(status_code=500, detail=f'No classes found in {file_path}')
+                raise HTTPException(status_code=500, detail=f"No classes found in '{file_path}'")
             if len(defined_classes) > 1:
-                raise HTTPException(status_code=500, detail=f'Multiple classes found in {file_path}')
+                raise HTTPException(status_code=500, detail=f"Multiple classes found in '{file_path}'")
 
             # Check if Class is the correct subclass
             the_class = defined_classes[0]
@@ -311,7 +311,7 @@ class ProviderHandlersMixin(HandlerMixin):
                 issubclass(the_class, IndexProvider)
             ]
             if not any(is_valid_subclass):
-                raise HTTPException(status_code=500, detail=f'Class {the_class.__name__} in {file_path} is not a valid provider subclass')
+                raise HTTPException(status_code=500, detail=f"Class '{the_class.__name__}' in '{file_path}' is not a valid provider subclass")
             subclass_types = ['Historical', 'Live', 'IndexProvider']
             subclass_type = list(compress(subclass_types, is_valid_subclass))[0]
 
@@ -322,7 +322,7 @@ class ProviderHandlersMixin(HandlerMixin):
                 if not isinstance(class_name, str):
                     class_name = None
             if class_name is None:
-                raise HTTPException(status_code=500, detail=f'Class {the_class.__name__} in {file_path} does not have a valid name attribute')
+                raise HTTPException(status_code=500, detail=f"Class '{the_class.__name__}' in '{file_path}' does not have a valid name attribute")
 
             logger.info(f"Provider {class_name} validated successfully.")
             return ProviderValidateResponse(
@@ -337,7 +337,7 @@ class ProviderHandlersMixin(HandlerMixin):
             raise
         except Exception as e:
             logger.error(f"Error validating provider: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f'Internal API Error: {e}')
+            raise HTTPException(status_code=500, detail=f"Internal API error: {e}")
 
     async def handle_unload_provider(self, name: str) -> ProviderUnloadResponse:
         """Unload a provider instance, releasing its resources.
