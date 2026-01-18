@@ -192,10 +192,10 @@
 
 - [x] T063 [US4] Add `getSecretKeys()` API call to fetch secret key names in `web/src/services/registry_api.js`
 - [x] T064 [US4] Add `updateSecrets()` API call to submit new credentials in `web/src/services/registry_api.js`
-- [ ] T065 [US4] Replace "Coming Soon" placeholder in API Secrets tab with dynamic password fields in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T066 [US4] Fetch secret key names on tab activation and render password inputs in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T067 [US4] Implement submit handler that calls updateSecrets() with all credential values in `web/src/views/registry/ProviderConfigModal.js`
-- [ ] T068 [US4] Add confirmation dialog before credential update with warning about all-or-nothing replacement in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T065 [US4] Replace "Coming Soon" placeholder in API Secrets tab with dynamic password fields in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T066 [US4] Fetch secret key names on tab activation and render password inputs in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T067 [US4] Implement submit handler that calls updateSecrets() with all credential values in `web/src/views/registry/ProviderConfigModal.js`
+- [x] T068 [US4] Add confirmation dialog before credential update with warning about all-or-nothing replacement in `web/src/views/registry/ProviderConfigModal.js`
 
 ### Tests for US4
 

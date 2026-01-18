@@ -5,7 +5,7 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 from fastapi.testclient import TestClient
 
 from quasar.lib.providers.core import (
@@ -733,3 +733,421 @@ class TestLookbackDaysIntegration:
         assert len(reqs) == 1
         expected_start_max = yday - timedelta(days=8000) + timedelta(days=1)
         assert reqs[0].start == expected_start_max
+
+
+class TestGetSecretKeysEndpoint:
+    """T069: Contract tests for GET /api/registry/config/secret-keys endpoint."""
+
+    def test_secret_keys_endpoint_returns_200_for_provider_with_secrets(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """Secret keys endpoint returns 200 and key names for provider with secrets."""
+        import json
+
+        # Mock database to return provider with encrypted secrets
+        mock_asyncpg_pool.fetchrow.return_value = {
+            'file_hash': b'test_file_hash_12345',
+            'nonce': b'test_nonce_123',
+            'ciphertext': b'encrypted_data'
+        }
+
+        # Mock the decryption to return a secrets dict
+        mock_derived_context = Mock()
+        mock_derived_context.decrypt = Mock(return_value=json.dumps({
+            "api_key": "secret_key_value",
+            "api_secret": "secret_secret_value"
+        }).encode('utf-8'))
+        registry_with_mocks.system_context.get_derived_context = Mock(return_value=mock_derived_context)
+
+        response = registry_client.get(
+            "/api/registry/config/secret-keys",
+            params={"class_name": "TestProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["class_name"] == "TestProvider"
+        assert data["class_type"] == "provider"
+        assert "keys" in data
+        assert set(data["keys"]) == {"api_key", "api_secret"}
+
+    def test_secret_keys_endpoint_returns_empty_for_provider_without_secrets(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """Secret keys endpoint returns empty list when provider has no stored secrets."""
+        # Mock database to return provider without secrets (nonce/ciphertext are None)
+        mock_asyncpg_pool.fetchrow.return_value = {
+            'file_hash': b'test_file_hash_12345',
+            'nonce': None,
+            'ciphertext': None
+        }
+
+        response = registry_client.get(
+            "/api/registry/config/secret-keys",
+            params={"class_name": "TestProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["class_name"] == "TestProvider"
+        assert data["class_type"] == "provider"
+        assert data["keys"] == []
+
+    def test_secret_keys_endpoint_returns_404_for_unknown_provider(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """Secret keys endpoint returns 404 for non-existent provider."""
+        mock_asyncpg_pool.fetchrow.return_value = None
+
+        response = registry_client.get(
+            "/api/registry/config/secret-keys",
+            params={"class_name": "NonExistent", "class_type": "provider"}
+        )
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    def test_secret_keys_endpoint_requires_class_name_param(
+        self,
+        registry_client: TestClient
+    ):
+        """Secret keys endpoint requires class_name query parameter."""
+        response = registry_client.get(
+            "/api/registry/config/secret-keys",
+            params={"class_type": "provider"}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_secret_keys_endpoint_requires_class_type_param(
+        self,
+        registry_client: TestClient
+    ):
+        """Secret keys endpoint requires class_type query parameter."""
+        response = registry_client.get(
+            "/api/registry/config/secret-keys",
+            params={"class_name": "TestProvider"}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_secret_keys_endpoint_returns_only_key_names_not_values(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """Secret keys endpoint only returns key names, never secret values."""
+        import json
+
+        # Mock database to return provider with encrypted secrets
+        mock_asyncpg_pool.fetchrow.return_value = {
+            'file_hash': b'test_file_hash_12345',
+            'nonce': b'test_nonce_123',
+            'ciphertext': b'encrypted_data'
+        }
+
+        # Mock decryption to return secrets with sensitive values
+        mock_derived_context = Mock()
+        mock_derived_context.decrypt = Mock(return_value=json.dumps({
+            "api_key": "super_secret_key_do_not_expose",
+            "password": "very_sensitive_password"
+        }).encode('utf-8'))
+        registry_with_mocks.system_context.get_derived_context = Mock(return_value=mock_derived_context)
+
+        response = registry_client.get(
+            "/api/registry/config/secret-keys",
+            params={"class_name": "TestProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should only contain key names
+        assert "keys" in data
+        assert "api_key" in data["keys"]
+        assert "password" in data["keys"]
+        # Should NOT contain the secret values anywhere in response
+        response_text = response.text
+        assert "super_secret_key_do_not_expose" not in response_text
+        assert "very_sensitive_password" not in response_text
+
+
+class TestUpdateSecretsEndpoint:
+    """T070: Contract tests for PATCH /api/registry/config/secrets endpoint."""
+
+    def test_update_secrets_endpoint_returns_200_on_success(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        mock_aiohttp_session
+    ):
+        """Update secrets endpoint returns 200 and updated key names on success."""
+        # Mock database to return provider file_hash
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        # Mock encryption to succeed
+        registry_with_mocks.system_context.create_context_data = Mock(
+            return_value=(b'new_nonce', b'new_ciphertext')
+        )
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {"api_key": "new_key_value", "api_secret": "new_secret_value"}}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "updated"
+        assert set(data["keys"]) == {"api_key", "api_secret"}
+
+    def test_update_secrets_endpoint_returns_404_for_unknown_provider(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """Update secrets endpoint returns 404 for non-existent provider."""
+        mock_asyncpg_pool.fetchval.return_value = None
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "NonExistent", "class_type": "provider"},
+            json={"secrets": {"api_key": "value"}}
+        )
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    def test_update_secrets_endpoint_returns_400_for_empty_secrets(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """Update secrets endpoint returns 400 when secrets dict is empty."""
+        # No need to mock database - validation should fail first
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {}}
+        )
+
+        assert response.status_code == 400
+        assert "empty" in response.json()["detail"].lower()
+
+    def test_update_secrets_endpoint_requires_class_name_param(
+        self,
+        registry_client: TestClient
+    ):
+        """Update secrets endpoint requires class_name query parameter."""
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_type": "provider"},
+            json={"secrets": {"api_key": "value"}}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_update_secrets_endpoint_requires_class_type_param(
+        self,
+        registry_client: TestClient
+    ):
+        """Update secrets endpoint requires class_type query parameter."""
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider"},
+            json={"secrets": {"api_key": "value"}}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_update_secrets_generates_new_nonce(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        mock_aiohttp_session
+    ):
+        """Update secrets endpoint generates new nonce for re-encryption (FR-016)."""
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        # Track that create_context_data is called (which generates new nonce)
+        mock_create_context = Mock(return_value=(b'new_unique_nonce', b'new_ciphertext'))
+        registry_with_mocks.system_context.create_context_data = mock_create_context
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {"api_key": "new_value"}}
+        )
+
+        assert response.status_code == 200
+        # Verify create_context_data was called (which generates new nonce)
+        mock_create_context.assert_called_once()
+
+    def test_update_secrets_accepts_multiple_credentials(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        mock_aiohttp_session
+    ):
+        """Update secrets endpoint accepts multiple credential key-value pairs."""
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        registry_with_mocks.system_context.create_context_data = Mock(
+            return_value=(b'new_nonce', b'new_ciphertext')
+        )
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {
+                "api_key": "key1",
+                "api_secret": "secret1",
+                "password": "pass1",
+                "token": "token1"
+            }}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["keys"]) == 4
+        assert set(data["keys"]) == {"api_key", "api_secret", "password", "token"}
+
+
+class TestCredentialUpdateUnload:
+    """T071: Integration tests for credential update triggering provider unload."""
+
+    def test_credential_update_triggers_datahub_unload(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        mock_aiohttp_session
+    ):
+        """Credential update for provider triggers DataHub unload endpoint."""
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        registry_with_mocks.system_context.create_context_data = Mock(
+            return_value=(b'new_nonce', b'new_ciphertext')
+        )
+
+        # Configure mock response for DataHub unload
+        mock_aiohttp_session["response"].status = 200
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {"api_key": "new_value"}}
+        )
+
+        assert response.status_code == 200
+        # Verify unload endpoint was called
+        mock_aiohttp_session["session"].post.assert_called()
+        # The URL should be for the provider unload
+        call_args = mock_aiohttp_session["session"].post.call_args
+        assert "providers/TestProvider/unload" in str(call_args)
+
+    def test_credential_update_succeeds_when_datahub_unreachable(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        monkeypatch
+    ):
+        """Credential update succeeds even when DataHub is unreachable."""
+
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        registry_with_mocks.system_context.create_context_data = Mock(
+            return_value=(b'new_nonce', b'new_ciphertext')
+        )
+
+        # Mock aiohttp to raise a generic connection error
+        class MockClientSession:
+            def __init__(self, *args, **kwargs):
+                pass
+            async def __aenter__(self):
+                raise OSError("Connection refused")
+            async def __aexit__(self, *args):
+                return None
+
+        monkeypatch.setattr('aiohttp.ClientSession', MockClientSession)
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {"api_key": "new_value"}}
+        )
+
+        # Secret update should succeed even if DataHub unload fails
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "updated"
+
+    def test_credential_update_handles_datahub_404_gracefully(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        mock_aiohttp_session
+    ):
+        """Credential update handles 404 from DataHub (provider not loaded) gracefully."""
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        registry_with_mocks.system_context.create_context_data = Mock(
+            return_value=(b'new_nonce', b'new_ciphertext')
+        )
+
+        # DataHub returns 404 (provider not currently loaded)
+        mock_aiohttp_session["response"].status = 404
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestProvider", "class_type": "provider"},
+            json={"secrets": {"api_key": "new_value"}}
+        )
+
+        # Secret update should succeed even if provider wasn't loaded
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "updated"
+
+    def test_credential_update_for_broker_does_not_trigger_unload(
+        self,
+        registry_with_mocks,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock,
+        mock_aiohttp_session
+    ):
+        """Credential update for broker type does NOT trigger DataHub unload."""
+        mock_asyncpg_pool.fetchval.return_value = b'test_file_hash_12345'
+        mock_asyncpg_pool.execute = AsyncMock()
+
+        registry_with_mocks.system_context.create_context_data = Mock(
+            return_value=(b'new_nonce', b'new_ciphertext')
+        )
+
+        response = registry_client.patch(
+            "/api/registry/config/secrets",
+            params={"class_name": "TestBroker", "class_type": "broker"},
+            json={"secrets": {"api_key": "new_value"}}
+        )
+
+        assert response.status_code == 200
+        # Verify unload endpoint was NOT called for broker
+        mock_aiohttp_session["session"].post.assert_not_called()
