@@ -1026,6 +1026,260 @@ class TestUpdateSecretsEndpoint:
         assert set(data["keys"]) == {"api_key", "api_secret", "password", "token"}
 
 
+class TestSchemaEndpointCompleteMetadata:
+    """T075-T078: Contract tests for schema endpoint returning complete metadata.
+
+    These tests verify that the schema endpoint returns JSON Schema-compatible
+    type names and complete field metadata (type, min, max, default, description)
+    per the enhancements in T073-T074.
+    """
+
+    def test_historical_delay_hours_has_complete_metadata(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T075: Schema returns scheduling.delay_hours for historical with complete metadata."""
+        mock_asyncpg_pool.fetchval.return_value = "historical"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestHistoricalProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify scheduling.delay_hours exists with complete metadata
+        assert "scheduling" in schema
+        delay_hours = schema["scheduling"]["delay_hours"]
+
+        # Type is serialized as JSON Schema type name (per T074)
+        assert delay_hours["type"] == "integer"
+        assert delay_hours["default"] == 0
+        assert delay_hours["min"] == 0
+        assert delay_hours["max"] == 24
+        assert "description" in delay_hours
+        assert len(delay_hours["description"]) > 0
+
+    def test_historical_lookback_days_has_complete_metadata(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T075: Schema returns data.lookback_days for historical with complete metadata."""
+        mock_asyncpg_pool.fetchval.return_value = "historical"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestHistoricalProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify data.lookback_days exists with complete metadata
+        assert "data" in schema
+        lookback_days = schema["data"]["lookback_days"]
+
+        # Type is serialized as JSON Schema type name (per T074)
+        assert lookback_days["type"] == "integer"
+        assert lookback_days["default"] == 8000
+        assert lookback_days["min"] == 1
+        assert lookback_days["max"] == 8000
+        assert "description" in lookback_days
+        assert len(lookback_days["description"]) > 0
+
+    def test_live_pre_close_seconds_has_complete_metadata(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T076: Schema returns scheduling.pre_close_seconds for live with complete metadata."""
+        mock_asyncpg_pool.fetchval.return_value = "realtime"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestLiveProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify scheduling.pre_close_seconds exists with complete metadata
+        assert "scheduling" in schema
+        pre_close = schema["scheduling"]["pre_close_seconds"]
+
+        # Type is serialized as JSON Schema type name (per T074)
+        assert pre_close["type"] == "integer"
+        assert pre_close["default"] == 30
+        assert pre_close["min"] == 0
+        assert pre_close["max"] == 300
+        assert "description" in pre_close
+        assert len(pre_close["description"]) > 0
+
+    def test_live_post_close_seconds_has_complete_metadata(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T076: Schema returns scheduling.post_close_seconds for live with complete metadata."""
+        mock_asyncpg_pool.fetchval.return_value = "realtime"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestLiveProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify scheduling.post_close_seconds exists with complete metadata
+        assert "scheduling" in schema
+        post_close = schema["scheduling"]["post_close_seconds"]
+
+        # Type is serialized as JSON Schema type name (per T074)
+        assert post_close["type"] == "integer"
+        assert post_close["default"] == 5
+        assert post_close["min"] == 0
+        assert post_close["max"] == 60
+        assert "description" in post_close
+        assert len(post_close["description"]) > 0
+
+    def test_index_schema_only_has_crypto(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T077: Schema returns only crypto category for index providers."""
+        mock_asyncpg_pool.fetchval.return_value = "index"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestIndexProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Index providers only have crypto category (inherited from DataProvider)
+        assert "crypto" in schema
+        assert "scheduling" not in schema, "Index providers should not have scheduling category"
+        assert "data" not in schema, "Index providers should not have data category"
+
+        # Verify crypto.preferred_quote_currency has expected metadata
+        quote_currency = schema["crypto"]["preferred_quote_currency"]
+        assert quote_currency["type"] == "string"
+        assert quote_currency["default"] is None
+        assert "description" in quote_currency
+
+    def test_schema_matches_configurable_definition_historical(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T078: Schema response matches HistoricalDataProvider.CONFIGURABLE definition."""
+        from quasar.lib.providers.core import HistoricalDataProvider
+
+        mock_asyncpg_pool.fetchval.return_value = "historical"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestHistoricalProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify all categories from CONFIGURABLE are present
+        for category in HistoricalDataProvider.CONFIGURABLE.keys():
+            assert category in schema, f"Category '{category}' missing from schema"
+
+        # Verify all fields from CONFIGURABLE are present with correct metadata
+        for category, fields in HistoricalDataProvider.CONFIGURABLE.items():
+            for field_name, field_def in fields.items():
+                assert field_name in schema[category], \
+                    f"Field '{category}.{field_name}' missing from schema"
+
+                schema_field = schema[category][field_name]
+                # Verify key metadata fields are present
+                assert "type" in schema_field, f"Type missing for {category}.{field_name}"
+                assert "default" in schema_field, f"Default missing for {category}.{field_name}"
+                assert "description" in schema_field, f"Description missing for {category}.{field_name}"
+
+                # Verify min/max if present in CONFIGURABLE
+                if "min" in field_def:
+                    assert schema_field["min"] == field_def["min"]
+                if "max" in field_def:
+                    assert schema_field["max"] == field_def["max"]
+
+    def test_schema_matches_configurable_definition_live(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T078: Schema response matches LiveDataProvider.CONFIGURABLE definition."""
+        from quasar.lib.providers.core import LiveDataProvider
+
+        mock_asyncpg_pool.fetchval.return_value = "realtime"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestLiveProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify all categories from CONFIGURABLE are present
+        for category in LiveDataProvider.CONFIGURABLE.keys():
+            assert category in schema, f"Category '{category}' missing from schema"
+
+        # Verify all fields from CONFIGURABLE are present with correct metadata
+        for category, fields in LiveDataProvider.CONFIGURABLE.items():
+            for field_name, field_def in fields.items():
+                assert field_name in schema[category], \
+                    f"Field '{category}.{field_name}' missing from schema"
+
+                schema_field = schema[category][field_name]
+                # Verify key metadata fields are present
+                assert "type" in schema_field, f"Type missing for {category}.{field_name}"
+                assert "default" in schema_field, f"Default missing for {category}.{field_name}"
+                assert "description" in schema_field, f"Description missing for {category}.{field_name}"
+
+                # Verify min/max if present in CONFIGURABLE
+                if "min" in field_def:
+                    assert schema_field["min"] == field_def["min"]
+                if "max" in field_def:
+                    assert schema_field["max"] == field_def["max"]
+
+    def test_schema_matches_configurable_definition_index(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """T078: Schema response matches IndexProvider.CONFIGURABLE definition."""
+        from quasar.lib.providers.core import IndexProvider
+
+        mock_asyncpg_pool.fetchval.return_value = "index"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "TestIndexProvider", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify all categories from CONFIGURABLE are present
+        for category in IndexProvider.CONFIGURABLE.keys():
+            assert category in schema, f"Category '{category}' missing from schema"
+
+        # Index provider should only have crypto category
+        assert len(schema.keys()) == len(IndexProvider.CONFIGURABLE.keys()), \
+            "Index provider schema should match CONFIGURABLE exactly (only crypto)"
+
+
 class TestCredentialUpdateUnload:
     """T071: Integration tests for credential update triggering provider unload."""
 
