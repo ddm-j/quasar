@@ -27,7 +27,7 @@ import {
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilLockLocked, cilChartLine, cilClock, cilStorage } from '@coreui/icons'
-import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies } from '../services/registry_api'
+import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies, getSecretKeys, updateSecrets } from '../services/registry_api'
 
 // Default values for live provider scheduling
 const DEFAULT_PRE_CLOSE_SECONDS = 30
@@ -68,6 +68,14 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // API Secrets state
+  const [secretKeys, setSecretKeys] = useState([])
+  const [secretValues, setSecretValues] = useState({})
+  const [loadingSecrets, setLoadingSecrets] = useState(false)
+  const [savingSecrets, setSavingSecrets] = useState(false)
+  const [secretsError, setSecretsError] = useState('')
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
   // Load configuration and available currencies when modal opens
   useEffect(() => {
     if (visible && classType && className) {
@@ -75,6 +83,13 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       loadAvailableCurrencies()
     }
   }, [visible, classType, className])
+
+  // Load secret keys when API tab is activated
+  useEffect(() => {
+    if (visible && activeTab === 'api' && classType && className && secretKeys.length === 0) {
+      loadSecretKeys()
+    }
+  }, [visible, activeTab, classType, className])
 
   const loadConfiguration = async () => {
     setLoading(true)
@@ -123,6 +138,28 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     }
   }
 
+  const loadSecretKeys = async () => {
+    setLoadingSecrets(true)
+    setSecretsError('')
+    try {
+      const response = await getSecretKeys(classType, className)
+      const keys = response.keys || []
+      setSecretKeys(keys)
+      // Initialize empty values for each key
+      const initialValues = {}
+      keys.forEach(key => {
+        initialValues[key] = ''
+      })
+      setSecretValues(initialValues)
+    } catch (err) {
+      console.error('Failed to load secret keys:', err)
+      setSecretsError(`Failed to load secret keys: ${err.message}`)
+      setSecretKeys([])
+    } finally {
+      setLoadingSecrets(false)
+    }
+  }
+
   const handleSave = async () => {
     setSaving(true)
     setError('')
@@ -155,8 +192,58 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
   const handleClose = () => {
     setError('')
+    setSecretsError('')
     setActiveTab('trading')
+    setSecretKeys([])
+    setSecretValues({})
+    setShowConfirmDialog(false)
     onClose()
+  }
+
+  const handleSecretChange = (key, value) => {
+    setSecretValues(prev => ({
+      ...prev,
+      [key]: value
+    }))
+  }
+
+  const handleUpdateSecretsClick = () => {
+    // Check if all fields are filled
+    const emptyFields = secretKeys.filter(key => !secretValues[key] || secretValues[key].trim() === '')
+    if (emptyFields.length > 0) {
+      setSecretsError(`Please fill in all credential fields. Missing: ${emptyFields.join(', ')}`)
+      return
+    }
+    // Show confirmation dialog
+    setShowConfirmDialog(true)
+  }
+
+  const handleConfirmUpdateSecrets = async () => {
+    setShowConfirmDialog(false)
+    setSavingSecrets(true)
+    setSecretsError('')
+    try {
+      await updateSecrets(classType, className, secretValues)
+      if (displayToast) {
+        displayToast({
+          title: 'Credentials Updated',
+          body: `API credentials for ${className} have been updated. The provider will be reloaded with new credentials.`,
+          color: 'success',
+          icon: cilLockLocked,
+        })
+      }
+      // Clear the values after successful update (for security)
+      const clearedValues = {}
+      secretKeys.forEach(key => {
+        clearedValues[key] = ''
+      })
+      setSecretValues(clearedValues)
+    } catch (err) {
+      console.error('Failed to update secrets:', err)
+      setSecretsError(`Failed to update credentials: ${err.message}`)
+    } finally {
+      setSavingSecrets(false)
+    }
   }
 
   const handlePreferenceChange = (field, value) => {
@@ -630,26 +717,64 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
               <CTabPane visible={activeTab === 'api'}>
                 <h6>API Secrets</h6>
                 <p className="text-body-secondary mb-3">
-                  API credentials and secrets management.
+                  Update API credentials for this provider. All credentials must be provided together.
                 </p>
 
-                <CAlert color="info">
-                  <CIcon icon={cilSettings} className="me-2" />
-                  API secret management will be available in a future update.
-                </CAlert>
+                {secretsError && <CAlert color="danger">{secretsError}</CAlert>}
 
-                <CRow className="mb-3">
-                  <CCol>
-                    <div className="p-3 border rounded bg-light">
-                      <p className="mb-2 fw-semibold">Coming Soon</p>
-                      <ul className="mb-0 text-body-secondary">
-                        <li>Update API keys and secrets</li>
-                        <li>Rotate credentials securely</li>
-                        <li>View credential status</li>
-                      </ul>
-                    </div>
-                  </CCol>
-                </CRow>
+                {loadingSecrets ? (
+                  <div className="text-center py-4">
+                    <CSpinner color="primary" />
+                    <p className="mt-2 text-body-secondary">Loading credential fields...</p>
+                  </div>
+                ) : secretKeys.length === 0 ? (
+                  <CAlert color="info">
+                    <CIcon icon={cilLockLocked} className="me-2" />
+                    No API credentials are configured for this provider.
+                  </CAlert>
+                ) : (
+                  <>
+                    <CAlert color="warning" className="mb-4">
+                      <strong>Important:</strong> Updating credentials will replace all existing values.
+                      You must provide values for all fields. The provider will be automatically reloaded
+                      to use the new credentials.
+                    </CAlert>
+
+                    <CRow className="mb-4">
+                      <CCol md={8}>
+                        {secretKeys.map((key) => (
+                          <div key={key} className="mb-3">
+                            <CFormLabel htmlFor={`secret-${key}`}>
+                              {key}
+                            </CFormLabel>
+                            <CFormInput
+                              id={`secret-${key}`}
+                              type="password"
+                              placeholder={`Enter ${key}`}
+                              value={secretValues[key] || ''}
+                              onChange={(e) => handleSecretChange(key, e.target.value)}
+                              disabled={savingSecrets}
+                              autoComplete="off"
+                            />
+                          </div>
+                        ))}
+                      </CCol>
+                    </CRow>
+
+                    <CRow>
+                      <CCol>
+                        <CButton
+                          color="warning"
+                          onClick={handleUpdateSecretsClick}
+                          disabled={savingSecrets || secretKeys.some(key => !secretValues[key])}
+                        >
+                          {savingSecrets ? <CSpinner size="sm" className="me-1" /> : null}
+                          {savingSecrets ? 'Updating Credentials...' : 'Update Credentials'}
+                        </CButton>
+                      </CCol>
+                    </CRow>
+                  </>
+                )}
               </CTabPane>
             </CTabContent>
           </>
@@ -669,6 +794,43 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           {saving ? 'Saving...' : 'Save Changes'}
         </CButton>
       </CModalFooter>
+
+      {/* Confirmation dialog for credential update */}
+      <CModal
+        visible={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        backdrop="static"
+        size="sm"
+      >
+        <CModalHeader>
+          <CModalTitle>
+            <CIcon icon={cilLockLocked} className="me-2" />
+            Confirm Credential Update
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CAlert color="warning" className="mb-3">
+            <strong>Warning:</strong> This action will replace all existing API credentials.
+          </CAlert>
+          <p className="mb-2">You are about to update the following credentials:</p>
+          <ul className="mb-3">
+            {secretKeys.map(key => (
+              <li key={key}><code>{key}</code></li>
+            ))}
+          </ul>
+          <p className="text-body-secondary small mb-0">
+            The provider will be unloaded and will use the new credentials on next request.
+          </p>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setShowConfirmDialog(false)}>
+            Cancel
+          </CButton>
+          <CButton color="warning" onClick={handleConfirmUpdateSecrets}>
+            Update Credentials
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </CModal>
   )
 }
