@@ -186,12 +186,12 @@
 - [x] T059 [US4] Add `handle_update_secrets()` endpoint handler with re-encryption logic (new nonce per update) in `quasar/services/registry/handlers/config.py`
 - [x] T060 [US4] Register PATCH /api/registry/config/secrets route in registry service in `quasar/services/registry/app.py`
 - [x] T061 [US4] Call DataHub unload endpoint after successful credential update in `handle_update_secrets()` in `quasar/services/registry/handlers/config.py`
-- [ ] T062 [US4] Add logging for credential updates (provider name, timestamp, unload triggered) in `quasar/services/registry/handlers/config.py`
+- [x] T062 [US4] Add logging for credential updates (provider name, timestamp, unload triggered) in `quasar/services/registry/handlers/config.py`
 
 ### Frontend Implementation for US4
 
-- [ ] T063 [US4] Add `getSecretKeys()` API call to fetch secret key names in `web/src/services/registry_api.js`
-- [ ] T064 [US4] Add `updateSecrets()` API call to submit new credentials in `web/src/services/registry_api.js`
+- [x] T063 [US4] Add `getSecretKeys()` API call to fetch secret key names in `web/src/services/registry_api.js`
+- [x] T064 [US4] Add `updateSecrets()` API call to submit new credentials in `web/src/services/registry_api.js`
 - [ ] T065 [US4] Replace "Coming Soon" placeholder in API Secrets tab with dynamic password fields in `web/src/views/registry/ProviderConfigModal.js`
 - [ ] T066 [US4] Fetch secret key names on tab activation and render password inputs in `web/src/views/registry/ProviderConfigModal.js`
 - [ ] T067 [US4] Implement submit handler that calls updateSecrets() with all credential values in `web/src/views/registry/ProviderConfigModal.js`
