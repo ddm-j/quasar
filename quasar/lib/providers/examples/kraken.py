@@ -20,8 +20,8 @@ class KrakenProvider(LiveDataProvider):
     RATE_LIMIT = (1000, 60)
     close_buffer_seconds = 5
 
-    def __init__(self, context: DerivedContext):
-        super().__init__(context)
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
+        super().__init__(context, preferences)
         self._url = "wss://ws.kraken.com/v2"
 
     async def fetch_available_symbols(self) -> list[SymbolInfo]:

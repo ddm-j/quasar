@@ -21,13 +21,14 @@ class DatabentoProvider(HistoricalDataProvider):
     name = 'DATABENTO'
     RATE_LIMIT = (100, 1)  # 100 requests per second per Databento limits
 
-    def __init__(self, context):
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
         """Initialize provider.
-        
+
         Args:
             context: Context containing provider secrets (api_key).
+            preferences: Optional configuration preferences from database.
         """
-        super().__init__(context)
+        super().__init__(context, preferences)
 
     async def _api_get(self, url: str) -> list:
         """Perform a rate-limited HTTP GET with Authorization header.
