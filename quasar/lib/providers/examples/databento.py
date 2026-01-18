@@ -4,6 +4,7 @@ from quasar.lib.enums import AssetClass, Interval
 from quasar.lib.providers.core import HistoricalDataProvider, Bar, SymbolInfo, Req
 from quasar.lib.providers import register_provider
 from quasar.lib.common.calendar import TradingCalendar
+from quasar.lib.common.context import DerivedContext
 from datetime import date, datetime, timezone, timedelta
 from typing import AsyncIterator, Iterable
 import aiohttp
