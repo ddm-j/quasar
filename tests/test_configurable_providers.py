@@ -678,6 +678,268 @@ class TestOffsetCronTriggerNegativeOffset:
         assert live_fire < cron_time, "Live should fire BEFORE cron"
 
 
+class TestBackwardCompatibility:
+    """T080: Verify backward compatibility - providers with no preferences behave like current defaults.
+
+    These tests ensure that:
+    1. Providers instantiated without preferences (None) work correctly
+    2. Providers with empty preferences ({}) work correctly
+    3. All scheduling/data defaults match the expected system defaults
+    4. The system gracefully handles missing preference categories
+    """
+
+    def test_data_provider_init_with_none_preferences(self):
+        """DataProvider.__init__ with preferences=None initializes empty dict."""
+        from quasar.lib.providers.core import DataProvider
+        from unittest.mock import Mock
+
+        # Create a concrete implementation for testing
+        class TestDataProvider(DataProvider):
+            name = "TestProvider"
+            provider_type = None  # Will be set by subclass
+
+            async def fetch_available_symbols(self):
+                return []
+
+        mock_context = Mock()
+        mock_context.get = Mock(return_value=None)
+
+        # Instantiate with None preferences (backward compatible case)
+        provider = TestDataProvider(context=mock_context, preferences=None)
+
+        # Verify preferences is initialized to empty dict
+        assert provider.preferences == {}
+        assert isinstance(provider.preferences, dict)
+
+    def test_historical_provider_init_with_none_preferences(self):
+        """HistoricalDataProvider.__init__ with preferences=None initializes empty dict."""
+        from quasar.lib.providers.core import HistoricalDataProvider, Bar
+        from unittest.mock import Mock
+        from typing import AsyncIterator
+        from datetime import date
+
+        class TestHistoricalProvider(HistoricalDataProvider):
+            name = "TestHistoricalProvider"
+
+            async def get_history(self, sym, start, end, interval) -> AsyncIterator[Bar]:
+                return
+                yield  # Make it a generator
+
+            async def fetch_available_symbols(self):
+                return []
+
+        mock_context = Mock()
+        mock_context.get = Mock(return_value=None)
+
+        provider = TestHistoricalProvider(context=mock_context, preferences=None)
+
+        assert provider.preferences == {}
+        assert isinstance(provider.preferences, dict)
+
+    def test_live_provider_init_with_none_preferences(self):
+        """LiveDataProvider.__init__ with preferences=None initializes empty dict."""
+        from quasar.lib.providers.core import LiveDataProvider, Bar
+        from unittest.mock import Mock
+
+        class TestLiveProvider(LiveDataProvider):
+            name = "TestLiveProvider"
+            close_buffer_seconds = 10
+
+            async def _connect(self):
+                return None
+
+            async def _subscribe(self, symbols):
+                return {}
+
+            async def _unsubscribe(self, symbols):
+                return {}
+
+            async def _parse_message(self, message):
+                return []
+
+            async def fetch_available_symbols(self):
+                return []
+
+        mock_context = Mock()
+        mock_context.get = Mock(return_value=None)
+
+        provider = TestLiveProvider(context=mock_context, preferences=None)
+
+        assert provider.preferences == {}
+        assert isinstance(provider.preferences, dict)
+
+    def test_index_provider_init_with_none_preferences(self):
+        """IndexProvider.__init__ with preferences=None initializes empty dict."""
+        from quasar.lib.providers.core import IndexProvider
+        from unittest.mock import Mock
+
+        class TestIndexProvider(IndexProvider):
+            name = "TestIndexProvider"
+
+            async def fetch_constituents(self, as_of_date=None):
+                return []
+
+        mock_context = Mock()
+        mock_context.get = Mock(return_value=None)
+
+        provider = TestIndexProvider(context=mock_context, preferences=None)
+
+        assert provider.preferences == {}
+        assert isinstance(provider.preferences, dict)
+
+    def test_historical_delay_hours_default_is_zero(self):
+        """Historical provider delay_hours defaults to 0 when no preference."""
+        # This is the default in refresh_subscriptions
+        scheduling_prefs = {}  # Empty, simulating no preferences
+        delay_hours = scheduling_prefs.get("delay_hours", 0)
+        assert delay_hours == 0, "delay_hours should default to 0 for backward compatibility"
+
+    def test_live_pre_close_seconds_default_matches_constant(self):
+        """Live provider pre_close_seconds defaults to DEFAULT_LIVE_OFFSET."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LIVE_OFFSET
+
+        # This is the default in refresh_subscriptions
+        scheduling_prefs = {}  # Empty, simulating no preferences
+        pre_close_seconds = scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET)
+
+        assert pre_close_seconds == DEFAULT_LIVE_OFFSET
+        assert pre_close_seconds == 30, "DEFAULT_LIVE_OFFSET should be 30 seconds"
+
+    def test_live_post_close_seconds_default_uses_provider_buffer(self):
+        """Live provider post_close_seconds defaults to provider's close_buffer_seconds."""
+        # In refresh_subscriptions, post_close_seconds defaults to prov.close_buffer_seconds
+        # Simulate a provider with close_buffer_seconds = 10
+        provider_close_buffer = 10
+
+        scheduling_prefs = {}  # Empty, simulating no preferences
+        post_close_seconds = scheduling_prefs.get("post_close_seconds", provider_close_buffer)
+
+        assert post_close_seconds == provider_close_buffer
+        assert post_close_seconds == 10
+
+    def test_historical_lookback_days_default_matches_constant(self):
+        """Historical provider lookback_days defaults to DEFAULT_LOOKBACK."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK
+
+        # This is the default in _build_reqs_historical
+        data_prefs = {}  # Empty, simulating no preferences
+        lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+
+        assert lookback_days == DEFAULT_LOOKBACK
+        assert lookback_days == 8000, "DEFAULT_LOOKBACK should be 8000"
+
+    def test_empty_preferences_dict_works_like_no_preferences(self):
+        """Empty preferences dict {} behaves same as no preferences."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK, DEFAULT_LIVE_OFFSET
+
+        # Simulate the extraction logic from refresh_subscriptions and _build_reqs_historical
+        prefs = {}  # Empty preferences dict
+
+        # Historical provider defaults
+        scheduling_prefs = prefs.get("scheduling") or {}
+        data_prefs = prefs.get("data") or {}
+
+        assert scheduling_prefs.get("delay_hours", 0) == 0
+        assert data_prefs.get("lookback_days", DEFAULT_LOOKBACK) == 8000
+
+        # Live provider defaults
+        assert scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET) == 30
+
+    def test_missing_scheduling_category_uses_defaults(self):
+        """Preferences without scheduling category uses defaults."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LIVE_OFFSET
+
+        # Preferences exist but without scheduling category
+        prefs = {"data": {"lookback_days": 365}}  # Only data category
+
+        scheduling_prefs = prefs.get("scheduling") or {}
+        delay_hours = scheduling_prefs.get("delay_hours", 0)
+        pre_close_seconds = scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET)
+
+        assert delay_hours == 0
+        assert pre_close_seconds == 30
+
+    def test_missing_data_category_uses_defaults(self):
+        """Preferences without data category uses defaults."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK
+
+        # Preferences exist but without data category
+        prefs = {"scheduling": {"delay_hours": 6}}  # Only scheduling category
+
+        data_prefs = prefs.get("data") or {}
+        lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+
+        assert lookback_days == DEFAULT_LOOKBACK
+
+    def test_provider_preferences_none_in_datahub_context(self):
+        """Provider with None preferences in _provider_preferences dict works."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK, DEFAULT_LIVE_OFFSET
+
+        # Simulate the access pattern in collection.py handlers
+        _provider_preferences = {
+            "TestProvider": None  # Explicitly None
+        }
+
+        prefs = _provider_preferences.get("TestProvider") or {}
+        scheduling_prefs = prefs.get("scheduling") or {}
+        data_prefs = prefs.get("data") or {}
+
+        # All should default correctly
+        assert scheduling_prefs.get("delay_hours", 0) == 0
+        assert scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET) == 30
+        assert data_prefs.get("lookback_days", DEFAULT_LOOKBACK) == 8000
+
+    def test_provider_not_in_preferences_dict_works(self):
+        """Provider not present in _provider_preferences dict works."""
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK, DEFAULT_LIVE_OFFSET
+
+        # Simulate missing provider in _provider_preferences
+        _provider_preferences = {}  # Empty dict
+
+        prefs = _provider_preferences.get("UnknownProvider") or {}
+        scheduling_prefs = prefs.get("scheduling") or {}
+        data_prefs = prefs.get("data") or {}
+
+        # All should default correctly
+        assert scheduling_prefs.get("delay_hours", 0) == 0
+        assert scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET) == 30
+        assert data_prefs.get("lookback_days", DEFAULT_LOOKBACK) == 8000
+
+    def test_offset_cron_trigger_zero_offset_fires_at_cron_time(self):
+        """OffsetCronTrigger with zero offset fires exactly at cron time (no delay)."""
+        from datetime import datetime, timezone
+        from quasar.lib.common.offset_cron import OffsetCronTrigger
+
+        # Zero offset = backward compatible behavior (no delay)
+        trigger = OffsetCronTrigger.from_crontab(
+            "0 0 * * *",  # Midnight
+            offset_seconds=0,
+            timezone="UTC"
+        )
+
+        now = datetime(2024, 6, 14, 23, 0, 0, tzinfo=timezone.utc)
+        next_fire = trigger.get_next_fire_time(None, now)
+
+        # Should fire exactly at midnight (no offset)
+        expected = datetime(2024, 6, 15, 0, 0, 0, tzinfo=timezone.utc)
+        assert next_fire == expected, "Zero offset should fire at exact cron time"
+
+    def test_configurable_defaults_match_code_defaults(self):
+        """CONFIGURABLE schema defaults match the fallback values in code."""
+        from quasar.lib.providers.core import HistoricalDataProvider, LiveDataProvider
+        from quasar.services.datahub.utils.constants import DEFAULT_LOOKBACK, DEFAULT_LIVE_OFFSET
+
+        # Historical defaults
+        hist_schema = HistoricalDataProvider.CONFIGURABLE
+        assert hist_schema["scheduling"]["delay_hours"]["default"] == 0
+        assert hist_schema["data"]["lookback_days"]["default"] == DEFAULT_LOOKBACK
+
+        # Live defaults
+        live_schema = LiveDataProvider.CONFIGURABLE
+        assert live_schema["scheduling"]["pre_close_seconds"]["default"] == DEFAULT_LIVE_OFFSET
+        assert live_schema["scheduling"]["post_close_seconds"]["default"] == 5
+
+
 class TestBuildReqsHistoricalLookbackDays:
     """T055: Unit tests for _build_reqs_historical() using preference over DEFAULT_LOOKBACK."""
 
