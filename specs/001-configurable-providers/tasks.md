@@ -221,10 +221,10 @@
 
 ### Tests for US5
 
-- [ ] T075 [P] [US5] Write contract test: schema endpoint returns scheduling.delay_hours for historical providers in `tests/test_config_integration.py`
-- [ ] T076 [P] [US5] Write contract test: schema endpoint returns pre/post_close_seconds for live providers in `tests/test_config_integration.py`
-- [ ] T077 [P] [US5] Write contract test: schema endpoint returns only crypto for index providers in `tests/test_config_integration.py`
-- [ ] T078 [US5] Write integration test: schema response matches CONFIGURABLE definition in provider base class in `tests/test_config_integration.py`
+- [x] T075 [P] [US5] Write contract test: schema endpoint returns scheduling.delay_hours for historical providers in `tests/test_config_integration.py`
+- [x] T076 [P] [US5] Write contract test: schema endpoint returns pre/post_close_seconds for live providers in `tests/test_config_integration.py`
+- [x] T077 [P] [US5] Write contract test: schema endpoint returns only crypto for index providers in `tests/test_config_integration.py`
+- [x] T078 [US5] Write integration test: schema response matches CONFIGURABLE definition in provider base class in `tests/test_config_integration.py`
 
 **Checkpoint**: User Story 5 complete - Run tests and verify schema API matches OpenAPI contract
 
