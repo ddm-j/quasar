@@ -235,9 +235,9 @@
 **Purpose**: Final validation and cleanup
 
 - [x] T079 [P] Run full test suite with coverage: `conda activate quasar && pytest --cov=quasar tests/test_config*.py -v`
-- [ ] T080 [P] Verify backward compatibility: Providers with no preferences behave like current defaults
+- [x] T080 [P] Verify backward compatibility: Providers with no preferences behave like current defaults
 - [ ] T081 Final visual QA with Playwright: Full workflow - configure scheduling, data, credentials for a provider (use playwright-visual-tester agent)
-- [ ] T082 Verify all success criteria from spec.md are met (SC-001 through SC-008)
+- [x] T082 Verify all success criteria from spec.md are met (SC-001 through SC-008)
 - [ ] T083 Code cleanup: Remove any debug logging, ensure consistent error messages
 - [ ] T084 Run quickstart.md validation: Execute API usage examples and verify responses match documentation
 
