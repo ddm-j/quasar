@@ -6,7 +6,6 @@ import {
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react';
 import { cilArrowRight } from '@coreui/icons';
-import Select, { components } from 'react-select'; // For synchronous search if options are pre-loaded or filtered client-side
 import AsyncSelect from 'react-select/async'; // For asynchronous server-side search
 import AsyncCreatableSelect from 'react-select/async-creatable'; // For async search with create option
 import { 
@@ -16,35 +15,25 @@ import {
   getAssetMappings,
 } from '../services/registry_api';  
 
-// Custom component to render options with symbol and name
-const CustomOption = (props) => {
-  const { innerProps, data, isFocused, isSelected } = props; 
-
-  const optionStyles = {
-    padding: '8px 12px',
-    cursor: 'pointer',
-    backgroundColor: isSelected ? '#007bff' : isFocused ? '#e9ecef' : 'white', // Example: blue if selected, light grey if focused
-    color: isSelected ? 'white' : 'black', // Example: white text if selected
-  };
-
-  return (
-    <div {...innerProps} style={optionStyles}> 
-      <div style={{ fontWeight: 'bold' }}>{data.symbol}</div>
-      <div style={{ fontSize: '0.9em', color: isSelected ? '#f0f0f0' : '#555' }}> 
-        {data.name}
-      </div>
-    </div>
-  );
-};
-
-// Custom component for the selected value display (optional, can use default label)
-const SingleValue = (props) => {
-    const { data } = props;
+// Format option label for custom display in dropdown and selected value
+const formatOptionLabel = (data, { context }) => {
+  if (context === 'menu') {
+    // Dropdown menu option display
     return (
-      <components.SingleValue {...props}>
-        {data.symbol} <span style={{ fontSize: '0.9em', color: '#777' }}>({data.name})</span>
-      </components.SingleValue>
+      <div>
+        <div style={{ fontWeight: 'bold' }}>{data.symbol}</div>
+        <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
+          {data.name}
+        </div>
+      </div>
     );
+  }
+  // Selected value display
+  return (
+    <span>
+      {data.symbol} <span style={{ fontSize: '0.9em', opacity: 0.7 }}>({data.name})</span>
+    </span>
+  );
 };
 
 
@@ -281,18 +270,18 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
                   <AsyncSelect
                     key={fromClassName}
                     id="from_class_symbol"
-                    cacheOptions // Caches results for same search term
-                    loadOptions={loadSymbolOptions} // Function to fetch options
-                    defaultOptions // Load some default options on first focus (can be true or an array)
+                    cacheOptions
+                    loadOptions={loadSymbolOptions}
+                    defaultOptions
                     value={fromClassSymbol}
                     onChange={(selectedOption) => setFromClassSymbol(selectedOption)}
                     placeholder="Type to search symbol or name..."
-                    isDisabled={!fromClassName} // Disable if no class_name selected
+                    isDisabled={!fromClassName}
                     isLoading={isLoadingSymbols}
                     isClearable
-                    components={{ Option: CustomOption, SingleValue }} // Use custom rendering
-                    // formatOptionLabel={formatOptionLabel} // Alternative way to customize option display
-                    noOptionsMessage={({ inputValue }) => 
+                    formatOptionLabel={formatOptionLabel}
+                    classNamePrefix="themed-select"
+                    noOptionsMessage={({ inputValue }) =>
                         !inputValue ? "Type to search..." : "No symbols found"
                     }
                     loadingMessage={() => "Loading symbols..."}
@@ -324,16 +313,11 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
                     isLoading={isLoadingCommonSymbols}
                     isClearable
                     formatCreateLabel={(inputValue) => `Create "${inputValue}"`}
-                    noOptionsMessage={({ inputValue }) => 
+                    noOptionsMessage={({ inputValue }) =>
                       !inputValue ? "Type to search or create..." : `No matches found. Press Enter to create "${inputValue}"`
                     }
                     loadingMessage={() => "Loading common symbols..."}
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        minHeight: '38px',
-                      }),
-                    }}
+                    classNamePrefix="themed-select"
                   />
                 </CCol>
               </CRow>
