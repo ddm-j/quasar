@@ -69,6 +69,7 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
 
         # Job Key Tracking
         self.job_keys: set[str] = set()
+        self.index_sync_job_keys: set[str] = set()
 
         # Provider Subscription Refreshing
         logger.debug("Creating async DataHub scheduler.")

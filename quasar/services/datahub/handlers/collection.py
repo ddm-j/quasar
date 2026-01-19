@@ -46,6 +46,80 @@ def safe_job(default_return: Any = None) -> Callable[[Callable[..., Awaitable[An
 class CollectionHandlersMixin(HandlerMixin):
     """Mixin providing data collection methods for DataHub."""
 
+    async def refresh_index_sync_jobs(self):
+        """Synchronize scheduled jobs for IndexProvider constituent sync."""
+        logger.debug("Refreshing index sync jobs.")
+
+        # Fetch IndexProviders with their sync_frequency preferences
+        query = QUERIES['get_index_providers_sync_config']
+        rows = await self.pool.fetch(query)
+
+        # Build new job keys and schedule jobs
+        new_keys = set()
+        for r in rows:
+            provider_name = r['class_name']
+            sync_frequency = r['sync_frequency']  # Already has COALESCE default of '1w'
+            job_key = f"index_sync_{provider_name}"
+            new_keys.add(job_key)
+
+            # Look up cron template for this frequency
+            cron = await self.pool.fetchval(
+                "SELECT cron FROM accepted_intervals WHERE interval = $1",
+                sync_frequency
+            )
+            if cron is None:
+                logger.warning(
+                    f"No cron template found for sync_frequency '{sync_frequency}' "
+                    f"for provider {provider_name}. Skipping."
+                )
+                new_keys.discard(job_key)
+                continue
+
+            if job_key not in self.index_sync_job_keys:
+                # New job - schedule it
+                logger.info(f"Scheduling index sync job for {provider_name} with frequency {sync_frequency}")
+                self._sched.add_job(
+                    func=self.sync_index_constituents,
+                    trigger=CronTrigger.from_crontab(cron),
+                    args=[provider_name],
+                    id=job_key,
+                )
+            else:
+                # Job exists - check if cron needs to be updated
+                existing_job = self._sched.get_job(job_key)
+                if existing_job is not None:
+                    # Replace the job with updated trigger
+                    logger.debug(f"Updating index sync job for {provider_name}")
+                    self._sched.remove_job(job_key)
+                    self._sched.add_job(
+                        func=self.sync_index_constituents,
+                        trigger=CronTrigger.from_crontab(cron),
+                        args=[provider_name],
+                        id=job_key,
+                    )
+
+        # Remove obsolete jobs (providers that were deleted)
+        for gone in self.index_sync_job_keys - new_keys:
+            logger.info(f"Removing index sync job: {gone}")
+            job = self._sched.get_job(gone)
+            if job is not None:
+                self._sched.remove_job(gone)
+
+        self.index_sync_job_keys = new_keys
+
+    @safe_job(default_return=None)
+    async def sync_index_constituents(self, provider_name: str):
+        """Sync constituents for an IndexProvider to the registry.
+
+        This method is called by scheduled jobs to fetch index constituents
+        and post them to the registry service.
+
+        Args:
+            provider_name (str): Name of the IndexProvider to sync.
+        """
+        # Implementation in T018
+        raise NotImplementedError("sync_index_constituents not yet implemented")
+
     async def refresh_subscriptions(self):
         """Synchronize scheduled jobs with the ``provider_subscription`` table."""
         logger.debug("Refreshing subscriptions.")
