@@ -36,6 +36,16 @@ const DEFAULT_POST_CLOSE_SECONDS = 5
 // Default lookback days for historical providers
 const DEFAULT_LOOKBACK_DAYS = 8000
 
+// Default sync frequency for index providers
+const DEFAULT_SYNC_FREQUENCY = '1w'
+
+// Sync frequency options for IndexProviders
+const SYNC_FREQUENCY_OPTIONS = [
+  { value: '1d', label: 'Daily', description: 'Sync at midnight UTC every day' },
+  { value: '1w', label: 'Weekly', description: 'Sync at midnight UTC every Monday' },
+  { value: '1M', label: 'Monthly', description: 'Sync at midnight UTC on the 1st of each month' },
+]
+
 // Preset options for lookback period
 const LOOKBACK_PRESETS = [
   { label: '1 month', value: 30 },
@@ -57,7 +67,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     scheduling: {
       delay_hours: 0,
       pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
-      post_close_seconds: DEFAULT_POST_CLOSE_SECONDS
+      post_close_seconds: DEFAULT_POST_CLOSE_SECONDS,
+      sync_frequency: DEFAULT_SYNC_FREQUENCY
     },
     data: {
       lookback_days: DEFAULT_LOOKBACK_DAYS
@@ -111,7 +122,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
         scheduling: {
           delay_hours: prefs.scheduling?.delay_hours ?? 0,
           pre_close_seconds: prefs.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS,
-          post_close_seconds: prefs.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS
+          post_close_seconds: prefs.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS,
+          sync_frequency: prefs.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY
         },
         data: {
           lookback_days: prefs.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS
@@ -126,7 +138,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
         scheduling: {
           delay_hours: 0,
           pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
-          post_close_seconds: DEFAULT_POST_CLOSE_SECONDS
+          post_close_seconds: DEFAULT_POST_CLOSE_SECONDS,
+          sync_frequency: DEFAULT_SYNC_FREQUENCY
         },
         data: {
           lookback_days: DEFAULT_LOOKBACK_DAYS
@@ -619,6 +632,66 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                                 {(config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS) + (config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS)} seconds
                               </CBadge>
                             </p>
+                          </div>
+                        </CCol>
+                      </CRow>
+                    </>
+                  )}
+
+                  {classSubtype === 'IndexProvider' && (
+                    <>
+                      <CRow className="mb-3">
+                        <CCol>
+                          <CAlert color="info">
+                            <CIcon icon={cilClock} className="me-2" />
+                            Configure how often this IndexProvider automatically syncs its constituents.
+                          </CAlert>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-4">
+                        <CCol md={10}>
+                          <CFormLabel className="fw-semibold">Sync Frequency</CFormLabel>
+                          <p className="text-body-secondary small mb-3">
+                            How often should this IndexProvider automatically fetch and sync its constituents?
+                          </p>
+                          <div className="d-flex flex-column gap-2 mb-3">
+                            {SYNC_FREQUENCY_OPTIONS.map((option) => (
+                              <CFormCheck
+                                key={option.value}
+                                type="radio"
+                                name="syncFrequency"
+                                id={`sync-frequency-${option.value}`}
+                                label={
+                                  <span>
+                                    <strong>{option.label}</strong>
+                                    <span className="text-body-secondary ms-2 small">
+                                      - {option.description}
+                                    </span>
+                                  </span>
+                                }
+                                checked={(config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY) === option.value}
+                                onChange={() => handleSchedulingChange('sync_frequency', option.value)}
+                                disabled={saving}
+                              />
+                            ))}
+                          </div>
+                        </CCol>
+                      </CRow>
+
+                      <CRow className="mb-3">
+                        <CCol md={8}>
+                          <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
+                            <strong>Sync Schedule Preview</strong>
+                            <p className="mb-0 mt-2">
+                              Constituents will be synced{' '}
+                              <CBadge color="success" className="ms-1">
+                                {SYNC_FREQUENCY_OPTIONS.find(o => o.value === (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY))?.label || 'Weekly'}
+                              </CBadge>
+                            </p>
+                            <small className="text-body-secondary">
+                              {SYNC_FREQUENCY_OPTIONS.find(o => o.value === (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY))?.description || 'Sync at midnight UTC every Monday'}
+                            </small>
                           </div>
                         </CCol>
                       </CRow>
