@@ -6,7 +6,6 @@ import {
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react';
 import { cilArrowRight } from '@coreui/icons';
-import Select, { components } from 'react-select'; // For synchronous search if options are pre-loaded or filtered client-side
 import AsyncSelect from 'react-select/async'; // For asynchronous server-side search
 import AsyncCreatableSelect from 'react-select/async-creatable'; // For async search with create option
 import { 

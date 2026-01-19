@@ -73,6 +73,11 @@
   color: var(--cui-secondary-color) !important;
 }
 
+// Portal container for menus rendered outside DOM hierarchy
+.themed-select__menu-portal {
+  z-index: 9999 !important;
+}
+
 // Suggest Mappings modal: wide but not full-screen on large viewports
 // Keep CoreUI fullscreen behavior on lg and below via the component prop.
 @media (min-width: 992px) { // Bootstrap lg breakpoint

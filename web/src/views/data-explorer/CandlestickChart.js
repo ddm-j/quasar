@@ -37,6 +37,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
 
   // Watch for theme changes via MutationObserver
   useEffect(() => {
+    // Guard for SSR/testing environments
+    if (typeof document === 'undefined' || !document.documentElement) return
+
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.attributeName === 'data-coreui-theme') {

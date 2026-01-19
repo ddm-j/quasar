@@ -155,43 +155,9 @@ const EditableMembersTable = ({ members, onChange, disabled }) => {
                     loadingMessage={() => 'Loading...'}
                     menuPortalTarget={document.body}
                     menuPosition="fixed"
+                    classNamePrefix="themed-select"
                     styles={{
-                      control: (base) => ({
-                        ...base,
-                        minHeight: '38px',
-                        backgroundColor: 'var(--cui-body-bg)',
-                        borderColor: 'var(--cui-border-color)',
-                      }),
-                      menu: (base) => ({
-                        ...base,
-                        backgroundColor: 'var(--cui-body-bg)',
-                      }),
-                      menuList: (base) => ({
-                        ...base,
-                        backgroundColor: 'var(--cui-body-bg)',
-                      }),
-                      option: (base, state) => ({
-                        ...base,
-                        backgroundColor: state.isFocused
-                          ? 'var(--cui-primary)'
-                          : 'transparent',
-                        color: 'var(--cui-body-color)',
-                        ':hover': {
-                          backgroundColor: 'var(--cui-primary)',
-                        },
-                      }),
-                      singleValue: (base) => ({
-                        ...base,
-                        color: 'var(--cui-body-color)',
-                      }),
-                      input: (base) => ({
-                        ...base,
-                        color: 'var(--cui-body-color)',
-                      }),
-                      menuPortal: (base) => ({
-                        ...base,
-                        zIndex: 9999,
-                      }),
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     }}
                   />
                 ) : (

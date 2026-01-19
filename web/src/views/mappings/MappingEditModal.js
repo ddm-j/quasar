@@ -203,12 +203,7 @@ const MappingEditModal = ({ visible, onClose, onSuccess, mapping }) => {
                       !inputValue ? "Type to search or create..." : `No matches found. Press Enter to create "${inputValue}"`
                     }
                     loadingMessage={() => "Loading common symbols..."}
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        minHeight: '38px',
-                      }),
-                    }}
+                    classNamePrefix="themed-select"
                   />
                 </CCol>
               </CRow>
