@@ -186,11 +186,30 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setSaving(true)
     setError('')
     try {
+      // Build update data based on provider type - only include valid fields for this subtype
       const updateData = {
         crypto: config.crypto,
-        scheduling: config.scheduling,
-        data: config.data
       }
+
+      // Add scheduling fields based on provider subtype
+      if (classSubtype === 'Historical') {
+        updateData.scheduling = {
+          delay_hours: config.scheduling.delay_hours
+        }
+        updateData.data = {
+          lookback_days: config.data.lookback_days
+        }
+      } else if (classSubtype === 'Live') {
+        updateData.scheduling = {
+          pre_close_seconds: config.scheduling.pre_close_seconds,
+          post_close_seconds: config.scheduling.post_close_seconds
+        }
+      } else if (classSubtype === 'IndexProvider') {
+        updateData.scheduling = {
+          sync_frequency: config.scheduling.sync_frequency
+        }
+      }
+
       const response = await updateProviderConfig(classType, className, updateData)
 
       if (displayToast) {
