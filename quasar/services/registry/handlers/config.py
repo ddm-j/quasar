@@ -236,6 +236,15 @@ def validate_preferences_against_schema(
                     log_validation_failure(class_name, class_type, reason)
                     continue
 
+            # Allowed values validation for string enums
+            allowed_values = field_schema.get("allowed")
+            if allowed_values is not None and isinstance(value, str):
+                if value not in allowed_values:
+                    allowed_str = ", ".join(allowed_values)
+                    reason = f"Field '{category}.{field_name}' must be one of [{allowed_str}], got '{value}'"
+                    errors.append(reason)
+                    log_validation_failure(class_name, class_type, reason)
+
             # Range validation for numeric types
             if isinstance(value, (int, float)):
                 min_val = field_schema.get("min")
