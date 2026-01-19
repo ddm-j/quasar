@@ -187,12 +187,12 @@ class TestGetConfigSchemaEndpoint:
         schema = response.json()["schema"]
         assert "data" not in schema
 
-    def test_index_schema_only_contains_crypto(
+    def test_index_schema_contains_crypto_and_scheduling(
         self,
         registry_client: TestClient,
         mock_asyncpg_pool: AsyncMock
     ):
-        """Index provider schema only includes crypto category."""
+        """Index provider schema includes crypto and scheduling categories."""
         mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
@@ -203,7 +203,8 @@ class TestGetConfigSchemaEndpoint:
         assert response.status_code == 200
         schema = response.json()["schema"]
         assert "crypto" in schema
-        assert "scheduling" not in schema
+        assert "scheduling" in schema
+        assert "sync_frequency" in schema["scheduling"]
         assert "data" not in schema
 
     def test_all_schemas_include_crypto_category(
@@ -1146,12 +1147,12 @@ class TestSchemaEndpointCompleteMetadata:
         assert "description" in post_close
         assert len(post_close["description"]) > 0
 
-    def test_index_schema_only_has_crypto(
+    def test_index_schema_has_crypto_and_scheduling(
         self,
         registry_client: TestClient,
         mock_asyncpg_pool: AsyncMock
     ):
-        """T077: Schema returns only crypto category for index providers."""
+        """Schema returns crypto and scheduling categories for index providers."""
         mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
@@ -1162,9 +1163,9 @@ class TestSchemaEndpointCompleteMetadata:
         assert response.status_code == 200
         schema = response.json()["schema"]
 
-        # Index providers only have crypto category (inherited from DataProvider)
+        # Index providers have crypto (inherited) and scheduling.sync_frequency
         assert "crypto" in schema
-        assert "scheduling" not in schema, "Index providers should not have scheduling category"
+        assert "scheduling" in schema, "Index providers should have scheduling category"
         assert "data" not in schema, "Index providers should not have data category"
 
         # Verify crypto.preferred_quote_currency has expected metadata
@@ -1172,6 +1173,13 @@ class TestSchemaEndpointCompleteMetadata:
         assert quote_currency["type"] == "string"
         assert quote_currency["default"] is None
         assert "description" in quote_currency
+
+        # Verify scheduling.sync_frequency has expected metadata
+        sync_frequency = schema["scheduling"]["sync_frequency"]
+        assert sync_frequency["type"] == "string"
+        assert sync_frequency["default"] == "1w"
+        assert sync_frequency["allowed"] == ["1d", "1w", "1M"]
+        assert "description" in sync_frequency
 
     def test_schema_matches_configurable_definition_historical(
         self,
