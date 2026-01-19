@@ -91,6 +91,10 @@ Migrations in `db/migrations` (none presently). Migrations are performed only wh
 - Use `datahub_client` / `registry_client` fixtures for API testing with FastAPI TestClient
 - Coverage excludes example providers (`quasar/lib/providers/examples/*`)
 
+## Commits, Comments, and PRs
+
+Never add attribution text like "Co-authored by Claude". Never include anything about claude or anthropic unless explicitly asked.
+
 ## CI/CD
 
 GitHub Actions (`.github/workflows/test.yml`):
