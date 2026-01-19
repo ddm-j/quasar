@@ -152,6 +152,10 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
             id='subscription_refresh',
             replace_existing=True,
         )
+
+        # Initialize IndexProvider sync jobs
+        await self.refresh_index_sync_jobs()
+
         self._sched.start()
         logger.info("DataHub started, subscription refresh interval: %ss", self._refresh_seconds)
 
