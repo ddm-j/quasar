@@ -118,6 +118,14 @@ class TestConfigurableSchemaInheritance:
         assert "scheduling" in IndexProvider.CONFIGURABLE
         assert "sync_frequency" in IndexProvider.CONFIGURABLE["scheduling"]
 
+    def test_index_provider_sync_frequency_schema(self):
+        """IndexProvider sync_frequency has correct structure and values."""
+        schema = IndexProvider.CONFIGURABLE["scheduling"]["sync_frequency"]
+        assert schema["type"] == str
+        assert schema["default"] == "1w"
+        assert schema["allowed"] == ["1d", "1w", "1M"]
+        assert "description" in schema
+
     def test_index_provider_no_data(self):
         """IndexProvider does not add data category."""
         assert "data" not in IndexProvider.CONFIGURABLE
