@@ -91,6 +91,99 @@ class TestIndexListEndpoint:
         assert result.total_items == 1
         assert result.items[0].index_type == 'UserIndex'
 
+    @pytest.mark.asyncio
+    async def test_returns_preferences_with_sync_frequency_for_index_providers(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Returns preferences including sync_frequency for IndexProviders."""
+        reg = registry_with_mocks
+        from quasar.services.registry.schemas import IndexQueryParams
+
+        mock_records = [
+            MockRecord(
+                class_name='CCI30',
+                class_type='provider',
+                index_type='IndexProvider',
+                uploaded_at=datetime.now(timezone.utc),
+                current_member_count=30,
+                preferences='{"scheduling": {"sync_frequency": "1d"}}'
+            ),
+            MockRecord(
+                class_name='SP500',
+                class_type='provider',
+                index_type='IndexProvider',
+                uploaded_at=datetime.now(timezone.utc),
+                current_member_count=500,
+                preferences='{"scheduling": {"sync_frequency": "1w"}}'
+            ),
+            MockRecord(
+                class_name='MyIndex',
+                class_type='provider',
+                index_type='UserIndex',
+                uploaded_at=datetime.now(timezone.utc),
+                current_member_count=5,
+                preferences='{"description": "My custom index"}'  # UserIndex has no sync_frequency
+            ),
+        ]
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total=3))
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=mock_records)
+
+        result = await reg.handle_get_indices(IndexQueryParams())
+
+        assert result.total_items == 3
+        assert len(result.items) == 3
+
+        # Verify IndexProvider with daily sync frequency
+        cci30 = result.items[0]
+        assert cci30.class_name == 'CCI30'
+        assert cci30.index_type == 'IndexProvider'
+        assert cci30.preferences is not None
+        assert cci30.preferences.get('scheduling', {}).get('sync_frequency') == '1d'
+
+        # Verify IndexProvider with weekly sync frequency
+        sp500 = result.items[1]
+        assert sp500.class_name == 'SP500'
+        assert sp500.index_type == 'IndexProvider'
+        assert sp500.preferences is not None
+        assert sp500.preferences.get('scheduling', {}).get('sync_frequency') == '1w'
+
+        # Verify UserIndex has no sync_frequency in scheduling
+        my_index = result.items[2]
+        assert my_index.class_name == 'MyIndex'
+        assert my_index.index_type == 'UserIndex'
+        assert my_index.preferences is not None
+        assert my_index.preferences.get('description') == 'My custom index'
+        assert my_index.preferences.get('scheduling') is None
+
+    @pytest.mark.asyncio
+    async def test_returns_default_sync_frequency_when_no_preferences(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Returns None preferences when IndexProvider has no configured preferences."""
+        reg = registry_with_mocks
+        from quasar.services.registry.schemas import IndexQueryParams
+
+        mock_records = [
+            MockRecord(
+                class_name='NewIndex',
+                class_type='provider',
+                index_type='IndexProvider',
+                uploaded_at=datetime.now(timezone.utc),
+                current_member_count=10,
+                preferences=None  # No preferences configured yet
+            ),
+        ]
+        mock_asyncpg_conn.fetchrow = AsyncMock(return_value=MockRecord(total=1))
+        mock_asyncpg_conn.fetch = AsyncMock(return_value=mock_records)
+
+        result = await reg.handle_get_indices(IndexQueryParams())
+
+        assert result.total_items == 1
+        # IndexProvider without configured preferences returns None
+        # The UI/frontend should handle the default display
+        assert result.items[0].class_name == 'NewIndex'
+        assert result.items[0].preferences is None
+
 
 class TestCreateUserIndexEndpoint:
     """Tests for POST /api/registry/indices endpoint."""
