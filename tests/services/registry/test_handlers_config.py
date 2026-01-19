@@ -113,9 +113,9 @@ class TestProviderConfig:
 
         reg = registry_with_mocks
 
-        # Mock provider exists and update succeeds
+        # Mock provider exists (returns class_subtype) and update succeeds
         mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
-            True,  # Provider exists
+            'historical',  # Provider exists with class_subtype
             {'crypto': {'preferred_quote_currency': 'USDT'}}  # Updated preferences
         ])
 
@@ -167,9 +167,9 @@ class TestProviderConfig:
 
         reg = registry_with_mocks
 
-        # Mock provider exists and partial update
+        # Mock provider exists (returns class_subtype) and partial update
         mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
-            True,  # Provider exists
+            'historical',  # Provider exists with class_subtype
             {'crypto': {'preferred_quote_currency': 'USDC'}}  # Updated preferences
         ])
 
@@ -192,8 +192,8 @@ class TestProviderConfig:
 
         reg = registry_with_mocks
 
-        # Mock provider exists
-        mock_asyncpg_pool.fetchval = AsyncMock(return_value=True)
+        # Mock provider exists (returns class_subtype)
+        mock_asyncpg_pool.fetchval = AsyncMock(return_value='historical')
 
         update = ProviderPreferencesUpdate()  # Empty update
 

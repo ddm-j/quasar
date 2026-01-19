@@ -383,6 +383,36 @@ export const getAssets = async (params = {}) => {
 };
 
 /**
+ * Fetches the configuration schema for a provider.
+ * Returns the configurable preferences schema based on the provider's subtype.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Config schema response: { class_name, class_type, class_subtype, schema }
+ */
+export const getConfigSchema = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config/schema?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
  * Fetches provider configuration preferences.
  * @param {string} classType - Class type: 'provider' or 'broker'.
  * @param {string} className - Class name (provider/broker name).
@@ -436,6 +466,68 @@ export const updateProviderConfig = async (classType, className, config) => {
 
   if (!response.ok) {
     const errorMessage = formatErrorMessage(data, response.status);
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Fetches secret key names for a provider (not the values).
+ * Used to render credential update form fields.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @returns {Promise<object>} - Secret keys response: { class_name, class_type, keys: string[] }
+ */
+export const getSecretKeys = async (classType, className) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config/secret-keys?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Updates stored credentials for a provider (all-or-nothing replacement).
+ * Re-encrypts with a new nonce and triggers provider unload in DataHub.
+ * @param {string} classType - Class type: 'provider' or 'broker'.
+ * @param {string} className - Class name (provider/broker name).
+ * @param {object} secrets - Object mapping secret key names to their new values.
+ * @returns {Promise<object>} - Update response: { status: 'updated', keys: string[] }
+ */
+export const updateSecrets = async (classType, className, secrets) => {
+  const params = new URLSearchParams({
+    class_type: classType,
+    class_name: className
+  });
+
+  const response = await fetch(`${API_BASE}config/secrets?${params.toString()}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ secrets }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
     throw new Error(errorMessage);
   }
 

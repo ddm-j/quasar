@@ -112,3 +112,10 @@ class SymbolMetadataResponse(BaseModel):
     asset_info: Optional[AssetInfo] = Field(None, description="Asset metadata")
     other_providers: List[OtherProvider] = Field(default_factory=list, description="Other providers for the same common symbol")
 
+
+class ProviderUnloadResponse(BaseModel):
+    """Response model for provider unload endpoint."""
+    status: str = Field(..., description="Unload status: 'success' or 'not_loaded'")
+    provider: str = Field(..., description="Provider class name")
+    message: str = Field(..., description="Human-readable status message")
+

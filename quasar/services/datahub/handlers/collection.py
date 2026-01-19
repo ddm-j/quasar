@@ -85,7 +85,18 @@ class CollectionHandlersMixin(HandlerMixin):
             prov_type = self._providers[r["provider"]].provider_type
             if key not in self.job_keys:
                 # Subscription Schedule Detected
-                offset_seconds = 0 if prov_type == ProviderType.HISTORICAL else -1*DEFAULT_LIVE_OFFSET
+                # Get scheduling preferences for the provider
+                prefs = self._provider_preferences.get(r["provider"]) or {}
+                scheduling_prefs = prefs.get("scheduling") or {}
+
+                if prov_type == ProviderType.HISTORICAL:
+                    # Historical providers: positive offset delays job execution
+                    delay_hours = scheduling_prefs.get("delay_hours", 0)
+                    offset_seconds = delay_hours * 3600
+                else:
+                    # Live providers: negative offset starts before close
+                    pre_close_seconds = scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET)
+                    offset_seconds = -1 * pre_close_seconds
                 logger.debug(f"Scheduling new job: {key}, with offset: {offset_seconds}, from specified cron: {r['cron']}")
                 self._sched.add_job(
                     func=self.get_data,
@@ -162,15 +173,28 @@ class CollectionHandlersMixin(HandlerMixin):
                 )
             last_map = {r['sym']: r['d'] for r in rows}
 
+            # Get lookback_days from provider preferences, fallback to DEFAULT_LOOKBACK
+            prefs = self._provider_preferences.get(provider) or {}
+            data_prefs = prefs.get("data") or {}
+            lookback_days = data_prefs.get("lookback_days", DEFAULT_LOOKBACK)
+            using_custom_lookback = "lookback_days" in data_prefs
+
             reqs: list[Req] = []
-            default_start = yday - timedelta(days=DEFAULT_LOOKBACK)
+            default_start = yday - timedelta(days=lookback_days)
             for sym, mic in zip(symbols, exchanges):
                 last_updated = last_map.get(sym)
 
                 if last_updated is None:
-                    # New Subscription: Bypass calendar check and pull 8000 bars
+                    # New Subscription: Bypass calendar check and pull lookback_days bars
                     start = default_start + timedelta(days=1)
-                    logger.info(f"New subscription for {sym} ({mic}). Requesting full backfill from {start}.")
+                    if using_custom_lookback:
+                        logger.info(
+                            f"New subscription for {sym} ({mic}). "
+                            f"Applying configured lookback_days={lookback_days} (preference). "
+                            f"Requesting backfill from {start}."
+                        )
+                    else:
+                        logger.info(f"New subscription for {sym} ({mic}). Requesting full backfill from {start}.")
                 else:
                     # Incremental Update: Apply Smart Gap detection
                     start = last_updated + timedelta(days=1)
@@ -296,7 +320,13 @@ class CollectionHandlersMixin(HandlerMixin):
             # Create Request for Live Data Provider
             args = [interval, open_symbols]
             # Add Timeout to prevent hung jobs
-            kwargs = {'timeout': DEFAULT_LIVE_OFFSET+prov.close_buffer_seconds+30}
+            # Get scheduling preferences for timeout calculation
+            prefs = self._provider_preferences.get(provider) or {}
+            scheduling_prefs = prefs.get("scheduling") or {}
+            pre_close_seconds = scheduling_prefs.get("pre_close_seconds", DEFAULT_LIVE_OFFSET)
+            post_close_seconds = scheduling_prefs.get("post_close_seconds", prov.close_buffer_seconds)
+            # Timeout = pre_close + post_close + 30s buffer for processing
+            kwargs = {'timeout': pre_close_seconds + post_close_seconds + 30}
         else:
             logger.error(f"Provider {provider} is not a valid provider type.")
             raise ValueError(f"Provider {provider} is not a valid provider type.")

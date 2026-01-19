@@ -1,7 +1,7 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 0.0.0 → 1.0.0 (Initial ratification)
+Version change: 0.0.0 → 1.0.0 (MAJOR: Initial constitution ratification)
 
 Modified principles: N/A (initial creation)
 

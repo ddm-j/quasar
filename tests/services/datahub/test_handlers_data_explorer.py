@@ -583,7 +583,8 @@ class TestProviderInUse:
             'file_path': valid_provider_file['file_path'],
             'file_hash': valid_provider_file['file_hash'],
             'nonce': b'test_nonce',
-            'ciphertext': b'test_ciphertext'
+            'ciphertext': b'test_ciphertext',
+            'preferences': None
         })
 
         # Load a provider
@@ -604,7 +605,8 @@ class TestProviderInUse:
             'file_path': valid_provider_file['file_path'],
             'file_hash': valid_provider_file['file_hash'],
             'nonce': b'test_nonce',
-            'ciphertext': b'test_ciphertext'
+            'ciphertext': b'test_ciphertext',
+            'preferences': None
         })
 
         # Load a provider
@@ -638,7 +640,8 @@ class TestProviderInUse:
             'file_path': valid_provider_file['file_path'],
             'file_hash': valid_provider_file['file_hash'],
             'nonce': b'test_nonce',
-            'ciphertext': b'test_ciphertext'
+            'ciphertext': b'test_ciphertext',
+            'preferences': None
         })
 
         # Load a provider

@@ -15,7 +15,8 @@ from quasar.lib.providers import HistoricalDataProvider
 from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
     ProviderValidateResponse, AvailableSymbolsResponse, ConstituentsResponse,
-    SymbolSearchResponse, OHLCDataResponse, SymbolMetadataResponse
+    SymbolSearchResponse, OHLCDataResponse, SymbolMetadataResponse,
+    ProviderUnloadResponse
 )
 from quasar.services.datahub.utils.constants import ALLOWED_DYNAMIC_PATH
 from quasar.services.datahub.handlers.collection import CollectionHandlersMixin, safe_job
@@ -62,6 +63,9 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
 
         # Store DataProvider objects
         self._providers: dict[str, HistoricalDataProvider] = {}
+
+        # Store provider preferences for runtime access
+        self._provider_preferences: dict[str, dict | None] = {}
 
         # Job Key Tracking
         self.job_keys: set[str] = set()
@@ -118,6 +122,13 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
             self.handle_get_symbol_metadata,
             methods=['GET'],
             response_model=SymbolMetadataResponse
+        )
+        # Provider lifecycle
+        self._api_app.router.add_api_route(
+            '/api/datahub/providers/{name}/unload',
+            self.handle_unload_provider,
+            methods=['POST'],
+            response_model=ProviderUnloadResponse
         )
 
     # OBJECT LIFECYCLE

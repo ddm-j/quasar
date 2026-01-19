@@ -46,10 +46,12 @@ from quasar.services.registry.utils.pagination import (
 # Schema imports for route response models
 from quasar.services.registry.schemas import (
     ClassSummaryItem,
+    ConfigSchemaResponse,
     FileUploadResponse, UpdateAssetsResponse, DeleteClassResponse,
     AssetResponse, AssetMappingCreateResponse, AssetMappingPaginatedResponse,
     AssetMappingResponse, SuggestionsResponse,
     ProviderPreferencesResponse, AvailableQuoteCurrenciesResponse,
+    SecretKeysResponse, SecretsUpdateResponse,
     CommonSymbolResponse, CommonSymbolRenameResponse,
     IndexListResponse, IndexDetailResponse, IndexMembersResponse,
     IndexSyncResponse, IndexHistoryResponse, IndexItem,
@@ -238,10 +240,28 @@ class Registry(
             response_model=ProviderPreferencesResponse
         )
         self._api_app.router.add_api_route(
+            '/api/registry/config/schema',
+            self.handle_get_config_schema,
+            methods=['GET'],
+            response_model=ConfigSchemaResponse
+        )
+        self._api_app.router.add_api_route(
             '/api/registry/config/available-quote-currencies',
             self.handle_get_available_quote_currencies,
             methods=['GET'],
             response_model=AvailableQuoteCurrenciesResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config/secret-keys',
+            self.handle_get_secret_keys,
+            methods=['GET'],
+            response_model=SecretKeysResponse
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/config/secrets',
+            self.handle_update_secrets,
+            methods=['PATCH'],
+            response_model=SecretsUpdateResponse
         )
 
         # Index Management Routes (public API)

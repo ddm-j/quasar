@@ -131,12 +131,24 @@ class DataProvider(ABC):
     RATE_LIMIT = None      # (calls, seconds), e.g. (1000, 60)
     CONCURRENCY = 5        # open sockets
 
-    def __init__(self, context: DerivedContext):
+    # Configurable preferences schema for all providers
+    CONFIGURABLE: dict[str, dict[str, Any]] = {
+        "crypto": {
+            "preferred_quote_currency": {
+                "type": str,
+                "default": None,
+                "description": "Preferred quote currency for crypto pairs"
+            }
+        }
+    }
+
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
         """Initialize provider with rate limiting.
 
         Args:
             context (DerivedContext): Derived context containing provider secrets.
-        
+            preferences (dict | None): Optional configuration preferences from database.
+
         Note:
             The HTTP session is created lazily in __aenter__ to ensure it is
             initialized within an async context, avoiding aiohttp event loop issues.
@@ -145,6 +157,7 @@ class DataProvider(ABC):
         self._limiter = AsyncLimiter(calls, seconds)
         self._session: aiohttp.ClientSession | None = None
         self.context = context
+        self.preferences = preferences or {}
         self._usage = asyncio.Semaphore(1000)  # Track concurrent usage
 
     @property
@@ -243,9 +256,32 @@ class DataProvider(ABC):
 class HistoricalDataProvider(DataProvider):
     """Base class for all historical data provider types."""
     provider_type = ProviderType.HISTORICAL
-    
-    def __init__(self, context: DerivedContext):
-        super().__init__(context)
+
+    # Configurable preferences for historical providers
+    CONFIGURABLE: dict[str, dict[str, Any]] = {
+        **DataProvider.CONFIGURABLE,
+        "scheduling": {
+            "delay_hours": {
+                "type": int,
+                "default": 0,
+                "min": 0,
+                "max": 24,
+                "description": "Hours after default cron time to run data pulls"
+            }
+        },
+        "data": {
+            "lookback_days": {
+                "type": int,
+                "default": 8000,
+                "min": 1,
+                "max": 8000,
+                "description": "Days of historical data for new subscriptions"
+            }
+        }
+    }
+
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
+        super().__init__(context, preferences)
 
     async def get_history_many(          # OPTIONAL override
         self,
@@ -281,8 +317,29 @@ class LiveDataProvider(DataProvider):
     """Base class for all live data provider types."""
     provider_type = ProviderType.REALTIME
 
-    def __init__(self, context: DerivedContext):
-        super().__init__(context)
+    # Configurable preferences for live providers
+    CONFIGURABLE: dict[str, dict[str, Any]] = {
+        **DataProvider.CONFIGURABLE,
+        "scheduling": {
+            "pre_close_seconds": {
+                "type": int,
+                "default": 30,
+                "min": 0,
+                "max": 300,
+                "description": "Seconds before bar close to start listening"
+            },
+            "post_close_seconds": {
+                "type": int,
+                "default": 5,
+                "min": 0,
+                "max": 60,
+                "description": "Seconds after bar close to continue listening"
+            }
+        }
+    }
+
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
+        super().__init__(context, preferences)
 
     @property
     @abstractmethod
@@ -392,13 +449,19 @@ class IndexProvider(DataProvider):
     """Base class for index providers that return constituent lists."""
     provider_type = ProviderType.INDEX
 
-    def __init__(self, context: DerivedContext):
+    # Configurable preferences for index providers (inherits DataProvider only)
+    CONFIGURABLE: dict[str, dict[str, Any]] = {
+        **DataProvider.CONFIGURABLE
+    }
+
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
         """Initialize index provider.
 
         Args:
             context (DerivedContext): Derived context containing provider secrets.
+            preferences (dict | None): Optional configuration preferences from database.
         """
-        super().__init__(context)
+        super().__init__(context, preferences)
 
     @property
     @abstractmethod

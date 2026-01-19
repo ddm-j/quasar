@@ -17,8 +17,8 @@ class TestLiveProvider(LiveDataProvider):
     RATE_LIMIT = (100, 60)
     close_buffer_seconds = 5
 
-    def __init__(self, context: DerivedContext):
-        super().__init__(context)
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
+        super().__init__(context, preferences)
 
     async def fetch_available_symbols(self):
         return []
@@ -44,8 +44,8 @@ class TestHistoricalProvider(HistoricalDataProvider):
     name = 'TEST_HISTORICAL_PROVIDER'
     RATE_LIMIT = (100, 60)
 
-    def __init__(self, context: DerivedContext):
-        super().__init__(context)
+    def __init__(self, context: DerivedContext, preferences: dict | None = None):
+        super().__init__(context, preferences)
 
     async def fetch_available_symbols(self):
         return []
