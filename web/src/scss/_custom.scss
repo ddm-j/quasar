@@ -1,5 +1,78 @@
 // Here you can add other styles
 
+// Theme-aware react-select styling
+.themed-select__control {
+  background-color: var(--cui-body-bg) !important;
+  border-color: var(--cui-border-color) !important;
+  min-height: 38px;
+
+  &:hover {
+    border-color: var(--cui-primary) !important;
+  }
+
+  &--is-focused {
+    border-color: var(--cui-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(var(--cui-primary-rgb), 0.25) !important;
+  }
+}
+
+.themed-select__menu {
+  background-color: var(--cui-body-bg) !important;
+  border: 1px solid var(--cui-border-color) !important;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  z-index: 1050 !important;
+}
+
+.themed-select__menu-list {
+  background-color: var(--cui-body-bg) !important;
+  padding: 0 !important;
+}
+
+.themed-select__option {
+  background-color: var(--cui-body-bg) !important;
+  color: var(--cui-body-color) !important;
+  cursor: pointer !important;
+
+  &:hover,
+  &--is-focused {
+    background-color: var(--cui-tertiary-bg) !important;
+  }
+
+  &--is-selected {
+    background-color: var(--cui-primary) !important;
+    color: var(--cui-white) !important;
+  }
+}
+
+.themed-select__single-value {
+  color: var(--cui-body-color) !important;
+}
+
+.themed-select__input-container {
+  color: var(--cui-body-color) !important;
+}
+
+.themed-select__placeholder {
+  color: var(--cui-secondary-color) !important;
+}
+
+.themed-select__indicator {
+  color: var(--cui-body-color) !important;
+
+  &:hover {
+    color: var(--cui-primary) !important;
+  }
+}
+
+.themed-select__indicator-separator {
+  background-color: var(--cui-border-color) !important;
+}
+
+.themed-select__no-options-message,
+.themed-select__loading-message {
+  color: var(--cui-secondary-color) !important;
+}
+
 // Suggest Mappings modal: wide but not full-screen on large viewports
 // Keep CoreUI fullscreen behavior on lg and below via the component prop.
 @media (min-width: 992px) { // Bootstrap lg breakpoint
