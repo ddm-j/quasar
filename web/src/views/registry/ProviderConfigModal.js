@@ -48,7 +48,7 @@ const LOOKBACK_PRESETS = [
 
 const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
   // Determine which tabs should be visible based on class_subtype
-  const showSchedulingTab = classSubtype === 'Historical' || classSubtype === 'Live'
+  const showSchedulingTab = classSubtype === 'Historical' || classSubtype === 'Live' || classSubtype === 'IndexProvider'
   const showDataTab = classSubtype === 'Historical'
 
   const [activeTab, setActiveTab] = useState('trading')
