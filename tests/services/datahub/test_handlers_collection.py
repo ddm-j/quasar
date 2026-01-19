@@ -603,7 +603,7 @@ class TestSyncIndexConstituents:
         mock_index_provider = Mock()
         mock_index_provider.name = "TestIndexProvider"
         mock_index_provider.provider_type = ProviderType.INDEX
-        mock_index_provider.fetch_constituents = AsyncMock(return_value=[
+        mock_index_provider.get_constituents = AsyncMock(return_value=[
             {"symbol": "AAPL", "weight": 0.05},
             {"symbol": "MSFT", "weight": 0.04},
         ])
@@ -613,10 +613,10 @@ class TestSyncIndexConstituents:
         hub._providers["TestIndexProvider"] = mock_index_provider
 
         # Mock the HTTP POST to registry
-        with patch('aiohttp.ClientSession') as mock_session_class:
+        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession') as mock_session_class:
             mock_response = AsyncMock()
             mock_response.status = 200
-            mock_response.json = AsyncMock(return_value={"added": 2, "removed": 0})
+            mock_response.json = AsyncMock(return_value={"members_added": 2, "members_removed": 0})
 
             mock_session = AsyncMock()
             mock_session.post = Mock(return_value=AsyncMock(
@@ -629,8 +629,8 @@ class TestSyncIndexConstituents:
 
             await hub.sync_index_constituents("TestIndexProvider")
 
-            # Verify fetch_constituents was called
-            mock_index_provider.fetch_constituents.assert_called_once()
+            # Verify get_constituents was called
+            mock_index_provider.get_constituents.assert_called_once()
 
             # Verify POST was made to registry
             mock_session.post.assert_called_once()
@@ -660,7 +660,7 @@ class TestSyncIndexConstituents:
         mock_index_provider = Mock()
         mock_index_provider.name = "TestIndexProvider"
         mock_index_provider.provider_type = ProviderType.INDEX
-        mock_index_provider.fetch_constituents = AsyncMock(return_value=[
+        mock_index_provider.get_constituents = AsyncMock(return_value=[
             {"symbol": "AAPL", "weight": 0.05},
         ])
         mock_index_provider.aclose = AsyncMock()
@@ -668,7 +668,7 @@ class TestSyncIndexConstituents:
         hub._providers["TestIndexProvider"] = mock_index_provider
 
         # Mock the HTTP POST to fail
-        with patch('aiohttp.ClientSession') as mock_session_class:
+        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession') as mock_session_class:
             mock_session = AsyncMock()
             mock_session.post = Mock(side_effect=Exception("Connection refused"))
             mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -692,7 +692,7 @@ class TestSyncIndexConstituents:
         mock_index_provider = Mock()
         mock_index_provider.name = "TestIndexProvider"
         mock_index_provider.provider_type = ProviderType.INDEX
-        mock_index_provider.fetch_constituents = AsyncMock(return_value=[
+        mock_index_provider.get_constituents = AsyncMock(return_value=[
             {"symbol": "AAPL", "weight": 0.05},
         ])
         mock_index_provider.aclose = AsyncMock()
@@ -700,10 +700,10 @@ class TestSyncIndexConstituents:
         hub._providers["TestIndexProvider"] = mock_index_provider
 
         # Mock successful HTTP POST
-        with patch('aiohttp.ClientSession') as mock_session_class:
+        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession') as mock_session_class:
             mock_response = AsyncMock()
             mock_response.status = 200
-            mock_response.json = AsyncMock(return_value={"added": 1, "removed": 0})
+            mock_response.json = AsyncMock(return_value={"members_added": 1, "members_removed": 0})
 
             mock_session = AsyncMock()
             mock_session.post = Mock(return_value=AsyncMock(

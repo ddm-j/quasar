@@ -1,11 +1,13 @@
 """Data collection handlers: scheduling, fetching, storage."""
 import asyncio
 import logging
+import os
 import warnings
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable, Awaitable
 
+import aiohttp
 from apscheduler.triggers.cron import CronTrigger
 import asyncpg.exceptions
 
@@ -18,6 +20,9 @@ from ..utils.constants import (
     QUERIES, BATCH_SIZE, DEFAULT_LOOKBACK,
     DEFAULT_LIVE_OFFSET, IMMEDIATE_PULL
 )
+
+# Registry service URL for index sync API calls
+REGISTRY_URL = os.getenv("REGISTRY_URL", "http://registry:8080")
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +122,40 @@ class CollectionHandlersMixin(HandlerMixin):
         Args:
             provider_name (str): Name of the IndexProvider to sync.
         """
-        # Implementation in T018
-        raise NotImplementedError("sync_index_constituents not yet implemented")
+        logger.info(f"Index sync started: {provider_name}")
+
+        # Load provider if not already loaded
+        if provider_name not in self._providers:
+            loaded = await self.load_provider_cls(provider_name)
+            if not loaded:
+                raise ValueError(f"Failed to load IndexProvider: {provider_name}")
+
+        provider = self._providers[provider_name]
+
+        # Fetch constituents from the provider
+        constituents = await provider.get_constituents()
+        logger.info(f"Index sync: {provider_name} fetched {len(constituents)} constituents")
+
+        # POST to Registry sync endpoint
+        url = f"{REGISTRY_URL}/api/registry/indices/{provider_name}/sync"
+        payload = {"constituents": constituents}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    logger.info(
+                        f"Index sync complete: {provider_name} - "
+                        f"added={result.get('members_added', 0)}, "
+                        f"removed={result.get('members_removed', 0)}, "
+                        f"unchanged={result.get('members_unchanged', 0)}"
+                    )
+                else:
+                    error_text = await response.text()
+                    raise RuntimeError(
+                        f"Registry sync failed for {provider_name}: "
+                        f"status={response.status}, body={error_text}"
+                    )
 
     async def refresh_subscriptions(self):
         """Synchronize scheduled jobs with the ``provider_subscription`` table."""
