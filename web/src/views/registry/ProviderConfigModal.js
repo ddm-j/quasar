@@ -450,7 +450,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
                       <CRow className="mb-3">
                         <CCol md={8}>
-                          <div className="p-3 border rounded bg-light">
+                          <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
                             <strong>Pull Time Preview</strong>
                             <p className="mb-0 mt-2">
                               Daily data collection will run at{' '}
@@ -534,7 +534,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
                       <CRow className="mb-3">
                         <CCol md={10}>
-                          <div className="p-3 border rounded bg-light">
+                          <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
                             <strong>Listening Window Preview</strong>
                             <div className="mt-3 position-relative" style={{ height: '60px' }}>
                               {/* Timeline visualization */}
@@ -724,7 +724,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                           </small>
                         </div>
                       )}
-                      <div className="p-3 border rounded bg-light">
+                      <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
                         <p className="mb-0 text-body-secondary small">
                           Selected lookback:{' '}
                           <CBadge color="primary">
