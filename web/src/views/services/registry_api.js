@@ -585,7 +585,7 @@ export const getCommonSymbols = async (params = {}) => {
   });
 
   const queryString = queryParams.toString();
-  const url = `${API_BASE}common-symbols${queryString ? `?${queryString}` : ''}`;
+  const url = `${API_BASE}asset-mappings/common-symbols${queryString ? `?${queryString}` : ''}`;
 
 
   const response = await fetch(url, {

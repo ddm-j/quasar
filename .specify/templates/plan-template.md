@@ -31,16 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Review against `.specify/memory/constitution.md` principles:
-
-- [ ] **I. Provider Abstraction**: If adding data sources, uses ABC hierarchy + `@register_provider`
-- [ ] **II. Async-First**: All I/O uses async/await, no blocking calls in async contexts
-- [ ] **III. Constructor DI**: Dependencies injected, not imported as singletons
-- [ ] **IV. Type-Safe Boundaries**: Internal DTOs lightweight, Pydantic at API edges only
-- [ ] **V. Test Infrastructure**: Tests use centralized fixtures from `conftest.py`
-- [ ] **VI. Simplicity**: No premature abstractions; complexity justified if introduced
-
-*Mark N/A for principles not applicable to this feature.*
+[Gates determined based on constitution file]
 
 ## Project Structure
 

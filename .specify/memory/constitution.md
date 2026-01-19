@@ -6,17 +6,19 @@ Version change: 0.0.0 → 1.0.0 (MAJOR: Initial constitution ratification)
 Modified principles: N/A (initial creation)
 
 Added sections:
-  - Core Principles (6 principles)
-  - Technology Constraints (stack requirements)
-  - Development Workflow (commit, review, CI)
-  - Governance (amendment process)
+- Core Principles (5 principles)
+- Development Standards
+- Quality Gates
+- Governance
 
-Removed sections: N/A (initial creation)
+Removed sections: None
 
-Templates requiring updates:
-  - .specify/templates/plan-template.md: ✅ Updated (Constitution Check now references all 6 principles)
-  - .specify/templates/spec-template.md: ✅ Compatible (requirements structure aligns)
-  - .specify/templates/tasks-template.md: ✅ Compatible (phase structure supports principles)
+Templates validation:
+- .specify/templates/plan-template.md: ✅ No constitution-specific references requiring update
+- .specify/templates/spec-template.md: ✅ No constitution-specific references requiring update
+- .specify/templates/tasks-template.md: ✅ No constitution-specific references requiring update
+- .specify/templates/checklist-template.md: ✅ No constitution-specific references requiring update
+- .specify/templates/agent-file-template.md: ✅ No constitution-specific references requiring update
 
 Follow-up TODOs: None
 -->
@@ -25,158 +27,113 @@ Follow-up TODOs: None
 
 ## Core Principles
 
-### I. Provider Abstraction
+### I. Simplicity First
 
-All external data sources and broker integrations MUST be implemented as providers
-inheriting from the established ABC hierarchy (`DataProvider`, `HistoricalDataProvider`,
-`LiveDataProvider`). Providers MUST:
+Every change MUST solve the immediate problem with minimal complexity. Code MUST NOT anticipate hypothetical future requirements.
 
-- Register via the `@register_provider` decorator
-- Declare class-level `RATE_LIMIT` and `CONCURRENCY` constraints
-- Use async context managers for session and resource lifecycle
-- Implement streaming via `AsyncIterator` for memory-efficient data handling
-- Be independently testable with mocked dependencies
+- No abstractions for single-use operations
+- No feature flags or backwards-compatibility shims when direct changes suffice
+- Three similar lines of code are preferable to a premature abstraction
+- Delete unused code completely; avoid `_unused` renames or `// removed` comments
+- YAGNI (You Aren't Gonna Need It) governs all design decisions
 
-**Rationale**: Uniform provider interface enables hot-swappable data sources, consistent
-rate limiting, and predictable resource cleanup across all integrations.
+**Rationale**: Complexity compounds over time. Each unnecessary abstraction increases cognitive load and maintenance burden. The simplest solution that works is the correct solution.
 
-### II. Async-First Architecture
+### II. Provider Abstraction
 
-All I/O-bound operations MUST use async/await patterns. This includes:
+All external data sources MUST be accessed through the provider interface pattern. Providers MUST be self-contained and independently testable.
 
-- Database operations via asyncpg with connection pooling
-- HTTP requests via aiohttp sessions
-- WebSocket connections with proper lifecycle management
-- Scheduled jobs via APScheduler's async executor
+- Providers inherit from `HistoricalDataProvider` or `LiveDataProvider`
+- Registration via `@register_provider` decorator
+- Each provider MUST define: `name`, rate limits, concurrency limits
+- Providers receive dependencies through `DerivedContext` constructor injection
+- No direct external API calls outside the provider layer
 
-Sync blocking calls in async contexts are prohibited except where explicitly justified
-(e.g., CPU-bound cryptographic operations).
+**Rationale**: The platform's value lies in aggregating multiple data sources. A consistent provider contract enables new sources to be added without modifying core logic.
 
-**Rationale**: Async-first ensures the platform can handle concurrent data streams,
-multiple provider connections, and high-frequency scheduling without thread exhaustion.
+### III. Async Resource Safety
 
-### III. Constructor-Based Dependency Injection
+All I/O-bound operations MUST use async patterns with explicit lifecycle management. Resources MUST be cleaned up even when exceptions occur.
 
-Services and handlers MUST receive dependencies through their constructors rather than
-importing global singletons. Key patterns:
+- Use `__aenter__`/`__aexit__` for connection lifecycle (database pools, HTTP sessions, WebSockets)
+- Use `AsyncIterator` for streaming data to enable memory-efficient processing
+- All database operations go through `asyncpg` pool with proper connection release
+- Rate limiting via class-level `AsyncLimiter` and `Semaphore`
+- Timeouts MUST be explicit; use the custom timeout decorator for async functions
 
-- `DatabaseHandler` accepts `dsn` or existing `pool`
-- `DataProvider` receives `DerivedContext` for secrets
-- Services accept injected pools, stores, and clients
+**Rationale**: Resource leaks in long-running trading services cause degraded performance and eventual failure. Explicit lifecycle management prevents connection exhaustion and memory growth.
 
-This enables complete mock injection in tests without monkey-patching.
+### IV. Test with Mocks
 
-**Rationale**: Explicit dependency injection produces testable, loosely-coupled code
-where behavior can be verified in isolation.
+Tests MUST isolate the unit under test by mocking external dependencies. Test fixtures MUST be centralized and reusable.
 
-### IV. Type-Safe Boundaries
+- Fixtures live in `tests/conftest.py`
+- Mock database connections with `mock_asyncpg_pool` and `mock_asyncpg_conn`
+- Mock secrets with `mock_secret_store` and `mock_system_context`
+- Use `*_with_mocks` fixtures for fully-mocked service instances
+- Use `*_client` fixtures with FastAPI `TestClient` for API testing
+- Tests MUST pass without network access or database connections
 
-Internal data transfer MUST use lightweight type-safe structures (`TypedDict`,
-`NamedTuple`, `dataclass`). Pydantic models are reserved for API request/response
-validation at service boundaries.
+**Rationale**: Fast, deterministic tests enable confident refactoring. Flaky tests that depend on external services erode trust in the test suite.
 
-- `Bar`, `SymbolInfo`, `Req` use TypedDict/NamedTuple internally
-- FastAPI endpoints use Pydantic schemas in `services/*/schemas.py`
-- Generated enums from YAML are the single source of truth for categorical values
+### V. Atomic Changes
 
-**Rationale**: Lightweight DTOs minimize serialization overhead in hot paths while
-Pydantic provides validation where untrusted input crosses service boundaries.
+Each commit MUST represent one logical change that leaves the codebase in a working state. Commits MUST NOT mix unrelated modifications.
 
-### V. Test Infrastructure First
-
-Test infrastructure MUST be centralized and consistent:
-
-- All fixtures reside in `tests/conftest.py`
-- Mock pools, stores, and contexts are reusable across test modules
-- `TestClient` fixtures (`datahub_client`, `registry_client`) enable API testing
-- Coverage excludes example providers (not production code)
-
-New features MUST have corresponding test coverage. PRs reducing coverage require
-explicit justification.
-
-**Rationale**: Centralized fixtures reduce test boilerplate and ensure consistent
-mocking strategies. High coverage catches regressions before production.
-
-### VI. Simplicity Over Abstraction
-
-Prefer concrete implementations over premature abstraction:
-
-- YAGNI: Do not build features until needed
-- Three similar blocks of code is acceptable before extracting a utility
-- Avoid indirection (wrappers, facades) unless solving a concrete problem
-- Configuration over code: use YAML/env for values that vary by deployment
-
-When complexity is introduced, document the specific problem it solves in the PR.
-
-**Rationale**: Over-engineered code is harder to understand, debug, and modify.
-Complexity must pay for itself with measurable benefit.
-
-## Technology Constraints
-
-The following stack decisions are non-negotiable for core platform development:
-
-| Layer | Technology | Version/Notes |
-|-------|------------|---------------|
-| Backend Language | Python | 3.12+ required |
-| API Framework | FastAPI | Async endpoints |
-| Database | PostgreSQL + TimescaleDB | 17+ with hypertables |
-| DB Driver | asyncpg | Connection pooling |
-| Scheduling | APScheduler | Async job store |
-| Frontend | React + Vite | CoreUI Pro components |
-| State | Redux | Frontend state management |
-| Container | Docker Compose | Local and production |
-
-Introducing alternative technologies (e.g., different ORM, sync framework, NoSQL)
-requires a constitution amendment with migration plan.
-
-## Development Workflow
-
-### Commits
-
-- One commit = one logical change
-- Codebase MUST be in working state after each commit
-- Message format: `<type>(<scope>): <description>`
+- One commit = one logical change (describable without using "and")
+- Tests MUST pass before committing
+- Use conventional commit format: `<type>(<scope>): <description>`
 - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+- Feature branches for all work; `main` is always deployable
+- Pull requests required even for solo work (they document decisions)
 
-### Code Review
+**Rationale**: Clean commit history enables effective code review, bisection for debugging, and clear understanding of why changes were made.
 
-- All changes to `main` go through pull requests
-- Self-review is acceptable for solo work but PR still required
-- CI checks (tests, enum drift, linting) MUST pass before merge
+## Development Standards
 
-### Continuous Integration
+### Code Style
 
-- `pytest` runs full test suite
-- `make enums` regenerates enums; `git diff --exit-code` catches drift
-- Coverage uploaded to Codecov; significant drops require justification
+- Python: Google-style docstrings, type hints on all public functions
+- Docstrings: imperative summary, `Args`, `Returns`, `Raises` sections
+- Pydantic models at API boundaries only; use `TypedDict`/`NamedTuple` internally
+- Enums generated from YAML via `make enums`; CI checks for drift
 
-### Documentation
+### Boundaries
 
-- Google-style docstrings for public APIs (see `docs/contributing/docstrings.md`)
-- Architecture diagrams in `docs/architecture.md`
-- Pattern reference in `.claude/docs/architectural_patterns.md`
+- Services inherit from both `DatabaseHandler` and `APIHandler`
+- Secrets accessed only through `SystemContext`/`DerivedContext`
+- Configuration via environment variables with explicit defaults
+- No hardcoded credentials, URLs, or environment-specific values
+
+## Quality Gates
+
+All contributions MUST satisfy these gates before merge:
+
+1. **Tests pass**: `pytest` completes without failures
+2. **Enum sync**: `make enums` produces no diff
+3. **Type safety**: No new type errors introduced
+4. **Commit hygiene**: Conventional format, atomic changes
+5. **Code review**: Self-review minimum; document non-obvious decisions
 
 ## Governance
 
-This constitution supersedes informal practices. All contributions MUST comply.
+This constitution supersedes all other development practices and guidelines. Compliance is mandatory for all contributions.
 
-### Amendment Process
+### Amendment Procedure
 
-1. Propose change via GitHub issue with rationale
-2. Draft amendment with version bump justification
-3. Update dependent templates if principles change
-4. Merge requires explicit approval
+1. Propose change via pull request modifying this file
+2. Document rationale for addition, modification, or removal
+3. Update version according to semantic versioning:
+   - MAJOR: Principle removal or incompatible redefinition
+   - MINOR: New principle or material expansion
+   - PATCH: Clarification, wording, or non-semantic refinement
+4. Propagate changes to dependent templates if principle impacts their content
+5. Merge requires explicit acknowledgment of governance change
 
-### Version Policy
+### Compliance Review
 
-- **MAJOR**: Principle removed, redefined, or backward-incompatible governance change
-- **MINOR**: New principle added, section materially expanded
-- **PATCH**: Clarifications, wording, typo fixes
+- All pull requests MUST be evaluated against constitution principles
+- Complexity MUST be justified when it appears to violate Principle I
+- Reviewers SHOULD cite specific principles when requesting changes
 
-### Compliance
-
-- PRs SHOULD reference relevant principles when applicable
-- Plan-template includes Constitution Check gate
-- Violations require documented justification in Complexity Tracking
-
-**Version**: 1.0.0 | **Ratified**: 2026-01-17 | **Last Amended**: 2026-01-17
+**Version**: 1.0.0 | **Ratified**: 2026-01-16 | **Last Amended**: 2026-01-16
