@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import PropTypes from 'prop-types'
 import { createChart } from 'lightweight-charts'
 import { getOHLCData } from '../services/datahub_api'
@@ -23,6 +23,74 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
   const [allData, setAllData] = useState([]) // Store full data with volume for download
   const [initialViewRange, setInitialViewRange] = useState(null)
   const [chartDimensions, setChartDimensions] = useState({ width: 0, height: 500 })
+
+  // Theme detection - use state with MutationObserver for reactive updates
+  const getThemeFromDOM = () => {
+    const theme = document.documentElement.getAttribute('data-coreui-theme')
+    if (theme === 'dark') return true
+    if (theme === 'light') return false
+    // 'auto' - check system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+
+  const [isDarkMode, setIsDarkMode] = useState(getThemeFromDOM)
+
+  // Watch for theme changes via MutationObserver
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'data-coreui-theme') {
+          setIsDarkMode(getThemeFromDOM())
+        }
+      }
+    })
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-coreui-theme'],
+    })
+
+    // Also listen for system preference changes when in 'auto' mode
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleMediaChange = () => {
+      const theme = document.documentElement.getAttribute('data-coreui-theme')
+      if (theme === 'auto') {
+        setIsDarkMode(mediaQuery.matches)
+      }
+    }
+    mediaQuery.addEventListener('change', handleMediaChange)
+
+    return () => {
+      observer.disconnect()
+      mediaQuery.removeEventListener('change', handleMediaChange)
+    }
+  }, [])
+
+  // Theme-aware color schemes
+  const chartColors = useMemo(() => isDarkMode
+    ? {
+        background: '#000000',
+        text: '#ffffff',
+        grid: '#1a1a1a',
+        border: '#2a2e39',
+        crosshairLine: '#758696',
+        crosshairLabel: '#1e1e1e',
+        buttonBg: 'rgba(42, 46, 57, 0.9)',
+        buttonHover: 'rgba(58, 64, 77, 0.9)',
+        overlayBg: 'rgba(0, 0, 0, 0.8)',
+      }
+    : {
+        background: '#ffffff',
+        text: '#131722',
+        grid: '#e1e3eb',
+        border: '#d1d4dc',
+        crosshairLine: '#758696',
+        crosshairLabel: '#f0f3fa',
+        buttonBg: 'rgba(240, 243, 250, 0.9)',
+        buttonHover: 'rgba(220, 224, 235, 0.9)',
+        overlayBg: 'rgba(255, 255, 255, 0.9)',
+      }
+  , [isDarkMode])
 
   // Calculate chart height based on container width with responsive aspect ratios
   const calculateChartHeight = (containerWidth) => {
@@ -87,35 +155,35 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
     if (initialDimensions.width === 0) return
 
     try {
-      // Create chart instance
+      // Create chart instance with theme-aware colors
       chart = createChart(chartContainerRef.current, {
         layout: {
-          background: { color: '#000000' },
-          textColor: '#ffffff',
+          background: { color: chartColors.background },
+          textColor: chartColors.text,
         },
         width: initialDimensions.width,
         height: initialDimensions.height,
         grid: {
-          vertLines: { color: '#1a1a1a' },
-          horzLines: { color: '#1a1a1a' },
+          vertLines: { color: chartColors.grid },
+          horzLines: { color: chartColors.grid },
         },
         crosshair: {
           mode: 1, // Normal crosshair
           vertLine: {
-            color: '#758696',
+            color: chartColors.crosshairLine,
             width: 1,
             style: 0,
-            labelBackgroundColor: '#1e1e1e',
+            labelBackgroundColor: chartColors.crosshairLabel,
           },
           horzLine: {
-            color: '#758696',
+            color: chartColors.crosshairLine,
             width: 1,
             style: 0,
-            labelBackgroundColor: '#1e1e1e',
+            labelBackgroundColor: chartColors.crosshairLabel,
           },
         },
         rightPriceScale: {
-          borderColor: '#2a2e39',
+          borderColor: chartColors.border,
           scaleMargins: {
             top: 0.1,
             bottom: 0.1,
@@ -123,7 +191,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
           entireRangeOnly: true,  // Prevent scrolling beyond data range (min/max)
         },
         timeScale: {
-          borderColor: '#2a2e39',
+          borderColor: chartColors.border,
           timeVisible: true,
           secondsVisible: false,
           fixLeftEdge: true,  // Prevent scrolling past the first (oldest) bar
@@ -222,7 +290,47 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
       candlestickSeriesRef.current = null
       volumeSeriesRef.current = null
     }
+    // Note: chartColors is intentionally excluded from dependencies.
+    // Recreating the chart on theme change would lose loaded data and cause flickering.
+    // The separate "Update chart colors when theme changes" effect below handles
+    // dynamic theme updates via applyOptions() without recreating the chart.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Update chart colors when theme changes
+  useEffect(() => {
+    if (!chartRef.current) return
+
+    chartRef.current.applyOptions({
+      layout: {
+        background: { color: chartColors.background },
+        textColor: chartColors.text,
+      },
+      grid: {
+        vertLines: { color: chartColors.grid },
+        horzLines: { color: chartColors.grid },
+      },
+      crosshair: {
+        vertLine: {
+          labelBackgroundColor: chartColors.crosshairLabel,
+        },
+        horzLine: {
+          labelBackgroundColor: chartColors.crosshairLabel,
+        },
+      },
+      rightPriceScale: {
+        borderColor: chartColors.border,
+      },
+      timeScale: {
+        borderColor: chartColors.border,
+      },
+    })
+
+    // Also update the container background (fixes dynamic theme switching)
+    if (chartContainerRef.current) {
+      chartContainerRef.current.style.backgroundColor = chartColors.background
+    }
+  }, [chartColors])
 
   // Fetch data when props change
   useEffect(() => {
@@ -459,7 +567,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            color: '#ffffff',
+            color: chartColors.text,
             zIndex: 10,
             textAlign: 'center',
           }}
@@ -478,7 +586,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             zIndex: 10,
             textAlign: 'center',
             padding: '20px',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: chartColors.overlayBg,
             borderRadius: '4px',
           }}
         >
@@ -493,11 +601,11 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            color: '#ffffff',
+            color: chartColors.text,
             zIndex: 10,
             textAlign: 'center',
             padding: '20px',
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: chartColors.overlayBg,
             borderRadius: '4px',
           }}
         >
@@ -521,9 +629,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             onClick={handleResetView}
             style={{
               padding: '8px',
-              backgroundColor: 'rgba(42, 46, 57, 0.9)',
-              color: '#ffffff',
-              border: '1px solid #2a2e39',
+              backgroundColor: chartColors.buttonBg,
+              color: chartColors.text,
+              border: `1px solid ${chartColors.border}`,
               borderRadius: '4px',
               cursor: 'pointer',
               display: 'flex',
@@ -534,10 +642,10 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = 'rgba(58, 64, 77, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonHover
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(42, 46, 57, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonBg
             }}
             title="Reset to default view (500 most recent bars)"
           >
@@ -547,9 +655,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             onClick={handleShowAll}
             style={{
               padding: '8px',
-              backgroundColor: 'rgba(42, 46, 57, 0.9)',
-              color: '#ffffff',
-              border: '1px solid #2a2e39',
+              backgroundColor: chartColors.buttonBg,
+              color: chartColors.text,
+              border: `1px solid ${chartColors.border}`,
               borderRadius: '4px',
               cursor: 'pointer',
               display: 'flex',
@@ -560,10 +668,10 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = 'rgba(58, 64, 77, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonHover
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(42, 46, 57, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonBg
             }}
             title="Show all 5000 bars"
           >
@@ -573,9 +681,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             onClick={handleJumpToStart}
             style={{
               padding: '8px',
-              backgroundColor: 'rgba(42, 46, 57, 0.9)',
-              color: '#ffffff',
-              border: '1px solid #2a2e39',
+              backgroundColor: chartColors.buttonBg,
+              color: chartColors.text,
+              border: `1px solid ${chartColors.border}`,
               borderRadius: '4px',
               cursor: 'pointer',
               display: 'flex',
@@ -586,10 +694,10 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = 'rgba(58, 64, 77, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonHover
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(42, 46, 57, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonBg
             }}
             title="Jump to oldest data (first 500 bars)"
           >
@@ -599,9 +707,9 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             onClick={handleJumpToLatest}
             style={{
               padding: '8px',
-              backgroundColor: 'rgba(42, 46, 57, 0.9)',
-              color: '#ffffff',
-              border: '1px solid #2a2e39',
+              backgroundColor: chartColors.buttonBg,
+              color: chartColors.text,
+              border: `1px solid ${chartColors.border}`,
               borderRadius: '4px',
               cursor: 'pointer',
               display: 'flex',
@@ -612,10 +720,10 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = 'rgba(58, 64, 77, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonHover
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'rgba(42, 46, 57, 0.9)'
+              e.currentTarget.style.backgroundColor = chartColors.buttonBg
             }}
             title="Jump to newest data (last 500 bars)"
           >
@@ -628,7 +736,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
         style={{
           width: '100%',
           height: `${chartDimensions.height}px`,
-          backgroundColor: '#000000',
+          backgroundColor: chartColors.background,
           borderRadius: '4px',
           opacity: loading ? 0.5 : 1,
         }}
