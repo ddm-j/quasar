@@ -124,38 +124,42 @@ class CollectionHandlersMixin(HandlerMixin):
         """
         logger.info(f"Index sync started: {provider_name}")
 
-        # Load provider if not already loaded
-        if provider_name not in self._providers:
-            loaded = await self.load_provider_cls(provider_name)
-            if not loaded:
-                raise ValueError(f"Failed to load IndexProvider: {provider_name}")
+        try:
+            # Load provider if not already loaded
+            if provider_name not in self._providers:
+                loaded = await self.load_provider_cls(provider_name)
+                if not loaded:
+                    raise ValueError(f"Failed to load IndexProvider: {provider_name}")
 
-        provider = self._providers[provider_name]
+            provider = self._providers[provider_name]
 
-        # Fetch constituents from the provider
-        constituents = await provider.get_constituents()
-        logger.info(f"Index sync: {provider_name} fetched {len(constituents)} constituents")
+            # Fetch constituents from the provider
+            constituents = await provider.get_constituents()
+            logger.info(f"Index sync: {provider_name} fetched {len(constituents)} constituents")
 
-        # POST to Registry sync endpoint
-        url = f"{REGISTRY_URL}/api/registry/indices/{provider_name}/sync"
-        payload = {"constituents": constituents}
+            # POST to Registry sync endpoint
+            url = f"{REGISTRY_URL}/api/registry/indices/{provider_name}/sync"
+            payload = {"constituents": constituents}
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    logger.info(
-                        f"Index sync complete: {provider_name} - "
-                        f"added={result.get('members_added', 0)}, "
-                        f"removed={result.get('members_removed', 0)}, "
-                        f"unchanged={result.get('members_unchanged', 0)}"
-                    )
-                else:
-                    error_text = await response.text()
-                    raise RuntimeError(
-                        f"Registry sync failed for {provider_name}: "
-                        f"status={response.status}, body={error_text}"
-                    )
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.info(
+                            f"Index sync complete: {provider_name} - "
+                            f"added={result.get('members_added', 0)}, "
+                            f"removed={result.get('members_removed', 0)}, "
+                            f"unchanged={result.get('members_unchanged', 0)}"
+                        )
+                    else:
+                        error_text = await response.text()
+                        raise RuntimeError(
+                            f"Registry sync failed for {provider_name}: "
+                            f"status={response.status}, body={error_text}"
+                        )
+        except Exception as e:
+            logger.error(f"Index sync failed: {provider_name} - {e}")
+            raise
 
     async def refresh_subscriptions(self):
         """Synchronize scheduled jobs with the ``provider_subscription`` table."""
