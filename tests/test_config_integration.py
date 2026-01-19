@@ -24,8 +24,8 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema endpoint returns 200 for valid historical provider."""
-        # Mock database to return historical subtype
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        # Mock database to return Historical subtype (production value)
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -36,7 +36,7 @@ class TestGetConfigSchemaEndpoint:
         data = response.json()
         assert data["class_name"] == "TestHistoricalProvider"
         assert data["class_type"] == "provider"
-        assert data["class_subtype"] == "historical"
+        assert data["class_subtype"] == "Historical"
         assert "schema" in data
 
     def test_schema_endpoint_returns_200_for_realtime_provider(
@@ -45,7 +45,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema endpoint returns 200 for valid realtime provider."""
-        mock_asyncpg_pool.fetchval.return_value = "realtime"
+        mock_asyncpg_pool.fetchval.return_value = "Live"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -55,7 +55,7 @@ class TestGetConfigSchemaEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["class_name"] == "TestLiveProvider"
-        assert data["class_subtype"] == "realtime"
+        assert data["class_subtype"] == "Live"
 
     def test_schema_endpoint_returns_200_for_index_provider(
         self,
@@ -63,7 +63,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema endpoint returns 200 for valid index provider."""
-        mock_asyncpg_pool.fetchval.return_value = "index"
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -73,7 +73,7 @@ class TestGetConfigSchemaEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["class_name"] == "TestIndexProvider"
-        assert data["class_subtype"] == "index"
+        assert data["class_subtype"] == "IndexProvider"
 
     def test_schema_endpoint_returns_404_for_unknown_provider(
         self,
@@ -121,7 +121,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Historical provider schema includes scheduling.delay_hours."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -139,7 +139,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Historical provider schema includes data.lookback_days."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -157,7 +157,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Realtime provider schema includes pre_close_seconds and post_close_seconds."""
-        mock_asyncpg_pool.fetchval.return_value = "realtime"
+        mock_asyncpg_pool.fetchval.return_value = "Live"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -176,7 +176,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Realtime provider schema does not include data category."""
-        mock_asyncpg_pool.fetchval.return_value = "realtime"
+        mock_asyncpg_pool.fetchval.return_value = "Live"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -193,7 +193,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Index provider schema only includes crypto category."""
-        mock_asyncpg_pool.fetchval.return_value = "index"
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -212,7 +212,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """All provider types include crypto category from base DataProvider."""
-        for subtype in ["historical", "realtime", "index"]:
+        for subtype in ["Historical", "Live", "IndexProvider"]:
             mock_asyncpg_pool.fetchval.return_value = subtype
 
             response = registry_client.get(
@@ -231,7 +231,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema fields include type information as string."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -251,7 +251,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema fields include min/max bounds."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -272,7 +272,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema fields include default values."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -291,7 +291,7 @@ class TestGetConfigSchemaEndpoint:
         mock_asyncpg_pool: AsyncMock
     ):
         """Schema fields include descriptions."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1040,7 +1040,7 @@ class TestSchemaEndpointCompleteMetadata:
         mock_asyncpg_pool: AsyncMock
     ):
         """T075: Schema returns scheduling.delay_hours for historical with complete metadata."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1068,7 +1068,7 @@ class TestSchemaEndpointCompleteMetadata:
         mock_asyncpg_pool: AsyncMock
     ):
         """T075: Schema returns data.lookback_days for historical with complete metadata."""
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1096,7 +1096,7 @@ class TestSchemaEndpointCompleteMetadata:
         mock_asyncpg_pool: AsyncMock
     ):
         """T076: Schema returns scheduling.pre_close_seconds for live with complete metadata."""
-        mock_asyncpg_pool.fetchval.return_value = "realtime"
+        mock_asyncpg_pool.fetchval.return_value = "Live"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1124,7 +1124,7 @@ class TestSchemaEndpointCompleteMetadata:
         mock_asyncpg_pool: AsyncMock
     ):
         """T076: Schema returns scheduling.post_close_seconds for live with complete metadata."""
-        mock_asyncpg_pool.fetchval.return_value = "realtime"
+        mock_asyncpg_pool.fetchval.return_value = "Live"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1152,7 +1152,7 @@ class TestSchemaEndpointCompleteMetadata:
         mock_asyncpg_pool: AsyncMock
     ):
         """T077: Schema returns only crypto category for index providers."""
-        mock_asyncpg_pool.fetchval.return_value = "index"
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1181,7 +1181,7 @@ class TestSchemaEndpointCompleteMetadata:
         """T078: Schema response matches HistoricalDataProvider.CONFIGURABLE definition."""
         from quasar.lib.providers.core import HistoricalDataProvider
 
-        mock_asyncpg_pool.fetchval.return_value = "historical"
+        mock_asyncpg_pool.fetchval.return_value = "Historical"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1221,7 +1221,7 @@ class TestSchemaEndpointCompleteMetadata:
         """T078: Schema response matches LiveDataProvider.CONFIGURABLE definition."""
         from quasar.lib.providers.core import LiveDataProvider
 
-        mock_asyncpg_pool.fetchval.return_value = "realtime"
+        mock_asyncpg_pool.fetchval.return_value = "Live"
 
         response = registry_client.get(
             "/api/registry/config/schema",
@@ -1261,7 +1261,7 @@ class TestSchemaEndpointCompleteMetadata:
         """T078: Schema response matches IndexProvider.CONFIGURABLE definition."""
         from quasar.lib.providers.core import IndexProvider
 
-        mock_asyncpg_pool.fetchval.return_value = "index"
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
             "/api/registry/config/schema",

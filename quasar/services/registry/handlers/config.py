@@ -32,9 +32,9 @@ logger = logging.getLogger(__name__)
 
 # Schema map: class_subtype -> CONFIGURABLE dict
 SCHEMA_MAP: dict[str, dict[str, dict[str, Any]]] = {
-    "historical": HistoricalDataProvider.CONFIGURABLE,
-    "realtime": LiveDataProvider.CONFIGURABLE,
-    "index": IndexProvider.CONFIGURABLE,
+    "Historical": HistoricalDataProvider.CONFIGURABLE,
+    "Live": LiveDataProvider.CONFIGURABLE,
+    "IndexProvider": IndexProvider.CONFIGURABLE,
 }
 
 
@@ -42,7 +42,7 @@ def get_schema_for_subtype(class_subtype: str) -> dict[str, dict[str, Any]] | No
     """Get the CONFIGURABLE schema for a given class_subtype.
 
     Args:
-        class_subtype: The provider subtype (e.g., "historical", "realtime", "index").
+        class_subtype: The provider subtype (e.g., "Historical", "Live", "IndexProvider").
 
     Returns:
         The CONFIGURABLE dict for the subtype, or None if not found.
@@ -610,6 +610,9 @@ class ConfigHandlersMixin(HandlerMixin):
                 decrypted = derived_context.decrypt(nonce, ciphertext, None)
                 secrets_dict = json.loads(decrypted.decode('utf-8'))
                 keys = list(secrets_dict.keys())
+            except json.JSONDecodeError as e:
+                logger.error(f"Registry.handle_get_secret_keys: Corrupted credentials for {class_name}/{class_type}: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail="Stored credentials are corrupted")
             except Exception as e:
                 logger.error(f"Registry.handle_get_secret_keys: Failed to decrypt secrets for {class_name}/{class_type}: {e}", exc_info=True)
                 raise HTTPException(status_code=500, detail="Failed to decrypt provider secrets")
@@ -695,8 +698,9 @@ class ConfigHandlersMixin(HandlerMixin):
             unload_triggered = False
             if class_type == "provider":
                 unload_url = f"http://datahub:8080/api/datahub/providers/{class_name}/unload"
+                timeout = aiohttp.ClientTimeout(total=5)  # 5-second timeout
                 try:
-                    async with aiohttp.ClientSession() as session:
+                    async with aiohttp.ClientSession(timeout=timeout) as session:
                         async with session.post(unload_url) as response:
                             if response.status == 200:
                                 unload_triggered = True
@@ -709,6 +713,8 @@ class ConfigHandlersMixin(HandlerMixin):
                                 logger.warning(f"Registry.handle_update_secrets: DataHub unload returned {response.status} for {class_name}: {error_text}")
                 except aiohttp.ClientConnectorError as e_conn:
                     logger.warning(f"Registry.handle_update_secrets: Cannot connect to DataHub for unload: {e_conn}")
+                except TimeoutError:
+                    logger.warning(f"Registry.handle_update_secrets: Timeout calling DataHub unload for {class_name} (5s exceeded)")
                 except Exception as e_unload:
                     logger.warning(f"Registry.handle_update_secrets: Error calling DataHub unload for {class_name}: {e_unload}")
 

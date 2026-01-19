@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 import {
   CModal,
@@ -76,9 +76,16 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const [secretsError, setSecretsError] = useState('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
+  // Ref to track which provider's secret keys have been loaded
+  const secretKeysLoadedRef = useRef(null)
+
   // Load configuration and available currencies when modal opens
   useEffect(() => {
     if (visible && classType && className) {
+      // Reset secret keys/values when provider changes to prevent stale data
+      setSecretKeys([])
+      setSecretValues({})
+      secretKeysLoadedRef.current = null
       loadConfiguration()
       loadAvailableCurrencies()
     }
@@ -86,7 +93,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
   // Load secret keys when API tab is activated
   useEffect(() => {
-    if (visible && activeTab === 'api' && classType && className && secretKeys.length === 0) {
+    const providerKey = `${classType}:${className}`
+    if (visible && activeTab === 'api' && classType && className && secretKeysLoadedRef.current !== providerKey) {
+      secretKeysLoadedRef.current = providerKey
       loadSecretKeys()
     }
   }, [visible, activeTab, classType, className])
@@ -197,6 +206,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setSecretKeys([])
     setSecretValues({})
     setShowConfirmDialog(false)
+    secretKeysLoadedRef.current = null
     onClose()
   }
 
@@ -208,12 +218,18 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   }
 
   const handleUpdateSecretsClick = () => {
-    // Check if all fields are filled
-    const emptyFields = secretKeys.filter(key => !secretValues[key] || secretValues[key].trim() === '')
+    // Check if all fields are filled (after trimming whitespace)
+    const trimmedValues = {}
+    secretKeys.forEach(key => {
+      trimmedValues[key] = secretValues[key]?.trim() || ''
+    })
+    const emptyFields = secretKeys.filter(key => trimmedValues[key] === '')
     if (emptyFields.length > 0) {
       setSecretsError(`Please fill in all credential fields. Missing: ${emptyFields.join(', ')}`)
       return
     }
+    // Update secretValues with trimmed values before confirmation
+    setSecretValues(trimmedValues)
     // Show confirmation dialog
     setShowConfirmDialog(true)
   }
@@ -681,9 +697,18 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                               onChange={(e) => {
                                 const value = parseInt(e.target.value, 10)
                                 if (!isNaN(value)) {
-                                  // Clamp value to valid range
+                                  // Allow free typing without clamping
+                                  handleDataChange('lookback_days', value)
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const value = parseInt(e.target.value, 10)
+                                if (!isNaN(value)) {
+                                  // Clamp value to valid range on blur
                                   const clampedValue = Math.max(1, Math.min(8000, value))
-                                  handleDataChange('lookback_days', clampedValue)
+                                  if (clampedValue !== value) {
+                                    handleDataChange('lookback_days', clampedValue)
+                                  }
                                 }
                               }}
                               disabled={saving}

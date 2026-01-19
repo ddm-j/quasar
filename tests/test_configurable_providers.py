@@ -131,38 +131,38 @@ class TestSchemaLookupUtility:
     """T028: Tests for schema lookup utility functions."""
 
     def test_schema_map_has_historical(self):
-        """SCHEMA_MAP includes historical subtype."""
-        assert "historical" in SCHEMA_MAP
-        assert SCHEMA_MAP["historical"] == HistoricalDataProvider.CONFIGURABLE
+        """SCHEMA_MAP includes Historical subtype."""
+        assert "Historical" in SCHEMA_MAP
+        assert SCHEMA_MAP["Historical"] == HistoricalDataProvider.CONFIGURABLE
 
     def test_schema_map_has_realtime(self):
-        """SCHEMA_MAP includes realtime subtype."""
-        assert "realtime" in SCHEMA_MAP
-        assert SCHEMA_MAP["realtime"] == LiveDataProvider.CONFIGURABLE
+        """SCHEMA_MAP includes Live subtype."""
+        assert "Live" in SCHEMA_MAP
+        assert SCHEMA_MAP["Live"] == LiveDataProvider.CONFIGURABLE
 
     def test_schema_map_has_index(self):
-        """SCHEMA_MAP includes index subtype."""
-        assert "index" in SCHEMA_MAP
-        assert SCHEMA_MAP["index"] == IndexProvider.CONFIGURABLE
+        """SCHEMA_MAP includes IndexProvider subtype."""
+        assert "IndexProvider" in SCHEMA_MAP
+        assert SCHEMA_MAP["IndexProvider"] == IndexProvider.CONFIGURABLE
 
     def test_get_schema_for_subtype_historical(self):
-        """get_schema_for_subtype returns correct schema for historical."""
-        schema = get_schema_for_subtype("historical")
+        """get_schema_for_subtype returns correct schema for Historical."""
+        schema = get_schema_for_subtype("Historical")
         assert schema is not None
         assert "scheduling" in schema
         assert "delay_hours" in schema["scheduling"]
 
     def test_get_schema_for_subtype_realtime(self):
-        """get_schema_for_subtype returns correct schema for realtime."""
-        schema = get_schema_for_subtype("realtime")
+        """get_schema_for_subtype returns correct schema for Live."""
+        schema = get_schema_for_subtype("Live")
         assert schema is not None
         assert "scheduling" in schema
         assert "pre_close_seconds" in schema["scheduling"]
         assert "post_close_seconds" in schema["scheduling"]
 
     def test_get_schema_for_subtype_index(self):
-        """get_schema_for_subtype returns correct schema for index."""
-        schema = get_schema_for_subtype("index")
+        """get_schema_for_subtype returns correct schema for IndexProvider."""
+        schema = get_schema_for_subtype("IndexProvider")
         assert schema is not None
         assert "crypto" in schema
         assert "scheduling" not in schema
