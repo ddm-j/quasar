@@ -99,6 +99,28 @@ const Indices = () => {
     return indexType === 'IndexProvider' ? 'primary' : 'success';
   };
 
+  // Format sync frequency for display
+  const formatSyncFrequency = (item) => {
+    // Only IndexProviders have sync frequency
+    if (item.index_type !== 'IndexProvider') {
+      return 'N/A';
+    }
+    const freq = item.preferences?.scheduling?.sync_frequency;
+    if (!freq) {
+      return 'Weekly'; // Default per spec
+    }
+    switch (freq) {
+      case '1d':
+        return 'Daily';
+      case '1w':
+        return 'Weekly';
+      case '1M':
+        return 'Monthly';
+      default:
+        return freq;
+    }
+  };
+
   // Table columns - use width: '1%' + whiteSpace: 'nowrap' for auto-fit
   const columns = [
     {
@@ -111,6 +133,13 @@ const Indices = () => {
     {
       key: 'index_type',
       label: 'Type',
+      _style: { width: '1%', whiteSpace: 'nowrap' },
+      sorter: true,
+      filter: false,
+    },
+    {
+      key: 'sync_frequency',
+      label: 'Sync Frequency',
       _style: { width: '1%', whiteSpace: 'nowrap' },
       sorter: true,
       filter: false,
@@ -198,6 +227,9 @@ const Indices = () => {
                           {item.index_type}
                         </CBadge>
                       </td>
+                    ),
+                    sync_frequency: (item) => (
+                      <td>{formatSyncFrequency(item)}</td>
                     ),
                     current_member_count: (item) => (
                       <td className="text-center">
