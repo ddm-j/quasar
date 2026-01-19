@@ -113,18 +113,20 @@ class TestConfigurableSchemaInheritance:
         assert "crypto" in IndexProvider.CONFIGURABLE
         assert "preferred_quote_currency" in IndexProvider.CONFIGURABLE["crypto"]
 
-    def test_index_provider_no_scheduling(self):
-        """IndexProvider does not add scheduling category."""
-        assert "scheduling" not in IndexProvider.CONFIGURABLE
+    def test_index_provider_has_scheduling(self):
+        """IndexProvider has scheduling category with sync_frequency."""
+        assert "scheduling" in IndexProvider.CONFIGURABLE
+        assert "sync_frequency" in IndexProvider.CONFIGURABLE["scheduling"]
 
     def test_index_provider_no_data(self):
         """IndexProvider does not add data category."""
         assert "data" not in IndexProvider.CONFIGURABLE
 
-    def test_index_provider_only_has_crypto(self):
-        """IndexProvider only has crypto category (from DataProvider)."""
-        assert len(IndexProvider.CONFIGURABLE) == 1
+    def test_index_provider_has_crypto_and_scheduling(self):
+        """IndexProvider has crypto (from DataProvider) and scheduling categories."""
+        assert len(IndexProvider.CONFIGURABLE) == 2
         assert "crypto" in IndexProvider.CONFIGURABLE
+        assert "scheduling" in IndexProvider.CONFIGURABLE
 
 
 class TestSchemaLookupUtility:
@@ -165,7 +167,8 @@ class TestSchemaLookupUtility:
         schema = get_schema_for_subtype("IndexProvider")
         assert schema is not None
         assert "crypto" in schema
-        assert "scheduling" not in schema
+        assert "scheduling" in schema
+        assert "sync_frequency" in schema["scheduling"]
 
     def test_get_schema_for_subtype_unknown(self):
         """get_schema_for_subtype returns None for unknown subtype."""
