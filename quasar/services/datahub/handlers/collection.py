@@ -1,11 +1,13 @@
 """Data collection handlers: scheduling, fetching, storage."""
 import asyncio
 import logging
+import os
 import warnings
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable, Awaitable
 
+import aiohttp
 from apscheduler.triggers.cron import CronTrigger
 import asyncpg.exceptions
 
@@ -14,10 +16,14 @@ from quasar.lib.common.calendar import TradingCalendar
 from quasar.lib.common.offset_cron import OffsetCronTrigger
 
 from .base import HandlerMixin
+from ..schemas import IndexSyncRefreshResponse
 from ..utils.constants import (
     QUERIES, BATCH_SIZE, DEFAULT_LOOKBACK,
     DEFAULT_LIVE_OFFSET, IMMEDIATE_PULL
 )
+
+# Registry service URL for index sync API calls
+REGISTRY_URL = os.getenv("REGISTRY_URL", "http://registry:8080")
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +51,133 @@ def safe_job(default_return: Any = None) -> Callable[[Callable[..., Awaitable[An
 
 class CollectionHandlersMixin(HandlerMixin):
     """Mixin providing data collection methods for DataHub."""
+
+    async def refresh_index_sync_jobs(self):
+        """Synchronize scheduled jobs for IndexProvider constituent sync."""
+        logger.debug("Refreshing index sync jobs.")
+
+        # Fetch IndexProviders with their sync_frequency preferences
+        query = QUERIES['get_index_providers_sync_config']
+        rows = await self.pool.fetch(query)
+
+        # Build new job keys and schedule jobs
+        new_keys = set()
+        for r in rows:
+            provider_name = r['class_name']
+            sync_frequency = r['sync_frequency']  # Already has COALESCE default of '1w'
+            job_key = f"index_sync_{provider_name}"
+            new_keys.add(job_key)
+
+            # Look up cron template for this frequency
+            cron = await self.pool.fetchval(
+                "SELECT cron FROM accepted_intervals WHERE interval = $1",
+                sync_frequency
+            )
+            if cron is None:
+                logger.warning(
+                    f"No cron template found for sync_frequency '{sync_frequency}' "
+                    f"for provider {provider_name}. Skipping."
+                )
+                new_keys.discard(job_key)
+                continue
+
+            if job_key not in self.index_sync_job_keys:
+                # New job - schedule it
+                logger.info(f"Scheduling index sync job for {provider_name} with frequency {sync_frequency}")
+                self._sched.add_job(
+                    func=self.sync_index_constituents,
+                    trigger=CronTrigger.from_crontab(cron),
+                    args=[provider_name],
+                    id=job_key,
+                )
+            else:
+                # Job exists - check if cron needs to be updated
+                existing_job = self._sched.get_job(job_key)
+                if existing_job is not None:
+                    # Replace the job with updated trigger
+                    logger.debug(f"Updating index sync job for {provider_name}")
+                    self._sched.remove_job(job_key)
+                    self._sched.add_job(
+                        func=self.sync_index_constituents,
+                        trigger=CronTrigger.from_crontab(cron),
+                        args=[provider_name],
+                        id=job_key,
+                    )
+
+        # Remove obsolete jobs (providers that were deleted)
+        for gone in self.index_sync_job_keys - new_keys:
+            logger.info(f"Removing index sync job: {gone}")
+            job = self._sched.get_job(gone)
+            if job is not None:
+                self._sched.remove_job(gone)
+
+        self.index_sync_job_keys = new_keys
+
+    async def handle_refresh_index_sync_jobs(self) -> IndexSyncRefreshResponse:
+        """Trigger immediate refresh of index sync jobs.
+
+        Called by Registry when IndexProvider sync_frequency is updated.
+        This ensures job scheduling is updated immediately rather than
+        waiting for the next periodic refresh cycle.
+
+        Returns:
+            IndexSyncRefreshResponse: Status and count of active index sync jobs.
+        """
+        logger.info("Index sync job refresh triggered via API")
+        await self.refresh_index_sync_jobs()
+        return IndexSyncRefreshResponse(
+            status="success",
+            job_count=len(self.index_sync_job_keys)
+        )
+
+    @safe_job(default_return=None)
+    async def sync_index_constituents(self, provider_name: str):
+        """Sync constituents for an IndexProvider to the registry.
+
+        This method is called by scheduled jobs to fetch index constituents
+        and post them to the registry service.
+
+        Args:
+            provider_name (str): Name of the IndexProvider to sync.
+        """
+        logger.info(f"Index sync started: {provider_name}")
+
+        try:
+            # Load provider if not already loaded
+            if provider_name not in self._providers:
+                loaded = await self.load_provider_cls(provider_name)
+                if not loaded:
+                    raise ValueError(f"Failed to load IndexProvider: {provider_name}")
+
+            provider = self._providers[provider_name]
+
+            # Fetch constituents from the provider
+            constituents = await provider.get_constituents()
+            logger.info(f"Index sync: {provider_name} fetched {len(constituents)} constituents")
+
+            # POST to Registry sync endpoint
+            url = f"{REGISTRY_URL}/api/registry/indices/{provider_name}/sync"
+            payload = {"constituents": constituents}
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        logger.info(
+                            f"Index sync complete: {provider_name} - "
+                            f"added={result.get('members_added', 0)}, "
+                            f"removed={result.get('members_removed', 0)}, "
+                            f"unchanged={result.get('members_unchanged', 0)}"
+                        )
+                    else:
+                        error_text = await response.text()
+                        raise RuntimeError(
+                            f"Registry sync failed for {provider_name}: "
+                            f"status={response.status}, body={error_text}"
+                        )
+        except Exception as e:
+            logger.error(f"Index sync failed: {provider_name} - {e}")
+            raise
 
     async def refresh_subscriptions(self):
         """Synchronize scheduled jobs with the ``provider_subscription`` table."""

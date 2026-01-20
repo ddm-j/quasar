@@ -56,6 +56,7 @@ class TestDataHubLifecycleMethods:
         # Add job keys to verify they get cleared
         hub.job_keys.add("test_job_key_1")
         hub.job_keys.add("test_job_key_2")
+        hub.index_sync_job_keys.add("index_sync_TestIndex")
 
         # Create a mock scheduler that reports as running
         mock_scheduler = Mock()
@@ -67,5 +68,6 @@ class TestDataHubLifecycleMethods:
 
         # Verify shutdown was called
         mock_scheduler.shutdown.assert_called_once_with(wait=False)
-        # Verify job_keys were cleared
+        # Verify both job_keys sets were cleared
         assert len(hub.job_keys) == 0
+        assert len(hub.index_sync_job_keys) == 0

@@ -760,3 +760,101 @@ class TestGetConstituents:
 
         assert exc_info.value.status_code == 500
         assert "Error fetching constituents" in exc_info.value.detail
+
+
+class TestHandleUnloadProvider:
+    """Tests for handle_unload_provider endpoint with IndexProvider job cleanup."""
+
+    @pytest.mark.asyncio
+    async def test_unload_index_provider_removes_sync_job(self, datahub_with_mocks):
+        """Test that unloading an IndexProvider removes its scheduled sync job.
+
+        This verifies the edge case: deleted provider removes job (T029).
+        """
+        hub = datahub_with_mocks
+
+        # Create a mock IndexProvider
+        mock_provider = Mock()
+        mock_provider.name = "TestIndexProvider"
+        mock_provider.__aexit__ = AsyncMock(return_value=None)
+        hub._providers["TestIndexProvider"] = mock_provider
+
+        # Start the scheduler and add a sync job for this provider
+        hub._sched.start()
+        job_key = "index_sync_TestIndexProvider"
+        hub._sched.add_job(
+            func=lambda: None,
+            trigger='cron',
+            hour=0,
+            minute=0,
+            day_of_week='mon',
+            id=job_key,
+        )
+        hub.index_sync_job_keys = {job_key}
+
+        # Unload the provider
+        response = await hub.handle_unload_provider("TestIndexProvider")
+
+        # Verify unload succeeded
+        assert response.status == "success"
+        assert response.provider == "TestIndexProvider"
+
+        # Verify the sync job was removed
+        assert hub._sched.get_job(job_key) is None
+        assert job_key not in hub.index_sync_job_keys
+
+        hub._sched.shutdown(wait=False)
+
+    @pytest.mark.asyncio
+    async def test_unload_provider_not_loaded_returns_not_loaded_status(self, datahub_with_mocks):
+        """Test that unloading a non-loaded provider returns not_loaded status."""
+        hub = datahub_with_mocks
+
+        response = await hub.handle_unload_provider("NonExistentProvider")
+
+        assert response.status == "not_loaded"
+        assert response.provider == "NonExistentProvider"
+
+    @pytest.mark.asyncio
+    async def test_unload_regular_provider_without_sync_job(self, datahub_with_mocks):
+        """Test that unloading a regular provider (non-IndexProvider) works without sync job."""
+        hub = datahub_with_mocks
+
+        # Create a mock non-Index provider
+        mock_provider = Mock()
+        mock_provider.name = "TestHistoricalProvider"
+        mock_provider.__aexit__ = AsyncMock(return_value=None)
+        hub._providers["TestHistoricalProvider"] = mock_provider
+
+        # No index sync job exists for this provider
+        hub.index_sync_job_keys = set()
+
+        response = await hub.handle_unload_provider("TestHistoricalProvider")
+
+        assert response.status == "success"
+        assert response.provider == "TestHistoricalProvider"
+        assert "TestHistoricalProvider" not in hub._providers
+
+    @pytest.mark.asyncio
+    async def test_unload_index_provider_removes_preferences(self, datahub_with_mocks):
+        """Test that unloading an IndexProvider also removes its preferences."""
+        hub = datahub_with_mocks
+
+        # Create a mock IndexProvider with preferences
+        mock_provider = Mock()
+        mock_provider.name = "TestIndexProvider"
+        mock_provider.__aexit__ = AsyncMock(return_value=None)
+        hub._providers["TestIndexProvider"] = mock_provider
+        hub._provider_preferences["TestIndexProvider"] = {
+            "scheduling": {"sync_frequency": "1d"}
+        }
+
+        # Start the scheduler
+        hub._sched.start()
+
+        response = await hub.handle_unload_provider("TestIndexProvider")
+
+        assert response.status == "success"
+        assert "TestIndexProvider" not in hub._provider_preferences
+
+        hub._sched.shutdown(wait=False)

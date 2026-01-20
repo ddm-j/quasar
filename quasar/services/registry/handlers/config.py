@@ -164,6 +164,42 @@ def log_credential_update(
     )
 
 
+async def _trigger_index_sync_refresh(class_name: str) -> bool:
+    """Notify DataHub to refresh index sync jobs after frequency change.
+
+    This is a best-effort notification - failures are logged but don't
+    cause the preference update to fail. DataHub will still pick up
+    the change on its next periodic refresh cycle.
+
+    Args:
+        class_name: The IndexProvider name (for logging).
+
+    Returns:
+        True if refresh was triggered successfully, False otherwise.
+    """
+    url = "http://datahub:8080/api/datahub/index-sync/refresh"
+    timeout = aiohttp.ClientTimeout(total=5)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url) as response:
+                if response.status == 200:
+                    logger.info(f"Index sync jobs refreshed after {class_name} frequency update")
+                    return True
+                else:
+                    error_text = await response.text()
+                    logger.warning(f"Index sync refresh returned {response.status}: {error_text}")
+                    return False
+    except aiohttp.ClientConnectorError as e:
+        logger.warning(f"Cannot connect to DataHub for index sync refresh: {e}")
+        return False
+    except TimeoutError:
+        logger.warning(f"Timeout calling DataHub index sync refresh (5s exceeded)")
+        return False
+    except Exception as e:
+        logger.warning(f"Error calling DataHub index sync refresh: {e}")
+        return False
+
+
 def validate_preferences_against_schema(
     preferences: dict[str, Any],
     schema: dict[str, dict[str, Any]],
@@ -235,6 +271,15 @@ def validate_preferences_against_schema(
                     errors.append(reason)
                     log_validation_failure(class_name, class_type, reason)
                     continue
+
+            # Allowed values validation for string enums
+            allowed_values = field_schema.get("allowed")
+            if allowed_values is not None and isinstance(value, str):
+                if value not in allowed_values:
+                    allowed_str = ", ".join(allowed_values)
+                    reason = f"Field '{category}.{field_name}' must be one of [{allowed_str}], got '{value}'"
+                    errors.append(reason)
+                    log_validation_failure(class_name, class_type, reason)
 
             # Range validation for numeric types
             if isinstance(value, (int, float)):
@@ -502,6 +547,10 @@ class ConfigHandlersMixin(HandlerMixin):
             # Log preference change per FR-025
             change_categories = list(update_dict.keys())
             log_preference_change(class_name, class_type, change_categories)
+
+            # Trigger DataHub to refresh index sync jobs if sync_frequency was updated
+            if class_subtype == "IndexProvider" and "scheduling" in update_dict:
+                await _trigger_index_sync_refresh(class_name)
 
             logger.info(f"Registry.handle_update_provider_config: Updated config for {class_name}/{class_type}")
             return ProviderPreferencesResponse(

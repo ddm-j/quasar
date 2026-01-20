@@ -113,18 +113,28 @@ class TestConfigurableSchemaInheritance:
         assert "crypto" in IndexProvider.CONFIGURABLE
         assert "preferred_quote_currency" in IndexProvider.CONFIGURABLE["crypto"]
 
-    def test_index_provider_no_scheduling(self):
-        """IndexProvider does not add scheduling category."""
-        assert "scheduling" not in IndexProvider.CONFIGURABLE
+    def test_index_provider_has_scheduling(self):
+        """IndexProvider has scheduling category with sync_frequency."""
+        assert "scheduling" in IndexProvider.CONFIGURABLE
+        assert "sync_frequency" in IndexProvider.CONFIGURABLE["scheduling"]
+
+    def test_index_provider_sync_frequency_schema(self):
+        """IndexProvider sync_frequency has correct structure and values."""
+        schema = IndexProvider.CONFIGURABLE["scheduling"]["sync_frequency"]
+        assert schema["type"] == str
+        assert schema["default"] == "1w"
+        assert schema["allowed"] == ["1d", "1w", "1M"]
+        assert "description" in schema
 
     def test_index_provider_no_data(self):
         """IndexProvider does not add data category."""
         assert "data" not in IndexProvider.CONFIGURABLE
 
-    def test_index_provider_only_has_crypto(self):
-        """IndexProvider only has crypto category (from DataProvider)."""
-        assert len(IndexProvider.CONFIGURABLE) == 1
+    def test_index_provider_has_crypto_and_scheduling(self):
+        """IndexProvider has crypto (from DataProvider) and scheduling categories."""
+        assert len(IndexProvider.CONFIGURABLE) == 2
         assert "crypto" in IndexProvider.CONFIGURABLE
+        assert "scheduling" in IndexProvider.CONFIGURABLE
 
 
 class TestSchemaLookupUtility:
@@ -165,7 +175,8 @@ class TestSchemaLookupUtility:
         schema = get_schema_for_subtype("IndexProvider")
         assert schema is not None
         assert "crypto" in schema
-        assert "scheduling" not in schema
+        assert "scheduling" in schema
+        assert "sync_frequency" in schema["scheduling"]
 
     def test_get_schema_for_subtype_unknown(self):
         """get_schema_for_subtype returns None for unknown subtype."""
@@ -1080,3 +1091,88 @@ class TestBuildReqsHistoricalLookbackDays:
 
             expected_start = yday - timedelta(days=lookback_days - 1)
             assert start == expected_start, f"Failed for {description} ({lookback_days} days)"
+
+
+class TestSyncFrequencyValidation:
+    """T004: Tests for sync_frequency field validation."""
+
+    def test_valid_sync_frequency_daily(self):
+        """Valid sync_frequency '1d' passes validation."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": "1d"}}
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert errors == []
+
+    def test_valid_sync_frequency_weekly(self):
+        """Valid sync_frequency '1w' passes validation."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": "1w"}}
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert errors == []
+
+    def test_valid_sync_frequency_monthly(self):
+        """Valid sync_frequency '1M' passes validation."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": "1M"}}
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert errors == []
+
+    def test_invalid_sync_frequency_rejected(self):
+        """Invalid sync_frequency value is rejected."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": "2w"}}  # Invalid value
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert len(errors) == 1
+        assert "must be one of" in errors[0]
+        assert "1d" in errors[0]
+        assert "1w" in errors[0]
+        assert "1M" in errors[0]
+
+    def test_invalid_sync_frequency_hourly_rejected(self):
+        """Hourly sync frequency '1h' is rejected (not allowed)."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": "1h"}}
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert len(errors) == 1
+        assert "must be one of" in errors[0]
+
+    def test_invalid_sync_frequency_empty_string_rejected(self):
+        """Empty string sync_frequency is rejected."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": ""}}
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert len(errors) == 1
+        assert "must be one of" in errors[0]
+
+    def test_sync_frequency_none_accepted(self):
+        """None value for sync_frequency is accepted (optional field)."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": None}}
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert errors == []
+
+    def test_sync_frequency_wrong_type_rejected(self):
+        """Non-string sync_frequency is rejected."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": 7}}  # Integer instead of string
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert len(errors) == 1
+        assert "must be a string" in errors[0]
+
+    def test_sync_frequency_case_sensitive(self):
+        """sync_frequency validation is case-sensitive ('1W' != '1w')."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {"scheduling": {"sync_frequency": "1W"}}  # Wrong case
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert len(errors) == 1
+        assert "must be one of" in errors[0]
+
+    def test_index_provider_full_valid_preferences(self):
+        """IndexProvider accepts full valid preferences with sync_frequency."""
+        schema = IndexProvider.CONFIGURABLE
+        preferences = {
+            "crypto": {"preferred_quote_currency": "USD"},
+            "scheduling": {"sync_frequency": "1w"}
+        }
+        errors = validate_preferences_against_schema(preferences, schema, "TestIndexProvider")
+        assert errors == []

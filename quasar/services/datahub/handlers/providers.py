@@ -375,6 +375,15 @@ class ProviderHandlersMixin(HandlerMixin):
             if name in self._provider_preferences:
                 del self._provider_preferences[name]
 
+            # Remove scheduled index sync job for IndexProviders
+            job_key = f"index_sync_{name}"
+            if job_key in self.index_sync_job_keys:
+                job = self._sched.get_job(job_key)
+                if job is not None:
+                    self._sched.remove_job(job_key)
+                    logger.info(f"Removed index sync job: {job_key}")
+                self.index_sync_job_keys.discard(job_key)
+
             logger.info(f"Provider '{name}' unloaded successfully")
             return ProviderUnloadResponse(
                 status="success",

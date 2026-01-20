@@ -119,3 +119,9 @@ class ProviderUnloadResponse(BaseModel):
     provider: str = Field(..., description="Provider class name")
     message: str = Field(..., description="Human-readable status message")
 
+
+class IndexSyncRefreshResponse(BaseModel):
+    """Response model for index sync refresh endpoint."""
+    status: str = Field(..., description="Refresh status: 'success' or 'error'")
+    job_count: int = Field(..., description="Number of index sync jobs after refresh")
+

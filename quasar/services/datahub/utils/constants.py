@@ -37,5 +37,10 @@ QUERIES = {
     'get_registered_provider': """SELECT file_path, file_hash, nonce, ciphertext, preferences, class_subtype
                                   FROM code_registry
                                   WHERE class_name = $1 AND class_type = 'provider';
-                                  """
+                                  """,
+    'get_index_providers_sync_config': """SELECT class_name,
+                                                 COALESCE(preferences->'scheduling'->>'sync_frequency', '1w') AS sync_frequency
+                                          FROM code_registry
+                                          WHERE class_subtype = 'IndexProvider';
+                                          """
 }

@@ -449,9 +449,17 @@ class IndexProvider(DataProvider):
     """Base class for index providers that return constituent lists."""
     provider_type = ProviderType.INDEX
 
-    # Configurable preferences for index providers (inherits DataProvider only)
+    # Configurable preferences for index providers
     CONFIGURABLE: dict[str, dict[str, Any]] = {
-        **DataProvider.CONFIGURABLE
+        **DataProvider.CONFIGURABLE,
+        "scheduling": {
+            "sync_frequency": {
+                "type": str,
+                "default": "1w",
+                "allowed": ["1d", "1w", "1M"],
+                "description": "How often to sync index constituents (Daily, Weekly, Monthly)"
+            }
+        }
     }
 
     def __init__(self, context: DerivedContext, preferences: dict | None = None):

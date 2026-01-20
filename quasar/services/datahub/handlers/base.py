@@ -22,4 +22,5 @@ class HandlerMixin:
     _providers: dict[str, 'DataProvider']
     _provider_preferences: dict[str, dict | None]
     job_keys: set[str]
+    index_sync_job_keys: set[str]
     _refresh_seconds: int

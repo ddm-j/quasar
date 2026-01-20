@@ -252,3 +252,120 @@ class TestProviderConfig:
         assert result.class_name == 'TestProvider'
         assert result.class_type == 'provider'
         assert result.available_quote_currencies == []
+
+
+class TestIndexProviderSyncRefresh:
+    """Tests for IndexProvider sync refresh notification to DataHub."""
+
+    @pytest.mark.asyncio
+    async def test_update_index_provider_sync_frequency_triggers_refresh(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that updating IndexProvider sync_frequency triggers DataHub refresh."""
+        from unittest.mock import patch, Mock
+        from quasar.services.registry.schemas import (
+            ProviderPreferencesUpdate, SchedulingPreferences
+        )
+
+        reg = registry_with_mocks
+
+        # Mock database: IndexProvider exists
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            'IndexProvider',  # class_subtype query
+            {'scheduling': {'sync_frequency': '1d'}}  # updated preferences
+        ])
+
+        update = ProviderPreferencesUpdate(
+            scheduling=SchedulingPreferences(sync_frequency='1d')
+        )
+
+        # Mock the HTTP call to DataHub
+        with patch('quasar.services.registry.handlers.config.aiohttp.ClientSession') as mock_session_class:
+            mock_response = AsyncMock()
+            mock_response.status = 200
+
+            mock_session = AsyncMock()
+            mock_session.post = Mock(return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_response),
+                __aexit__=AsyncMock(return_value=None)
+            ))
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
+            mock_session_class.return_value = mock_session
+
+            result = await reg.handle_update_provider_config(
+                update=update,
+                class_name='TestIndexProvider',
+                class_type='provider'
+            )
+
+            # Verify DataHub refresh was called
+            mock_session.post.assert_called_once()
+            call_args = mock_session.post.call_args
+            assert 'index-sync/refresh' in call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_update_non_index_provider_does_not_trigger_refresh(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that updating Historical provider does not trigger refresh."""
+        from unittest.mock import patch
+        from quasar.services.registry.schemas import (
+            ProviderPreferencesUpdate, SchedulingPreferences
+        )
+
+        reg = registry_with_mocks
+
+        # Mock database: Historical provider exists
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            'Historical',  # class_subtype query
+            {'scheduling': {'delay_hours': 2}}  # updated preferences
+        ])
+
+        update = ProviderPreferencesUpdate(
+            scheduling=SchedulingPreferences(delay_hours=2)
+        )
+
+        # Mock the HTTP call - should NOT be called
+        with patch('quasar.services.registry.handlers.config.aiohttp.ClientSession') as mock_session_class:
+            result = await reg.handle_update_provider_config(
+                update=update,
+                class_name='TestHistorical',
+                class_type='provider'
+            )
+
+            # Verify DataHub refresh was NOT called (Historical provider)
+            mock_session_class.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_index_provider_crypto_does_not_trigger_refresh(
+        self, registry_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that updating only crypto preferences does not trigger refresh."""
+        from unittest.mock import patch
+        from quasar.services.registry.schemas import (
+            ProviderPreferencesUpdate, CryptoPreferences
+        )
+
+        reg = registry_with_mocks
+
+        # Mock database: IndexProvider exists
+        mock_asyncpg_pool.fetchval = AsyncMock(side_effect=[
+            'IndexProvider',  # class_subtype query
+            {'crypto': {'preferred_quote_currency': 'USDC'}}  # updated preferences
+        ])
+
+        update = ProviderPreferencesUpdate(
+            crypto=CryptoPreferences(preferred_quote_currency='USDC')
+        )
+
+        # Mock the HTTP call - should NOT be called (only crypto updated)
+        with patch('quasar.services.registry.handlers.config.aiohttp.ClientSession') as mock_session_class:
+            result = await reg.handle_update_provider_config(
+                update=update,
+                class_name='TestIndexProvider',
+                class_type='provider'
+            )
+
+            # Verify DataHub refresh was NOT called (no scheduling update)
+            mock_session_class.assert_not_called()

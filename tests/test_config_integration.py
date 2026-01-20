@@ -187,12 +187,12 @@ class TestGetConfigSchemaEndpoint:
         schema = response.json()["schema"]
         assert "data" not in schema
 
-    def test_index_schema_only_contains_crypto(
+    def test_index_schema_contains_crypto_and_scheduling(
         self,
         registry_client: TestClient,
         mock_asyncpg_pool: AsyncMock
     ):
-        """Index provider schema only includes crypto category."""
+        """Index provider schema includes crypto and scheduling categories."""
         mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
@@ -203,7 +203,8 @@ class TestGetConfigSchemaEndpoint:
         assert response.status_code == 200
         schema = response.json()["schema"]
         assert "crypto" in schema
-        assert "scheduling" not in schema
+        assert "scheduling" in schema
+        assert "sync_frequency" in schema["scheduling"]
         assert "data" not in schema
 
     def test_all_schemas_include_crypto_category(
@@ -1146,12 +1147,12 @@ class TestSchemaEndpointCompleteMetadata:
         assert "description" in post_close
         assert len(post_close["description"]) > 0
 
-    def test_index_schema_only_has_crypto(
+    def test_index_schema_has_crypto_and_scheduling(
         self,
         registry_client: TestClient,
         mock_asyncpg_pool: AsyncMock
     ):
-        """T077: Schema returns only crypto category for index providers."""
+        """Schema returns crypto and scheduling categories for index providers."""
         mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
 
         response = registry_client.get(
@@ -1162,9 +1163,9 @@ class TestSchemaEndpointCompleteMetadata:
         assert response.status_code == 200
         schema = response.json()["schema"]
 
-        # Index providers only have crypto category (inherited from DataProvider)
+        # Index providers have crypto (inherited) and scheduling.sync_frequency
         assert "crypto" in schema
-        assert "scheduling" not in schema, "Index providers should not have scheduling category"
+        assert "scheduling" in schema, "Index providers should have scheduling category"
         assert "data" not in schema, "Index providers should not have data category"
 
         # Verify crypto.preferred_quote_currency has expected metadata
@@ -1172,6 +1173,13 @@ class TestSchemaEndpointCompleteMetadata:
         assert quote_currency["type"] == "string"
         assert quote_currency["default"] is None
         assert "description" in quote_currency
+
+        # Verify scheduling.sync_frequency has expected metadata
+        sync_frequency = schema["scheduling"]["sync_frequency"]
+        assert sync_frequency["type"] == "string"
+        assert sync_frequency["default"] == "1w"
+        assert sync_frequency["allowed"] == ["1d", "1w", "1M"]
+        assert "description" in sync_frequency
 
     def test_schema_matches_configurable_definition_historical(
         self,
@@ -1278,6 +1286,276 @@ class TestSchemaEndpointCompleteMetadata:
         # Index provider should only have crypto category
         assert len(schema.keys()) == len(IndexProvider.CONFIGURABLE.keys()), \
             "Index provider schema should match CONFIGURABLE exactly (only crypto)"
+
+
+class TestIndexProviderConfigSchemaAPI:
+    """T005: Contract tests for IndexProvider config schema API per US1."""
+
+    def test_index_provider_schema_returns_sync_frequency_with_full_metadata(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """IndexProvider schema endpoint returns sync_frequency with complete metadata.
+
+        Contract: GET /api/registry/config/schema for IndexProvider must return
+        scheduling.sync_frequency with type, default, allowed, and description.
+        """
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "CCI30", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify response structure per api-changes.yaml
+        assert data["class_name"] == "CCI30"
+        assert data["class_type"] == "provider"
+        assert data["class_subtype"] == "IndexProvider"
+
+        # Verify schema contains sync_frequency with full metadata
+        schema = data["schema"]
+        assert "scheduling" in schema
+        sync_freq = schema["scheduling"]["sync_frequency"]
+        assert sync_freq["type"] == "string"
+        assert sync_freq["default"] == "1w"
+        assert sync_freq["allowed"] == ["1d", "1w", "1M"]
+        assert "description" in sync_freq
+        assert len(sync_freq["description"]) > 0
+
+    def test_index_provider_schema_includes_crypto_inherited_from_data_provider(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """IndexProvider schema includes crypto category inherited from DataProvider."""
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "CCI30", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # Verify crypto category exists with preferred_quote_currency
+        assert "crypto" in schema
+        assert "preferred_quote_currency" in schema["crypto"]
+        quote_currency = schema["crypto"]["preferred_quote_currency"]
+        assert quote_currency["type"] == "string"
+        assert quote_currency["default"] is None
+
+    def test_index_provider_schema_excludes_data_category(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """IndexProvider schema does NOT include data category (no lookback_days).
+
+        Unlike Historical providers, IndexProviders don't need lookback configuration.
+        """
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "CCI30", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        # IndexProvider should NOT have data category
+        assert "data" not in schema
+
+    def test_index_provider_schema_has_exactly_two_categories(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """IndexProvider schema has exactly crypto and scheduling categories."""
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
+
+        response = registry_client.get(
+            "/api/registry/config/schema",
+            params={"class_name": "CCI30", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        schema = response.json()["schema"]
+
+        assert set(schema.keys()) == {"crypto", "scheduling"}
+
+
+class TestIndexProviderConfigGetPutAPI:
+    """T006: Contract tests for IndexProvider config GET/PUT API with sync_frequency per US1."""
+
+    def test_get_config_returns_sync_frequency_preference(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """GET /api/registry/config returns sync_frequency for IndexProvider.
+
+        Contract: Response includes scheduling.sync_frequency in preferences.
+        """
+        # Mock provider exists check
+        mock_asyncpg_pool.fetchval.side_effect = [
+            1,  # First call: exists check
+            {"scheduling": {"sync_frequency": "1w"}, "crypto": {"preferred_quote_currency": None}}  # Second call: preferences
+        ]
+
+        response = registry_client.get(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["class_name"] == "CCI30"
+        assert data["class_type"] == "provider"
+        assert data["preferences"]["scheduling"]["sync_frequency"] == "1w"
+
+    def test_get_config_returns_default_when_no_sync_frequency_set(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """GET /api/registry/config returns empty preferences when none configured."""
+        mock_asyncpg_pool.fetchval.side_effect = [
+            1,  # First call: exists check
+            None  # Second call: no preferences
+        ]
+
+        response = registry_client.get(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Preferences should be empty/default when not configured
+        assert "preferences" in data
+
+    def test_put_config_accepts_valid_sync_frequency_daily(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """PUT /api/registry/config accepts daily sync_frequency ('1d').
+
+        Contract: Valid value '1d' should be accepted and persisted.
+        """
+        # Mock subtype lookup
+        mock_asyncpg_pool.fetchval.side_effect = [
+            "IndexProvider",  # First call: subtype lookup
+            {"scheduling": {"sync_frequency": "1d"}}  # Second call: updated preferences
+        ]
+
+        response = registry_client.put(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"},
+            json={"scheduling": {"sync_frequency": "1d"}}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["preferences"]["scheduling"]["sync_frequency"] == "1d"
+
+    def test_put_config_accepts_valid_sync_frequency_weekly(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """PUT /api/registry/config accepts weekly sync_frequency ('1w').
+
+        Contract: Valid value '1w' (default) should be accepted and persisted.
+        """
+        mock_asyncpg_pool.fetchval.side_effect = [
+            "IndexProvider",
+            {"scheduling": {"sync_frequency": "1w"}}
+        ]
+
+        response = registry_client.put(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"},
+            json={"scheduling": {"sync_frequency": "1w"}}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["preferences"]["scheduling"]["sync_frequency"] == "1w"
+
+    def test_put_config_accepts_valid_sync_frequency_monthly(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """PUT /api/registry/config accepts monthly sync_frequency ('1M').
+
+        Contract: Valid value '1M' should be accepted and persisted.
+        """
+        mock_asyncpg_pool.fetchval.side_effect = [
+            "IndexProvider",
+            {"scheduling": {"sync_frequency": "1M"}}
+        ]
+
+        response = registry_client.put(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"},
+            json={"scheduling": {"sync_frequency": "1M"}}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["preferences"]["scheduling"]["sync_frequency"] == "1M"
+
+    def test_put_config_rejects_invalid_sync_frequency(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """PUT /api/registry/config rejects invalid sync_frequency value.
+
+        Contract: Invalid values like '2w' should return 422 validation error
+        from Pydantic schema validation.
+        """
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
+
+        response = registry_client.put(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"},
+            json={"scheduling": {"sync_frequency": "2w"}}
+        )
+
+        # Pydantic validator returns 422 for invalid values
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        # Pydantic error message format
+        assert any("sync_frequency" in str(err) for err in detail)
+
+    def test_put_config_rejects_delay_hours_for_index_provider(
+        self,
+        registry_client: TestClient,
+        mock_asyncpg_pool: AsyncMock
+    ):
+        """PUT /api/registry/config rejects delay_hours for IndexProvider.
+
+        Contract: delay_hours is only valid for Historical providers.
+        """
+        mock_asyncpg_pool.fetchval.return_value = "IndexProvider"
+
+        response = registry_client.put(
+            "/api/registry/config",
+            params={"class_name": "CCI30", "class_type": "provider"},
+            json={"scheduling": {"delay_hours": 6}}
+        )
+
+        assert response.status_code == 400
+        assert "Unknown field" in response.json()["detail"]
 
 
 class TestCredentialUpdateUnload:

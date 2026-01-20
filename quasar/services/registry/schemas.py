@@ -3,7 +3,7 @@ Registry-specific Pydantic schemas for API request/response models.
 """
 from typing import Optional, List, Literal, Dict, Any, Union
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from quasar.lib.enums import AssetClass
 
@@ -291,6 +291,7 @@ class SchedulingPreferences(BaseModel):
 
     For historical providers: use delay_hours
     For live providers: use pre_close_seconds and post_close_seconds
+    For index providers: use sync_frequency
     """
     delay_hours: Optional[int] = Field(
         default=None, ge=0, le=24,
@@ -304,6 +305,17 @@ class SchedulingPreferences(BaseModel):
         default=None, ge=0, le=60,
         description="Seconds after bar close to continue listening (live only)"
     )
+    sync_frequency: Optional[str] = Field(
+        default=None,
+        description="Index sync frequency: 1d (Daily), 1w (Weekly), 1M (Monthly) (index only)"
+    )
+
+    @field_validator('sync_frequency')
+    @classmethod
+    def validate_sync_frequency(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ['1d', '1w', '1M']:
+            raise ValueError('sync_frequency must be 1d, 1w, or 1M')
+        return v
 
 
 class DataPreferencesField(BaseModel):
