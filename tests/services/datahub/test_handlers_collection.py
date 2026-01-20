@@ -719,3 +719,58 @@ class TestSyncIndexConstituents:
 
             # Check that appropriate log messages were generated
             assert any("TestIndexProvider" in record.message for record in caplog.records)
+
+
+class TestHandleRefreshIndexSyncJobs:
+    """Tests for DataHub.handle_refresh_index_sync_jobs() endpoint handler."""
+
+    @pytest.mark.asyncio
+    async def test_handle_refresh_returns_success(self, datahub_with_mocks, mock_asyncpg_pool):
+        """Test that handle_refresh_index_sync_jobs returns success status."""
+        hub = datahub_with_mocks
+
+        # Mock database returning no IndexProviders
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+
+        response = await hub.handle_refresh_index_sync_jobs()
+
+        assert response.status == "success"
+        assert response.job_count == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_refresh_calls_refresh_index_sync_jobs(
+        self, datahub_with_mocks, mock_asyncpg_pool
+    ):
+        """Test that handle_refresh_index_sync_jobs calls the underlying refresh method."""
+        hub = datahub_with_mocks
+
+        # Mock database returning IndexProviders
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[
+            {"class_name": "TestIndex", "sync_frequency": "1w"},
+        ])
+        mock_asyncpg_pool.fetchval = AsyncMock(return_value="0 0 * * 1")
+
+        # Start scheduler for job scheduling
+        hub._sched.start()
+
+        response = await hub.handle_refresh_index_sync_jobs()
+
+        # Should have created 1 job
+        assert response.status == "success"
+        assert response.job_count == 1
+        assert "index_sync_TestIndex" in hub.index_sync_job_keys
+
+        hub._sched.shutdown(wait=False)
+
+    @pytest.mark.asyncio
+    async def test_handle_refresh_logs_api_trigger(self, datahub_with_mocks, mock_asyncpg_pool, caplog):
+        """Test that handle_refresh_index_sync_jobs logs the API trigger."""
+        import logging
+        hub = datahub_with_mocks
+
+        mock_asyncpg_pool.fetch = AsyncMock(return_value=[])
+
+        with caplog.at_level(logging.INFO):
+            await hub.handle_refresh_index_sync_jobs()
+
+        assert any("refresh triggered via API" in record.message for record in caplog.records)

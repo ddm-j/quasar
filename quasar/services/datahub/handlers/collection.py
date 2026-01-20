@@ -16,6 +16,7 @@ from quasar.lib.common.calendar import TradingCalendar
 from quasar.lib.common.offset_cron import OffsetCronTrigger
 
 from .base import HandlerMixin
+from ..schemas import IndexSyncRefreshResponse
 from ..utils.constants import (
     QUERIES, BATCH_SIZE, DEFAULT_LOOKBACK,
     DEFAULT_LIVE_OFFSET, IMMEDIATE_PULL
@@ -111,6 +112,23 @@ class CollectionHandlersMixin(HandlerMixin):
                 self._sched.remove_job(gone)
 
         self.index_sync_job_keys = new_keys
+
+    async def handle_refresh_index_sync_jobs(self) -> IndexSyncRefreshResponse:
+        """Trigger immediate refresh of index sync jobs.
+
+        Called by Registry when IndexProvider sync_frequency is updated.
+        This ensures job scheduling is updated immediately rather than
+        waiting for the next periodic refresh cycle.
+
+        Returns:
+            IndexSyncRefreshResponse: Status and count of active index sync jobs.
+        """
+        logger.info("Index sync job refresh triggered via API")
+        await self.refresh_index_sync_jobs()
+        return IndexSyncRefreshResponse(
+            status="success",
+            job_count=len(self.index_sync_job_keys)
+        )
 
     @safe_job(default_return=None)
     async def sync_index_constituents(self, provider_name: str):

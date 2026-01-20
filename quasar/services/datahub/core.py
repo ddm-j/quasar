@@ -16,7 +16,7 @@ from quasar.lib.common.enum_guard import validate_enums
 from quasar.services.datahub.schemas import (
     ProviderValidateResponse, AvailableSymbolsResponse, ConstituentsResponse,
     SymbolSearchResponse, OHLCDataResponse, SymbolMetadataResponse,
-    ProviderUnloadResponse
+    ProviderUnloadResponse, IndexSyncRefreshResponse
 )
 from quasar.services.datahub.utils.constants import ALLOWED_DYNAMIC_PATH
 from quasar.services.datahub.handlers.collection import CollectionHandlersMixin, safe_job
@@ -83,6 +83,7 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
             logger.debug("Existing scheduler is running. Shutting it down.")
             self._sched.shutdown(wait=False)
             self.job_keys.clear()
+            self.index_sync_job_keys.clear()
 
     def _setup_routes(self) -> None:
         """Define API routes for the DataHub."""
@@ -130,6 +131,13 @@ class DataHub(ProviderHandlersMixin, CollectionHandlersMixin, DataExplorerHandle
             self.handle_unload_provider,
             methods=['POST'],
             response_model=ProviderUnloadResponse
+        )
+        # Index sync job management
+        self._api_app.router.add_api_route(
+            '/api/datahub/index-sync/refresh',
+            self.handle_refresh_index_sync_jobs,
+            methods=['POST'],
+            response_model=IndexSyncRefreshResponse
         )
 
     # OBJECT LIFECYCLE
