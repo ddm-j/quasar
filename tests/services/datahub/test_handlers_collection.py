@@ -7,6 +7,48 @@ from datetime import datetime, timezone, date, timedelta
 from quasar.lib.providers.core import ProviderType, Req, Bar
 
 
+class MockResponseContext:
+    """Async context manager wrapper for mock HTTP responses."""
+
+    def __init__(self, response):
+        self.response = response
+
+    async def __aenter__(self):
+        return self.response
+
+    async def __aexit__(self, *args):
+        return None
+
+
+def create_mock_aiohttp_session(response_status=200, response_json=None):
+    """Create a mock aiohttp ClientSession with proper async context manager support.
+
+    Returns (mock_session_class, mock_session, mock_response) tuple for use with patch().
+    """
+    mock_response = AsyncMock()
+    mock_response.status = response_status
+    mock_response.json = AsyncMock(return_value=response_json or {})
+
+    mock_session = AsyncMock()
+    mock_session.post = Mock(return_value=MockResponseContext(mock_response))
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+
+    mock_session_class = Mock(return_value=mock_session)
+
+    return mock_session_class, mock_session, mock_response
+
+
+@pytest.fixture
+async def datahub_with_scheduler(datahub_with_mocks):
+    """DataHub with started scheduler that's automatically cleaned up."""
+    hub = datahub_with_mocks
+    hub._sched.start()
+    yield hub
+    if hub._sched.running:
+        hub._sched.shutdown(wait=False)
+
+
 class TestRefreshSubscriptions:
     """Tests for DataHub.refresh_subscriptions() method."""
 
@@ -469,10 +511,10 @@ class TestRefreshIndexSyncJobs:
 
     @pytest.mark.asyncio
     async def test_refresh_index_sync_jobs_schedules_jobs_for_index_providers(
-        self, datahub_with_mocks, mock_asyncpg_pool
+        self, datahub_with_scheduler, mock_asyncpg_pool
     ):
         """Test that refresh_index_sync_jobs schedules jobs for each IndexProvider."""
-        hub = datahub_with_mocks
+        hub = datahub_with_scheduler
 
         # Mock database returning IndexProviders with their sync frequencies
         mock_asyncpg_pool.fetch = AsyncMock(return_value=[
@@ -487,23 +529,18 @@ class TestRefreshIndexSyncJobs:
             "1M": "0 0 1 * *",  # 1st of month at midnight
         }.get(interval))
 
-        # Start the scheduler
-        hub._sched.start()
-
         await hub.refresh_index_sync_jobs()
 
         # Verify jobs were scheduled for each IndexProvider
         assert hub._sched.get_job("index_sync_TestIndexProvider") is not None
         assert hub._sched.get_job("index_sync_AnotherIndexProvider") is not None
 
-        hub._sched.shutdown(wait=False)
-
     @pytest.mark.asyncio
     async def test_refresh_index_sync_jobs_uses_default_frequency_when_none_set(
-        self, datahub_with_mocks, mock_asyncpg_pool
+        self, datahub_with_scheduler, mock_asyncpg_pool
     ):
         """Test that refresh_index_sync_jobs uses default 1w frequency when none is configured."""
-        hub = datahub_with_mocks
+        hub = datahub_with_scheduler
 
         # Mock database returning IndexProvider with NULL sync_frequency (uses default)
         mock_asyncpg_pool.fetch = AsyncMock(return_value=[
@@ -513,25 +550,20 @@ class TestRefreshIndexSyncJobs:
         # Mock the cron query
         mock_asyncpg_pool.fetchval = AsyncMock(return_value="0 0 * * 1")
 
-        hub._sched.start()
-
         await hub.refresh_index_sync_jobs()
 
         # Verify job was scheduled with weekly cron
         job = hub._sched.get_job("index_sync_DefaultFreqProvider")
         assert job is not None
 
-        hub._sched.shutdown(wait=False)
-
     @pytest.mark.asyncio
     async def test_refresh_index_sync_jobs_removes_obsolete_jobs(
-        self, datahub_with_mocks, mock_asyncpg_pool
+        self, datahub_with_scheduler, mock_asyncpg_pool
     ):
         """Test that refresh_index_sync_jobs removes jobs for deleted IndexProviders."""
-        hub = datahub_with_mocks
+        hub = datahub_with_scheduler
 
-        # Start scheduler and add an existing job that's no longer in the database
-        hub._sched.start()
+        # Add an existing job that's no longer in the database
         hub._sched.add_job(
             func=lambda: None,
             trigger='interval',
@@ -550,17 +582,14 @@ class TestRefreshIndexSyncJobs:
         assert hub._sched.get_job("index_sync_DeletedProvider") is None
         assert "index_sync_DeletedProvider" not in hub.index_sync_job_keys
 
-        hub._sched.shutdown(wait=False)
-
     @pytest.mark.asyncio
     async def test_refresh_index_sync_jobs_updates_changed_frequency(
-        self, datahub_with_mocks, mock_asyncpg_pool
+        self, datahub_with_scheduler, mock_asyncpg_pool
     ):
         """Test that refresh_index_sync_jobs updates jobs when frequency changes."""
-        hub = datahub_with_mocks
+        hub = datahub_with_scheduler
 
-        # Start scheduler and add an existing job with old frequency
-        hub._sched.start()
+        # Add an existing job with old frequency
         hub._sched.add_job(
             func=lambda: None,
             trigger='cron',
@@ -585,8 +614,6 @@ class TestRefreshIndexSyncJobs:
         job = hub._sched.get_job("index_sync_ChangedProvider")
         assert job is not None
         # The job should have been replaced with the new schedule
-
-        hub._sched.shutdown(wait=False)
 
 
 class TestSyncIndexConstituents:
@@ -613,20 +640,11 @@ class TestSyncIndexConstituents:
         hub._providers["TestIndexProvider"] = mock_index_provider
 
         # Mock the HTTP POST to registry
-        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession') as mock_session_class:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json = AsyncMock(return_value={"members_added": 2, "members_removed": 0})
-
-            mock_session = AsyncMock()
-            mock_session.post = Mock(return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_response),
-                __aexit__=AsyncMock(return_value=None)
-            ))
-            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session.__aexit__ = AsyncMock(return_value=None)
-            mock_session_class.return_value = mock_session
-
+        mock_session_class, mock_session, _ = create_mock_aiohttp_session(
+            response_status=200,
+            response_json={"members_added": 2, "members_removed": 0}
+        )
+        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession', mock_session_class):
             await hub.sync_index_constituents("TestIndexProvider")
 
             # Verify get_constituents was called
@@ -700,25 +718,39 @@ class TestSyncIndexConstituents:
         hub._providers["TestIndexProvider"] = mock_index_provider
 
         # Mock successful HTTP POST
-        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession') as mock_session_class:
-            mock_response = AsyncMock()
-            mock_response.status = 200
-            mock_response.json = AsyncMock(return_value={"members_added": 1, "members_removed": 0})
-
-            mock_session = AsyncMock()
-            mock_session.post = Mock(return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_response),
-                __aexit__=AsyncMock(return_value=None)
-            ))
-            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-            mock_session.__aexit__ = AsyncMock(return_value=None)
-            mock_session_class.return_value = mock_session
-
+        mock_session_class, _, _ = create_mock_aiohttp_session(
+            response_status=200,
+            response_json={"members_added": 1, "members_removed": 0}
+        )
+        with patch('quasar.services.datahub.handlers.collection.aiohttp.ClientSession', mock_session_class):
             with caplog.at_level(logging.INFO):
                 await hub.sync_index_constituents("TestIndexProvider")
 
             # Check that appropriate log messages were generated
             assert any("TestIndexProvider" in record.message for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_sync_index_constituents_handles_provider_exception(
+        self, datahub_with_mocks
+    ):
+        """Test that sync_index_constituents handles get_constituents() exception gracefully."""
+        hub = datahub_with_mocks
+
+        # Create mock IndexProvider that throws on get_constituents
+        mock_index_provider = Mock()
+        mock_index_provider.name = "TestIndexProvider"
+        mock_index_provider.provider_type = ProviderType.INDEX
+        mock_index_provider.get_constituents = AsyncMock(
+            side_effect=Exception("Provider API error")
+        )
+        mock_index_provider.aclose = AsyncMock()
+
+        hub._providers["TestIndexProvider"] = mock_index_provider
+
+        # Should handle gracefully (safe_job decorator catches exception)
+        result = await hub.sync_index_constituents("TestIndexProvider")
+
+        assert result is None
 
 
 class TestHandleRefreshIndexSyncJobs:
@@ -739,10 +771,10 @@ class TestHandleRefreshIndexSyncJobs:
 
     @pytest.mark.asyncio
     async def test_handle_refresh_calls_refresh_index_sync_jobs(
-        self, datahub_with_mocks, mock_asyncpg_pool
+        self, datahub_with_scheduler, mock_asyncpg_pool
     ):
         """Test that handle_refresh_index_sync_jobs calls the underlying refresh method."""
-        hub = datahub_with_mocks
+        hub = datahub_with_scheduler
 
         # Mock database returning IndexProviders
         mock_asyncpg_pool.fetch = AsyncMock(return_value=[
@@ -750,17 +782,12 @@ class TestHandleRefreshIndexSyncJobs:
         ])
         mock_asyncpg_pool.fetchval = AsyncMock(return_value="0 0 * * 1")
 
-        # Start scheduler for job scheduling
-        hub._sched.start()
-
         response = await hub.handle_refresh_index_sync_jobs()
 
         # Should have created 1 job
         assert response.status == "success"
         assert response.job_count == 1
         assert "index_sync_TestIndex" in hub.index_sync_job_keys
-
-        hub._sched.shutdown(wait=False)
 
     @pytest.mark.asyncio
     async def test_handle_refresh_logs_api_trigger(self, datahub_with_mocks, mock_asyncpg_pool, caplog):
