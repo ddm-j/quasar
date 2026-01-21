@@ -94,6 +94,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const [showRemapPrompt, setShowRemapPrompt] = useState(false)
   // Track if re-map is in progress
   const [isRemapping, setIsRemapping] = useState(false)
+  // Track re-map error for retry functionality
+  const [remapError, setRemapError] = useState(null)
 
   // Ref to track which provider's secret keys have been loaded
   const secretKeysLoadedRef = useRef(null)
@@ -258,6 +260,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setOriginalQuotePreference(null)
     setShowRemapPrompt(false)
     setIsRemapping(false)
+    setRemapError(null)
     secretKeysLoadedRef.current = null
     onClose()
   }
@@ -368,6 +371,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   // Handler when user confirms re-map from the prompt modal
   const handleRemapConfirm = async () => {
     setIsRemapping(true)
+    setRemapError(null)
     try {
       const result = await remapAssetMappings({
         class_name: className,
@@ -386,16 +390,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       handleClose()
     } catch (err) {
       console.error('Failed to re-map asset mappings:', err)
-      if (displayToast) {
-        displayToast({
-          title: 'Re-map Failed',
-          body: `Failed to re-map crypto mappings: ${err.message}`,
-          color: 'danger',
-          icon: cilChartLine,
-        })
-      }
-      setShowRemapPrompt(false)
-      handleClose()
+      // Store error for display in the modal with retry option
+      setRemapError(err.message || 'Re-map operation failed. Please try again.')
     } finally {
       setIsRemapping(false)
     }
@@ -1034,6 +1030,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
         onDecline={handleRemapDecline}
         isProcessing={isRemapping}
         className={className}
+        error={remapError}
+        onRetry={handleRemapConfirm}
       />
     </CModal>
   )
