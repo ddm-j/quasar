@@ -172,6 +172,75 @@ class MappingHandlersMixin(HandlerMixin):
 
         return query, params
 
+    def _get_affected_indices_query(
+        self,
+        class_name: Optional[str] = None,
+        class_type: Optional[str] = None,
+        asset_class: Optional[str] = None
+    ) -> Tuple[str, List[Any]]:
+        """Build SQL query to find user indices affected by a re-map operation.
+
+        A user index is "affected" if it has memberships referencing common_symbols
+        that would lose all their asset_mapping references when the filtered
+        mappings are deleted. This happens when:
+        1. The common_symbol is referenced by mappings matching the filter
+        2. The common_symbol has NO other mappings outside the filter
+        3. When ref_count reaches 0, common_symbol is deleted, CASCADE deletes memberships
+
+        Args:
+            class_name: Provider/broker name to filter by.
+            class_type: Required when class_name is specified ('provider' or 'broker').
+            asset_class: Asset class to filter by (e.g., 'crypto', 'us_equity').
+
+        Returns:
+            Tuple of (sql_query, params_list) that returns DISTINCT index_class_name values.
+        """
+        # First, get the query to identify mappings that match the filter
+        filter_query, params = self._build_remap_filter_query(
+            class_name=class_name,
+            class_type=class_type,
+            asset_class=asset_class,
+            for_delete=False
+        )
+
+        # Find common_symbols that will become orphaned:
+        # - They are used by mappings matching the filter
+        # - They have NO mappings outside the filter (so ref_count will reach 0)
+        #
+        # An index is affected if it has memberships referencing these orphaned symbols.
+        query = f"""
+            WITH filtered_mappings AS (
+                {filter_query}
+            ),
+            -- Common symbols used by filtered mappings
+            filtered_symbols AS (
+                SELECT DISTINCT common_symbol FROM filtered_mappings
+            ),
+            -- Common symbols that will be orphaned (no mappings remain after deletion)
+            orphaned_symbols AS (
+                SELECT fs.common_symbol
+                FROM filtered_symbols fs
+                WHERE NOT EXISTS (
+                    -- Check if any mapping for this symbol is NOT in the filtered set
+                    SELECT 1 FROM asset_mapping am
+                    WHERE am.common_symbol = fs.common_symbol
+                    AND NOT EXISTS (
+                        SELECT 1 FROM filtered_mappings fm
+                        WHERE fm.class_name = am.class_name
+                        AND fm.class_type = am.class_type
+                        AND fm.class_symbol = am.class_symbol
+                    )
+                )
+            )
+            -- Find distinct index names that have current memberships referencing orphaned symbols
+            SELECT DISTINCT im.index_class_name
+            FROM index_memberships im
+            JOIN orphaned_symbols os ON im.common_symbol = os.common_symbol
+            WHERE im.valid_to IS NULL
+        """
+
+        return query, params
+
     async def handle_create_asset_mapping(
         self,
         mapping: AssetMappingCreateRequest
