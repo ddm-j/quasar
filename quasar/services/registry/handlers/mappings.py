@@ -16,9 +16,9 @@ from quasar.services.registry.schemas import (
     AssetMappingResponse, AssetMappingUpdate, AssetMappingQueryParams, AssetMappingPaginatedResponse,
     SuggestionsResponse, SuggestionItem,
     CommonSymbolRenameRequest, CommonSymbolRenameResponse,
-    AssetMappingRemapPreview,
+    AssetMappingRemapPreview, AssetMappingRemapRequest, AssetMappingRemapResponse,
 )
-from quasar.services.registry.mapper import MappingCandidate
+from quasar.services.registry.mapper import MappingCandidate, AutomatedMapper
 
 import logging
 logger = logging.getLogger(__name__)
@@ -1222,4 +1222,157 @@ class MappingHandlersMixin(HandlerMixin):
             raise HTTPException(
                 status_code=500,
                 detail="An unexpected error occurred while generating the re-map preview"
+            )
+
+    async def handle_remap_assets(
+        self,
+        request: AssetMappingRemapRequest = Body(...)
+    ) -> AssetMappingRemapResponse:
+        """Delete and regenerate asset mappings matching the specified filters.
+
+        This operation is atomic: either all changes succeed or the entire
+        operation is rolled back. Uses REPEATABLE READ isolation to prevent
+        phantom reads during the delete-regenerate cycle.
+
+        Args:
+            request: Filter parameters specifying which mappings to re-map.
+                - class_name: Provider name to filter by (requires class_type)
+                - class_type: Required when class_name is specified
+                - asset_class: Asset class to filter by (e.g., 'crypto')
+
+        Returns:
+            AssetMappingRemapResponse: Statistics about the operation including
+            counts of deleted, created, skipped, and failed mappings.
+
+        Raises:
+            HTTPException: 400 if class_name is provided without class_type.
+            HTTPException: 500 for database errors (operation is rolled back).
+        """
+        logger.info(
+            "Registry.handle_remap_assets: Starting re-map with filters "
+            "class_name=%s, class_type=%s, asset_class=%s",
+            request.class_name, request.class_type, request.asset_class
+        )
+
+        # Validate: class_type is required when class_name is specified
+        if request.class_name and not request.class_type:
+            raise HTTPException(
+                status_code=400,
+                detail="class_type is required when class_name is specified"
+            )
+
+        try:
+            # Build the DELETE query with RETURNING to capture deleted rows
+            delete_query, delete_params = self._build_remap_filter_query(
+                class_name=request.class_name,
+                class_type=request.class_type,
+                asset_class=request.asset_class,
+                for_delete=True
+            )
+
+            # Build the affected indices query (to report after operation)
+            indices_query, indices_params = self._get_affected_indices_query(
+                class_name=request.class_name,
+                class_type=request.class_type,
+                asset_class=request.asset_class
+            )
+
+            async with self.pool.acquire() as conn:
+                # Use REPEATABLE READ isolation to prevent phantom reads
+                async with conn.transaction(isolation='repeatable_read'):
+                    # Get affected indices BEFORE deletion (they will be affected by CASCADE)
+                    index_records = await conn.fetch(indices_query, *indices_params)
+                    affected_indices = [r['index_class_name'] for r in index_records]
+
+                    # Delete matching mappings and capture what was deleted
+                    deleted_rows = await conn.fetch(delete_query, *delete_params)
+                    deleted_count = len(deleted_rows)
+
+                    if deleted_count == 0:
+                        # No mappings matched the filter
+                        logger.info(
+                            "Registry.handle_remap_assets: No mappings matched the filter"
+                        )
+                        return AssetMappingRemapResponse(
+                            status="no_mappings",
+                            deleted_mappings=0,
+                            created_mappings=0,
+                            skipped_mappings=0,
+                            failed_mappings=0,
+                            providers_affected=[],
+                            affected_indices=[]
+                        )
+
+                    # Extract unique providers from deleted rows
+                    providers_set: Dict[Tuple[str, str], None] = {}
+                    for row in deleted_rows:
+                        key = (row['class_name'], row['class_type'])
+                        providers_set[key] = None
+
+                    providers_affected = sorted([p[0] for p in providers_set.keys()])
+
+                    logger.info(
+                        "Registry.handle_remap_assets: Deleted %d mappings for %d providers",
+                        deleted_count, len(providers_set)
+                    )
+
+                    # Regenerate mappings for each affected provider
+                    # Create a mapper instance using the existing connection's pool
+                    mapper = AutomatedMapper(pool=self.pool)
+
+                    total_stats = {
+                        'created': 0,
+                        'skipped': 0,
+                        'failed': 0
+                    }
+
+                    for (class_name, class_type) in providers_set.keys():
+                        # Generate mapping candidates for this provider
+                        candidates = await mapper.generate_mapping_candidates_for_provider(
+                            provider_name=class_name,
+                            provider_type=class_type
+                        )
+
+                        if candidates:
+                            # Apply the generated mappings
+                            stats = await self._apply_automated_mappings(candidates)
+                            total_stats['created'] += stats['created']
+                            total_stats['skipped'] += stats['skipped']
+                            total_stats['failed'] += stats['failed']
+
+                            logger.debug(
+                                "Registry.handle_remap_assets: Provider %s/%s - "
+                                "created=%d, skipped=%d, failed=%d",
+                                class_name, class_type,
+                                stats['created'], stats['skipped'], stats['failed']
+                            )
+
+            logger.info(
+                "Registry.handle_remap_assets: Re-map complete - "
+                "deleted=%d, created=%d, skipped=%d, failed=%d, "
+                "providers=%d, affected_indices=%d",
+                deleted_count, total_stats['created'], total_stats['skipped'],
+                total_stats['failed'], len(providers_affected), len(affected_indices)
+            )
+
+            return AssetMappingRemapResponse(
+                status="success",
+                deleted_mappings=deleted_count,
+                created_mappings=total_stats['created'],
+                skipped_mappings=total_stats['skipped'],
+                failed_mappings=total_stats['failed'],
+                providers_affected=providers_affected,
+                affected_indices=affected_indices
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                "Registry.handle_remap_assets: Error during re-map operation: %s",
+                e, exc_info=True
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="An unexpected error occurred during the re-map operation. All changes have been rolled back."
             )
