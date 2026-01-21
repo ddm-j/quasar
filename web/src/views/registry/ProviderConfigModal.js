@@ -28,6 +28,7 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilLockLocked, cilChartLine, cilClock, cilStorage } from '@coreui/icons'
 import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies, getSecretKeys, updateSecrets } from '../services/registry_api'
+import RemapPromptModal from './RemapPromptModal'
 
 // Default values for live provider scheduling
 const DEFAULT_PRE_CLOSE_SECONDS = 30
@@ -91,6 +92,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const [originalQuotePreference, setOriginalQuotePreference] = useState(null)
   // Control visibility of re-map prompt modal
   const [showRemapPrompt, setShowRemapPrompt] = useState(false)
+  // Track if re-map is in progress
+  const [isRemapping, setIsRemapping] = useState(false)
 
   // Ref to track which provider's secret keys have been loaded
   const secretKeysLoadedRef = useRef(null)
@@ -254,6 +257,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setShowConfirmDialog(false)
     setOriginalQuotePreference(null)
     setShowRemapPrompt(false)
+    setIsRemapping(false)
     secretKeysLoadedRef.current = null
     onClose()
   }
@@ -359,6 +363,28 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     if (!originalQuotePreference && !currentPref) return false
     // One is set, other is not, or different values
     return originalQuotePreference !== currentPref
+  }
+
+  // Handler when user confirms re-map from the prompt modal
+  const handleRemapConfirm = async () => {
+    setIsRemapping(true)
+    // T023 will wire this to actually call remapAssetMappings()
+    // For now, just close and reset
+    setIsRemapping(false)
+    setShowRemapPrompt(false)
+    handleClose()
+  }
+
+  // Handler when user declines re-map from the prompt modal
+  const handleRemapDecline = () => {
+    setShowRemapPrompt(false)
+    handleClose()
+  }
+
+  // Handler to close the re-map prompt modal
+  const handleRemapPromptClose = () => {
+    setShowRemapPrompt(false)
+    handleClose()
   }
 
   return (
@@ -973,6 +999,16 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           </CButton>
         </CModalFooter>
       </CModal>
+
+      {/* Re-map prompt modal for quote preference changes */}
+      <RemapPromptModal
+        visible={showRemapPrompt}
+        onClose={handleRemapPromptClose}
+        onConfirm={handleRemapConfirm}
+        onDecline={handleRemapDecline}
+        isProcessing={isRemapping}
+        className={className}
+      />
     </CModal>
   )
 }
