@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import {
   CModal,
@@ -7,9 +7,11 @@ import {
   CModalBody,
   CModalFooter,
   CButton,
+  CSpinner,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSync } from '@coreui/icons'
+import { getRemapPreview } from '../services/registry_api'
 
 /**
  * RemapConfirmModal - Confirmation modal for re-mapping filtered asset mappings.
@@ -23,6 +25,43 @@ const RemapConfirmModal = ({
   providerClassType,
   assetClassFilter,
 }) => {
+  const [loading, setLoading] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [previewError, setPreviewError] = useState(null)
+
+  // Fetch preview when modal becomes visible
+  useEffect(() => {
+    if (!visible) {
+      // Reset state when modal closes
+      setPreview(null)
+      setPreviewError(null)
+      return
+    }
+
+    const fetchPreview = async () => {
+      setLoading(true)
+      setPreviewError(null)
+      try {
+        const params = {}
+        if (providerFilter) {
+          params.class_name = providerFilter
+          params.class_type = providerClassType || 'provider'
+        }
+        if (assetClassFilter) {
+          params.asset_class = assetClassFilter
+        }
+        const data = await getRemapPreview(params)
+        setPreview(data)
+      } catch (err) {
+        setPreviewError(err.message || 'Failed to fetch preview')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPreview()
+  }, [visible, providerFilter, providerClassType, assetClassFilter])
+
   return (
     <CModal
       visible={visible}
@@ -54,12 +93,41 @@ const RemapConfirmModal = ({
             )}
           </ul>
         </div>
+
+        {/* Loading state */}
+        {loading && (
+          <div className="text-center py-3">
+            <CSpinner size="sm" className="me-2" />
+            <span className="text-body-secondary">Fetching preview...</span>
+          </div>
+        )}
+
+        {/* Preview error */}
+        {previewError && (
+          <div className="text-danger mb-3">
+            Failed to load preview: {previewError}
+          </div>
+        )}
+
+        {/* Preview data placeholder - will be expanded in T030 */}
+        {preview && !loading && (
+          <div className="mb-3">
+            <strong>Preview:</strong>
+            <p className="text-body-secondary mt-2 mb-0">
+              {preview.mappings_to_delete} mapping(s) will be deleted and regenerated.
+            </p>
+          </div>
+        )}
       </CModalBody>
       <CModalFooter>
         <CButton color="secondary" onClick={onClose}>
           Cancel
         </CButton>
-        <CButton color="warning" onClick={onConfirm}>
+        <CButton
+          color="warning"
+          onClick={onConfirm}
+          disabled={loading || previewError}
+        >
           Confirm Re-map
         </CButton>
       </CModalFooter>
