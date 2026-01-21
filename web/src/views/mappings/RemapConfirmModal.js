@@ -10,7 +10,7 @@ import {
   CSpinner,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
-import { cilSync } from '@coreui/icons'
+import { cilSync, cilWarning } from '@coreui/icons'
 import { getRemapPreview, remapAssetMappings } from '../services/registry_api'
 
 /**
@@ -167,6 +167,32 @@ const RemapConfirmModal = ({
                       Asset Class: <span className="text-body">{preview.filter_applied.asset_class}</span>
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* Affected indices display with warning styling */}
+              {preview.affected_indices && preview.affected_indices.length > 0 && (
+                <div
+                  className="mt-3 p-2 rounded d-flex align-items-start"
+                  style={{ backgroundColor: 'var(--cui-warning-bg-subtle)' }}
+                >
+                  <CIcon
+                    icon={cilWarning}
+                    className="me-2 flex-shrink-0"
+                    style={{ color: 'var(--cui-warning)' }}
+                  />
+                  <div>
+                    <span className="fw-medium" style={{ color: 'var(--cui-warning)' }}>
+                      Affected Indices:
+                    </span>
+                    <ul className="mb-0 mt-1 ps-3">
+                      {preview.affected_indices.map((indexName) => (
+                        <li key={indexName} className="text-body-secondary">
+                          {indexName}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               )}
             </div>
