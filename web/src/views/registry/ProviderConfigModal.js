@@ -369,17 +369,31 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const handleRemapConfirm = async () => {
     setIsRemapping(true)
     try {
-      await remapAssetMappings({
+      const result = await remapAssetMappings({
         class_name: className,
         class_type: classType,
         asset_class: 'crypto'
       })
-      // T024 will add success toast notification here
+      if (displayToast) {
+        displayToast({
+          title: 'Crypto Mappings Re-mapped',
+          body: `Successfully re-mapped crypto assets for ${className}. Deleted: ${result.deleted}, Created: ${result.created}, Skipped: ${result.skipped}.`,
+          color: 'success',
+          icon: cilChartLine,
+        })
+      }
       setShowRemapPrompt(false)
       handleClose()
     } catch (err) {
       console.error('Failed to re-map asset mappings:', err)
-      // T024 will add error toast notification here
+      if (displayToast) {
+        displayToast({
+          title: 'Re-map Failed',
+          body: `Failed to re-map crypto mappings: ${err.message}`,
+          color: 'danger',
+          icon: cilChartLine,
+        })
+      }
       setShowRemapPrompt(false)
       handleClose()
     } finally {
