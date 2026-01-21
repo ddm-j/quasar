@@ -50,7 +50,7 @@ from quasar.services.registry.schemas import (
     FileUploadResponse, UpdateAssetsResponse, DeleteClassResponse,
     AssetResponse, AssetMappingCreateResponse, AssetMappingPaginatedResponse,
     AssetMappingResponse, SuggestionsResponse,
-    AssetMappingRemapPreview,
+    AssetMappingRemapPreview, AssetMappingRemapResponse,
     ProviderPreferencesResponse, AvailableQuoteCurrenciesResponse,
     SecretKeysResponse, SecretsUpdateResponse,
     CommonSymbolResponse, CommonSymbolRenameResponse,
@@ -216,6 +216,12 @@ class Registry(
             self.handle_remap_preview,
             methods=['GET'],
             response_model=AssetMappingRemapPreview
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/re-map',
+            self.handle_remap_assets,
+            methods=['POST'],
+            response_model=AssetMappingRemapResponse
         )
 
         # Common Symbols Routes (public API)
