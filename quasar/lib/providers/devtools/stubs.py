@@ -71,7 +71,7 @@ class LiveStub(LiveDataProvider):
                 "symbol": "BTC-USD.STUB",
                 "matcher_symbol": "BTC-USD",
                 "name": "Bitcoin Stub",
-                "exchange": "CRYPTO",
+                "exchange": None,
                 "asset_class": "crypto",
                 "base_currency": "BTC",
                 "quote_currency": "USD",

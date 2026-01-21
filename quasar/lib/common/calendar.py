@@ -1,8 +1,8 @@
-"""Trading calendar utility wrapping exchange_calendars with custom support for Crypto and Forex.
+"""Trading calendar utility wrapping exchange_calendars with custom Forex support.
 
 This module provides a unified interface for checking market status across various
-exchanges and asset classes, including standard stock exchanges, cryptocurrencies,
-and forex markets.
+exchanges and asset classes. Assets without an exchange (e.g., cryptocurrencies)
+default to 'always open' behavior.
 """
 
 import logging
@@ -17,63 +17,6 @@ from exchange_calendars import ExchangeCalendar, register_calendar_type
 logger = logging.getLogger(__name__)
 
 # --- Custom Calendar Definitions ---
-
-class CryptoCalendar(ExchangeCalendar):
-    """24/7 Trading Calendar for Cryptocurrencies."""
-
-    @property
-    def name(self) -> str:
-        """Return the calendar name.
-
-        Returns:
-            str: The calendar name ("CRYPTO").
-        """
-        return "CRYPTO"
-
-    @property
-    def tz(self):
-        """Return the timezone for the calendar.
-
-        Returns:
-            datetime.tzinfo: The UTC timezone.
-        """
-        return pytz.utc
-
-    @property
-    def open_times(self):
-        """Return the daily open times.
-
-        Returns:
-            tuple: Tuple containing the open time (00:00).
-        """
-        return ((None, time(0, 0)),)
-
-    @property
-    def close_times(self):
-        """Return the daily close times.
-
-        Returns:
-            tuple: Tuple containing the close time (23:59).
-        """
-        return ((None, time(23, 59)),)
-
-    @property
-    def regular_holidays(self):
-        """Return the list of regular holidays.
-
-        Returns:
-            None: Crypto markets have no holidays.
-        """
-        return None
-
-    @property
-    def weekmask(self) -> str:
-        """Return the weekmask defining active days (all 7 days).
-
-        Returns:
-            str: The weekmask "1111111".
-        """
-        return "1111111"
 
 class ForexCalendar(ExchangeCalendar):
     """24/5 Trading Calendar for Forex (Standard Sunday 5pm ET to Friday 5pm ET)."""
@@ -137,10 +80,9 @@ class ForexCalendar(ExchangeCalendar):
 
 # Register custom calendars with the library
 try:
-    register_calendar_type("CRYPTO", CryptoCalendar, force=True)
     register_calendar_type("XFX", ForexCalendar, force=True)
 except Exception as e:
-    logger.warning(f"Failed to register custom calendars: {e}")
+    logger.warning(f"Failed to register custom calendar: {e}")
 
 
 # --- TradingCalendar Wrapper ---
