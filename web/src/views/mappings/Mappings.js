@@ -31,6 +31,8 @@ import MappingAddModal from './MappingAddModal';
 import MappingEditModal from './MappingEditModal';
 // Suggest Mappings Modal
 import SuggestMappingsModal from './SuggestMappingsModal';
+// Re-map Confirm Modal
+import RemapConfirmModal from './RemapConfirmModal';
 // Common Symbols Tab
 import CommonSymbolsTab from './CommonSymbolsTab';
 
@@ -88,6 +90,13 @@ const Mappings = () => {
 
   // Get text filter keys for mappings (columns that support LIKE filtering)
   const textInputFilterKeys = useMemo(() => ['common_symbol', 'class_symbol', 'class_name'], []);
+
+  // Derive class_type for the selected provider filter
+  const selectedProviderClassType = useMemo(() => {
+    if (!providerFilter) return '';
+    const selected = providerOptions.find(opt => opt.value === providerFilter);
+    return selected?.class_type || 'provider';
+  }, [providerFilter, providerOptions]);
 
   const pushToast = ({ title, body, color = 'danger', icon = null }) => {
     const toast = (
@@ -517,6 +526,18 @@ const Mappings = () => {
           fetchMappings();
         }}
         pushToast={pushToast}
+      />
+      <RemapConfirmModal
+        visible={isRemapModalVisible}
+        onClose={() => setIsRemapModalVisible(false)}
+        onConfirm={(result) => {
+          // Success handling will be added in T033
+          setActivePage(1);
+          fetchMappings();
+        }}
+        providerFilter={providerFilter}
+        providerClassType={selectedProviderClassType}
+        assetClassFilter={assetClassFilter}
       />
     </>
   );
