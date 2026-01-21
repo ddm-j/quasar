@@ -35,9 +35,10 @@ import SuggestMappingsModal from './SuggestMappingsModal';
 import CommonSymbolsTab from './CommonSymbolsTab';
 
 // API Imports
-import { 
+import {
     getAssetMappings,
     deleteAssetMapping,
+    getRegisteredClasses,
 } from '../services/registry_api';
 
 // Asset class options for filtering (matches backend enums.py)
@@ -70,8 +71,11 @@ const Mappings = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState('mappings');
 
-  // Asset class filter state for re-map functionality
+  // Filter states for re-map functionality
   const [assetClassFilter, setAssetClassFilter] = useState('');
+  const [providerFilter, setProviderFilter] = useState('');
+  const [providerOptions, setProviderOptions] = useState([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
 
   // Pagination state
   const [totalItems, setTotalItems] = useState(0);
@@ -129,6 +133,11 @@ const Mappings = () => {
       apiParams.asset_class = assetClassFilter;
     }
 
+    // Add provider filter if set
+    if (providerFilter) {
+      apiParams.class_name = providerFilter;
+    }
+
     try {
       const data = await getAssetMappings(apiParams);
       setMappings(data.items || []);
@@ -164,12 +173,39 @@ const Mappings = () => {
     };
   }, [liveTextInputFilters, textInputFilterKeys]);
 
+  // Fetch provider options on mount
+  useEffect(() => {
+    const fetchProviders = async () => {
+      setIsLoadingProviders(true);
+      try {
+        const data = await getRegisteredClasses();
+        // Transform to dropdown options with "All Providers" default
+        const options = [
+          { label: 'All Providers', value: '' },
+          ...(data || []).map(cls => ({
+            label: `${cls.class_name} (${cls.class_type})`,
+            value: cls.class_name,
+            class_type: cls.class_type,
+          })),
+        ];
+        setProviderOptions(options);
+      } catch (err) {
+        console.error('Error fetching providers:', err);
+        // Still set default option on error
+        setProviderOptions([{ label: 'All Providers', value: '' }]);
+      } finally {
+        setIsLoadingProviders(false);
+      }
+    };
+    fetchProviders();
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'mappings') {
       setError(null);
       fetchMappings();
     }
-  }, [activeTab, activePage, itemsPerPage, sorter, columnFilter, assetClassFilter]);
+  }, [activeTab, activePage, itemsPerPage, sorter, columnFilter, assetClassFilter, providerFilter]);
 
   // Define columns for CSmartTable
   const columns = [
@@ -249,6 +285,11 @@ const Mappings = () => {
     setAssetClassFilter(event.target.value);
   };
 
+  const handleProviderFilterChange = (event) => {
+    setActivePage(1); // Reset to first page when changing filter
+    setProviderFilter(event.target.value);
+  };
+
   const handleSorterChange = (sorterData) => {
     // CSmartTable provides SorterValue: { column: string, state: 'asc' | 'desc' | 0 }
     // When resetable=true, state can be 0 (null/cleared) on third click
@@ -322,7 +363,7 @@ const Mappings = () => {
                 </CRow>
               </CCardHeader>
               <CCardBody>
-                {/* Asset Class Filter Row */}
+                {/* Filter Row */}
                 <CRow className="mb-3 align-items-center">
                   <CCol xs="auto">
                     <label htmlFor="assetClassFilter" className="col-form-label">Asset Class:</label>
@@ -334,6 +375,19 @@ const Mappings = () => {
                       onChange={handleAssetClassFilterChange}
                       options={ASSET_CLASS_OPTIONS}
                       style={{ minWidth: '180px' }}
+                    />
+                  </CCol>
+                  <CCol xs="auto">
+                    <label htmlFor="providerFilter" className="col-form-label">Provider:</label>
+                  </CCol>
+                  <CCol xs="auto">
+                    <CFormSelect
+                      id="providerFilter"
+                      value={providerFilter}
+                      onChange={handleProviderFilterChange}
+                      options={providerOptions}
+                      disabled={isLoadingProviders}
+                      style={{ minWidth: '200px' }}
                     />
                   </CCol>
                 </CRow>
