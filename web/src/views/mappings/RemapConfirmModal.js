@@ -192,6 +192,10 @@ const RemapConfirmModal = ({
                         </li>
                       ))}
                     </ul>
+                    <p className="mb-0 mt-2 small text-body-secondary">
+                      These indices reference common symbols that will have their mappings regenerated.
+                      Index composition will remain unchanged, but underlying asset mappings may differ.
+                    </p>
                   </div>
                 </div>
               )}
