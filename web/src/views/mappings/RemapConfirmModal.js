@@ -170,6 +170,16 @@ const RemapConfirmModal = ({
                 </div>
               )}
 
+              {/* Providers affected list */}
+              {preview.providers_affected && preview.providers_affected.length > 0 && (
+                <div className="mt-2 small text-body-secondary">
+                  <span className="fw-medium">Providers affected: </span>
+                  <span className="text-body">
+                    {preview.providers_affected.join(', ')}
+                  </span>
+                </div>
+              )}
+
               {/* Affected indices display with warning styling */}
               {preview.affected_indices && preview.affected_indices.length > 0 && (
                 <div
