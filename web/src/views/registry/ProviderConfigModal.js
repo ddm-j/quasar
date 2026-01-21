@@ -87,6 +87,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const [secretsError, setSecretsError] = useState('')
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
+  // Track original quote preference to detect changes for re-map prompt
+  const [originalQuotePreference, setOriginalQuotePreference] = useState(null)
+
   // Ref to track which provider's secret keys have been loaded
   const secretKeysLoadedRef = useRef(null)
 
@@ -117,8 +120,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     try {
       const response = await getProviderConfig(classType, className)
       const prefs = response.preferences || {}
+      const cryptoPrefs = prefs.crypto || { preferred_quote_currency: null }
       setConfig({
-        crypto: prefs.crypto || { preferred_quote_currency: null },
+        crypto: cryptoPrefs,
         scheduling: {
           delay_hours: prefs.scheduling?.delay_hours ?? 0,
           pre_close_seconds: prefs.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS,
@@ -129,6 +133,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           lookback_days: prefs.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS
         }
       })
+      // Track original quote preference for re-map detection
+      setOriginalQuotePreference(cryptoPrefs.preferred_quote_currency)
     } catch (err) {
       console.error('Failed to load provider configuration:', err)
       setError(`Failed to load configuration: ${err.message}`)
@@ -238,6 +244,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setSecretKeys([])
     setSecretValues({})
     setShowConfirmDialog(false)
+    setOriginalQuotePreference(null)
     secretKeysLoadedRef.current = null
     onClose()
   }
