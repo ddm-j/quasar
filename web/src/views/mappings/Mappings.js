@@ -20,9 +20,10 @@ import {
     CNavLink,
 } from '@coreui/react-pro';
 import CIcon from '@coreui/icons-react'
-import { 
+import {
     cilTrash,
     cilPencil,
+    cilCheckCircle,
 } from '@coreui/icons'
 
 // Add Mapping Modal
@@ -531,7 +532,18 @@ const Mappings = () => {
         visible={isRemapModalVisible}
         onClose={() => setIsRemapModalVisible(false)}
         onConfirm={(result) => {
-          // Success handling will be added in T033
+          // Show success toast with deleted/created counts
+          const toastBody =
+            result.status === 'no_mappings'
+              ? 'No mappings matched the filters.'
+              : `Deleted ${result.deleted_mappings} mapping${result.deleted_mappings !== 1 ? 's' : ''}, created ${result.created_mappings} mapping${result.created_mappings !== 1 ? 's' : ''}.`;
+          pushToast({
+            title: 'Re-map Completed',
+            body: toastBody,
+            color: 'success',
+            icon: cilCheckCircle,
+          });
+          // Refresh mappings list
           setActivePage(1);
           fetchMappings();
         }}
