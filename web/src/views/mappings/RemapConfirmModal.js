@@ -10,7 +10,7 @@ import {
   CSpinner,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
-import { cilSync, cilWarning } from '@coreui/icons'
+import { cilSync, cilWarning, cilCheckCircle } from '@coreui/icons'
 import { getRemapPreview, remapAssetMappings } from '../services/registry_api'
 
 /**
@@ -29,6 +29,7 @@ const RemapConfirmModal = ({
   const [preview, setPreview] = useState(null)
   const [previewError, setPreviewError] = useState(null)
   const [remapping, setRemapping] = useState(false)
+  const [remapResult, setRemapResult] = useState(null)
 
   // Fetch preview when modal becomes visible
   useEffect(() => {
@@ -37,6 +38,7 @@ const RemapConfirmModal = ({
       setPreview(null)
       setPreviewError(null)
       setRemapping(false)
+      setRemapResult(null)
       return
     }
 
@@ -64,7 +66,7 @@ const RemapConfirmModal = ({
     fetchPreview()
   }, [visible, providerFilter, providerClassType, assetClassFilter])
 
-  // Handle confirm button click - call remapAssetMappings and close modal on success
+  // Handle confirm button click - call remapAssetMappings and show result summary
   const handleConfirm = async () => {
     setRemapping(true)
     try {
@@ -77,9 +79,10 @@ const RemapConfirmModal = ({
         params.asset_class = assetClassFilter
       }
       const result = await remapAssetMappings(params)
-      // Pass the result to parent and close the modal
+      // Store result to show completion summary
+      setRemapResult(result)
+      // Pass the result to parent for toast notification and refresh
       onConfirm(result)
-      onClose()
     } catch (err) {
       // Error handling will be added in T039
       console.error('Re-map failed:', err)
@@ -88,23 +91,86 @@ const RemapConfirmModal = ({
     }
   }
 
+  // Handle closing after viewing result
+  const handleClose = () => {
+    onClose()
+  }
+
   return (
     <CModal
       visible={visible}
-      onClose={onClose}
+      onClose={handleClose}
       backdrop="static"
       size="lg"
     >
       <CModalHeader>
         <CModalTitle>
-          <CIcon icon={cilSync} className="me-2" />
-          Confirm Re-map Operation
+          {remapResult ? (
+            <>
+              <CIcon icon={cilCheckCircle} className="me-2" style={{ color: 'var(--cui-success)' }} />
+              Re-map Complete
+            </>
+          ) : (
+            <>
+              <CIcon icon={cilSync} className="me-2" />
+              Confirm Re-map Operation
+            </>
+          )}
         </CModalTitle>
       </CModalHeader>
       <CModalBody>
-        <p className="text-body-secondary">
-          This will delete existing mappings matching your filters and regenerate them.
-        </p>
+        {/* Completion summary - shown after successful re-map */}
+        {remapResult && (
+          <div
+            className="p-3 rounded mb-3"
+            style={{ backgroundColor: 'var(--cui-success-bg-subtle)' }}
+          >
+            <div className="d-flex align-items-center mb-3">
+              <CIcon
+                icon={cilCheckCircle}
+                size="xl"
+                className="me-2"
+                style={{ color: 'var(--cui-success)' }}
+              />
+              <span className="fw-semibold" style={{ color: 'var(--cui-success)' }}>
+                Re-map operation completed successfully
+              </span>
+            </div>
+            <div className="row text-center">
+              <div className="col-4">
+                <div className="fs-3 fw-bold text-danger">{remapResult.deleted_mappings}</div>
+                <div className="small text-body-secondary">Deleted</div>
+              </div>
+              <div className="col-4">
+                <div className="fs-3 fw-bold text-success">{remapResult.created_mappings}</div>
+                <div className="small text-body-secondary">Created</div>
+              </div>
+              <div className="col-4">
+                <div className="fs-3 fw-bold text-warning">{remapResult.skipped_mappings}</div>
+                <div className="small text-body-secondary">Skipped</div>
+              </div>
+            </div>
+            {remapResult.failed_mappings > 0 && (
+              <div className="mt-3 text-center">
+                <span className="text-danger fw-medium">
+                  {remapResult.failed_mappings} mapping{remapResult.failed_mappings !== 1 ? 's' : ''} failed to create
+                </span>
+              </div>
+            )}
+            {remapResult.providers_affected && remapResult.providers_affected.length > 0 && (
+              <div className="mt-3 small text-body-secondary text-center">
+                Providers: {remapResult.providers_affected.join(', ')}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Preview/confirmation view - hidden after re-map completes */}
+        {!remapResult && (
+          <>
+            <p className="text-body-secondary">
+              This will delete existing mappings matching your filters and regenerate them.
+            </p>
         <div className="mb-3">
           <strong>Filters Applied:</strong>
           <ul className="mb-0 mt-2">
@@ -212,25 +278,35 @@ const RemapConfirmModal = ({
             </div>
           </div>
         )}
+          </>
+        )}
       </CModalBody>
       <CModalFooter>
-        <CButton color="secondary" onClick={onClose} disabled={remapping}>
-          Cancel
-        </CButton>
-        <CButton
-          color="warning"
-          onClick={handleConfirm}
-          disabled={loading || previewError || remapping}
-        >
-          {remapping ? (
-            <>
-              <CSpinner size="sm" className="me-2" />
-              Re-mapping...
-            </>
-          ) : (
-            'Confirm Re-map'
-          )}
-        </CButton>
+        {remapResult ? (
+          <CButton color="primary" onClick={handleClose}>
+            Close
+          </CButton>
+        ) : (
+          <>
+            <CButton color="secondary" onClick={handleClose} disabled={remapping}>
+              Cancel
+            </CButton>
+            <CButton
+              color="warning"
+              onClick={handleConfirm}
+              disabled={loading || previewError || remapping}
+            >
+              {remapping ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  Re-mapping...
+                </>
+              ) : (
+                'Confirm Re-map'
+              )}
+            </CButton>
+          </>
+        )}
       </CModalFooter>
     </CModal>
   )
