@@ -11,7 +11,7 @@ import {
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSync } from '@coreui/icons'
-import { getRemapPreview } from '../services/registry_api'
+import { getRemapPreview, remapAssetMappings } from '../services/registry_api'
 
 /**
  * RemapConfirmModal - Confirmation modal for re-mapping filtered asset mappings.
@@ -28,6 +28,7 @@ const RemapConfirmModal = ({
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState(null)
   const [previewError, setPreviewError] = useState(null)
+  const [remapping, setRemapping] = useState(false)
 
   // Fetch preview when modal becomes visible
   useEffect(() => {
@@ -35,6 +36,7 @@ const RemapConfirmModal = ({
       // Reset state when modal closes
       setPreview(null)
       setPreviewError(null)
+      setRemapping(false)
       return
     }
 
@@ -61,6 +63,30 @@ const RemapConfirmModal = ({
 
     fetchPreview()
   }, [visible, providerFilter, providerClassType, assetClassFilter])
+
+  // Handle confirm button click - call remapAssetMappings and close modal on success
+  const handleConfirm = async () => {
+    setRemapping(true)
+    try {
+      const params = {}
+      if (providerFilter) {
+        params.class_name = providerFilter
+        params.class_type = providerClassType || 'provider'
+      }
+      if (assetClassFilter) {
+        params.asset_class = assetClassFilter
+      }
+      const result = await remapAssetMappings(params)
+      // Pass the result to parent and close the modal
+      onConfirm(result)
+      onClose()
+    } catch (err) {
+      // Error handling will be added in T039
+      console.error('Re-map failed:', err)
+    } finally {
+      setRemapping(false)
+    }
+  }
 
   return (
     <CModal
@@ -148,15 +174,22 @@ const RemapConfirmModal = ({
         )}
       </CModalBody>
       <CModalFooter>
-        <CButton color="secondary" onClick={onClose}>
+        <CButton color="secondary" onClick={onClose} disabled={remapping}>
           Cancel
         </CButton>
         <CButton
           color="warning"
-          onClick={onConfirm}
-          disabled={loading || previewError}
+          onClick={handleConfirm}
+          disabled={loading || previewError || remapping}
         >
-          Confirm Re-map
+          {remapping ? (
+            <>
+              <CSpinner size="sm" className="me-2" />
+              Re-mapping...
+            </>
+          ) : (
+            'Confirm Re-map'
+          )}
         </CButton>
       </CModalFooter>
     </CModal>
