@@ -16,6 +16,7 @@ from quasar.services.registry.schemas import (
     AssetMappingResponse, AssetMappingUpdate, AssetMappingQueryParams, AssetMappingPaginatedResponse,
     SuggestionsResponse, SuggestionItem,
     CommonSymbolRenameRequest, CommonSymbolRenameResponse,
+    AssetMappingRemapPreview,
 )
 from quasar.services.registry.mapper import MappingCandidate
 
@@ -1117,4 +1118,108 @@ class MappingHandlersMixin(HandlerMixin):
             raise HTTPException(
                 status_code=500,
                 detail="An unexpected error occurred while renaming the symbol"
+            )
+
+    async def handle_remap_preview(
+        self,
+        class_name: Optional[str] = Query(None, description="Provider name to filter by"),
+        class_type: Optional[ClassType] = Query(None, description="Class type (required when class_name is specified)"),
+        asset_class: Optional[str] = Query(None, description="Asset class to filter by (e.g., 'crypto')")
+    ) -> AssetMappingRemapPreview:
+        """Preview the impact of a re-map operation without modifying data.
+
+        Returns counts of mappings that would be deleted, providers that would be
+        affected, and user indices that may lose members.
+
+        Args:
+            class_name: Provider name to filter by. If omitted, all providers are included.
+            class_type: Required when class_name is specified ('provider' or 'broker').
+            asset_class: Asset class to filter by. If omitted, all asset classes are included.
+
+        Returns:
+            AssetMappingRemapPreview: Impact summary of the re-map operation.
+
+        Raises:
+            HTTPException: 400 if class_name is provided without class_type.
+            HTTPException: 500 for database errors.
+        """
+        logger.info(
+            "Registry.handle_remap_preview: Previewing re-map with filters "
+            "class_name=%s, class_type=%s, asset_class=%s",
+            class_name, class_type, asset_class
+        )
+
+        # Validate: class_type is required when class_name is specified
+        if class_name and not class_type:
+            raise HTTPException(
+                status_code=400,
+                detail="class_type is required when class_name is specified"
+            )
+
+        try:
+            # Build the filter query for counting mappings
+            filter_query, filter_params = self._build_remap_filter_query(
+                class_name=class_name,
+                class_type=class_type,
+                asset_class=asset_class,
+                for_delete=False
+            )
+
+            # Build the query for finding affected indices
+            indices_query, indices_params = self._get_affected_indices_query(
+                class_name=class_name,
+                class_type=class_type,
+                asset_class=asset_class
+            )
+
+            async with self.pool.acquire() as conn:
+                # Count mappings to delete
+                count_query = f"SELECT COUNT(*) FROM ({filter_query}) AS filtered"
+                mappings_to_delete = await conn.fetchval(count_query, *filter_params)
+
+                # Get distinct providers affected
+                providers_query = f"""
+                    SELECT DISTINCT class_name
+                    FROM ({filter_query}) AS filtered
+                    ORDER BY class_name
+                """
+                provider_records = await conn.fetch(providers_query, *filter_params)
+                providers_affected = [r['class_name'] for r in provider_records]
+
+                # Get affected indices
+                index_records = await conn.fetch(indices_query, *indices_params)
+                affected_indices = [r['index_class_name'] for r in index_records]
+
+            # Build filter echo for response
+            filter_applied = {}
+            if class_name:
+                filter_applied['class_name'] = class_name
+            if class_type:
+                filter_applied['class_type'] = class_type
+            if asset_class:
+                filter_applied['asset_class'] = asset_class
+
+            logger.info(
+                "Registry.handle_remap_preview: Preview complete - %d mappings to delete, "
+                "%d providers affected, %d indices affected",
+                mappings_to_delete or 0, len(providers_affected), len(affected_indices)
+            )
+
+            return AssetMappingRemapPreview(
+                mappings_to_delete=mappings_to_delete or 0,
+                providers_affected=providers_affected,
+                affected_indices=affected_indices,
+                filter_applied=filter_applied
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                "Registry.handle_remap_preview: Error generating preview: %s",
+                e, exc_info=True
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="An unexpected error occurred while generating the re-map preview"
             )
