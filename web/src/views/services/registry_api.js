@@ -874,3 +874,68 @@ export const deleteUserIndex = async (name) => {
 
   return responseData;
 };
+
+/**
+ * Fetches a preview of the re-map operation impact without modifying data.
+ * @param {object} params - Query parameters.
+ * @param {string} [params.class_name] - Provider name to filter by.
+ * @param {string} [params.class_type] - Class type ('provider' or 'broker'). Required when class_name is specified.
+ * @param {string} [params.asset_class] - Asset class to filter by (e.g., 'crypto', 'us_equity').
+ * @returns {Promise<object>} - Preview response: { mappings_to_delete, providers_affected, affected_indices, filter_applied }
+ */
+export const getRemapPreview = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      queryParams.append(key, value);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${API_BASE}asset-mappings/re-map/preview${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+/**
+ * Re-maps asset mappings by deleting existing mappings and regenerating them.
+ * This operation is atomic - if any part fails, the entire operation is rolled back.
+ * @param {object} params - Re-map parameters.
+ * @param {string} [params.class_name] - Provider name to filter by.
+ * @param {string} [params.class_type] - Class type ('provider' or 'broker'). Required when class_name is specified.
+ * @param {string} [params.asset_class] - Asset class to filter by (e.g., 'crypto', 'us_equity').
+ * @returns {Promise<object>} - Re-map response: { status, deleted_mappings, created_mappings, skipped_mappings, failed_mappings, providers_affected, affected_indices }
+ */
+export const remapAssetMappings = async (params = {}) => {
+  const response = await fetch(`${API_BASE}asset-mappings/re-map`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
