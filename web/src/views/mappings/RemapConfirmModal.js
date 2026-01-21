@@ -11,7 +11,7 @@ import {
   CAlert,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
-import { cilSync, cilWarning, cilCheckCircle } from '@coreui/icons'
+import { cilSync, cilWarning, cilCheckCircle, cilXCircle } from '@coreui/icons'
 import { getRemapPreview, remapAssetMappings } from '../services/registry_api'
 
 /**
@@ -31,6 +31,7 @@ const RemapConfirmModal = ({
   const [previewError, setPreviewError] = useState(null)
   const [remapping, setRemapping] = useState(false)
   const [remapResult, setRemapResult] = useState(null)
+  const [remapError, setRemapError] = useState(null)
 
   // Fetch preview when modal becomes visible
   useEffect(() => {
@@ -40,6 +41,7 @@ const RemapConfirmModal = ({
       setPreviewError(null)
       setRemapping(false)
       setRemapResult(null)
+      setRemapError(null)
       return
     }
 
@@ -70,6 +72,7 @@ const RemapConfirmModal = ({
   // Handle confirm button click - call remapAssetMappings and show result summary
   const handleConfirm = async () => {
     setRemapping(true)
+    setRemapError(null)
     try {
       const params = {}
       if (providerFilter) {
@@ -85,7 +88,8 @@ const RemapConfirmModal = ({
       // Pass the result to parent for toast notification and refresh
       onConfirm(result)
     } catch (err) {
-      // Error handling will be added in T039
+      // Store error for display in the modal
+      setRemapError(err.message || 'Re-map operation failed. Please try again.')
       console.error('Re-map failed:', err)
     } finally {
       setRemapping(false)
@@ -111,6 +115,11 @@ const RemapConfirmModal = ({
               <CIcon icon={cilCheckCircle} className="me-2" style={{ color: 'var(--cui-success)' }} />
               Re-map Complete
             </>
+          ) : remapError ? (
+            <>
+              <CIcon icon={cilXCircle} className="me-2" style={{ color: 'var(--cui-danger)' }} />
+              Re-map Failed
+            </>
           ) : (
             <>
               <CIcon icon={cilSync} className="me-2" />
@@ -120,6 +129,32 @@ const RemapConfirmModal = ({
         </CModalTitle>
       </CModalHeader>
       <CModalBody>
+        {/* Error display - shown when re-map fails */}
+        {remapError && !remapResult && (
+          <div
+            className="p-3 rounded mb-3"
+            style={{ backgroundColor: 'var(--cui-danger-bg-subtle)' }}
+          >
+            <div className="d-flex align-items-center mb-2">
+              <CIcon
+                icon={cilXCircle}
+                size="xl"
+                className="me-2 flex-shrink-0"
+                style={{ color: 'var(--cui-danger)' }}
+              />
+              <span className="fw-semibold" style={{ color: 'var(--cui-danger)' }}>
+                Re-map operation failed
+              </span>
+            </div>
+            <p className="mb-0 text-body-secondary">
+              {remapError}
+            </p>
+            <p className="mb-0 mt-2 small text-body-secondary">
+              The operation has been rolled back. No mappings were modified.
+            </p>
+          </div>
+        )}
+
         {/* Completion summary - shown after successful re-map */}
         {remapResult && (
           <div
@@ -286,6 +321,10 @@ const RemapConfirmModal = ({
       <CModalFooter>
         {remapResult ? (
           <CButton color="primary" onClick={handleClose}>
+            Close
+          </CButton>
+        ) : remapError ? (
+          <CButton color="secondary" onClick={handleClose}>
             Close
           </CButton>
         ) : (
