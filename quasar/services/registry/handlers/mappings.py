@@ -1,6 +1,6 @@
 """Asset mapping handlers for Registry service."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from urllib.parse import unquote_plus
 import asyncpg
 
@@ -85,6 +85,92 @@ class MappingHandlersMixin(HandlerMixin):
                         await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
 
         return stats
+
+    def _build_remap_filter_query(
+        self,
+        class_name: Optional[str] = None,
+        class_type: Optional[str] = None,
+        asset_class: Optional[str] = None,
+        for_delete: bool = False
+    ) -> Tuple[str, List[Any]]:
+        """Build SQL query to select asset_mapping rows with optional filters.
+
+        Constructs a query that can filter mappings by provider (class_name/class_type)
+        and/or asset_class. When asset_class is specified, the query JOINs to the assets
+        table to filter by the asset's asset_class.
+
+        Args:
+            class_name: Provider/broker name to filter by.
+            class_type: Required when class_name is specified ('provider' or 'broker').
+            asset_class: Asset class to filter by (e.g., 'crypto', 'us_equity').
+            for_delete: If True, returns a DELETE query with RETURNING clause.
+                       If False, returns a SELECT query for preview/counting.
+
+        Returns:
+            Tuple of (sql_query, params_list) ready for execution.
+        """
+        params: List[Any] = []
+        param_idx = 1
+        where_clauses: List[str] = []
+
+        # Provider filter
+        if class_name:
+            where_clauses.append(f"am.class_name = ${param_idx}")
+            params.append(class_name)
+            param_idx += 1
+            if class_type:
+                where_clauses.append(f"am.class_type = ${param_idx}")
+                params.append(class_type)
+                param_idx += 1
+
+        # Asset class filter requires JOIN to assets table
+        needs_join = asset_class is not None
+        if asset_class:
+            where_clauses.append(f"a.asset_class = ${param_idx}")
+            params.append(asset_class)
+            param_idx += 1
+
+        # Build WHERE clause (default to TRUE if no filters)
+        where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
+
+        # Build FROM clause with optional JOIN
+        if needs_join:
+            from_sql = """
+                asset_mapping am
+                JOIN assets a ON am.class_name = a.class_name
+                              AND am.class_type = a.class_type
+                              AND am.class_symbol = a.symbol
+            """
+        else:
+            from_sql = "asset_mapping am"
+
+        if for_delete:
+            # DELETE query - need to use subquery since DELETE doesn't support JOIN directly
+            if needs_join:
+                query = f"""
+                    DELETE FROM asset_mapping
+                    WHERE (class_name, class_type, class_symbol) IN (
+                        SELECT am.class_name, am.class_type, am.class_symbol
+                        FROM {from_sql}
+                        WHERE {where_sql}
+                    )
+                    RETURNING common_symbol, class_name, class_type, class_symbol
+                """
+            else:
+                query = f"""
+                    DELETE FROM asset_mapping am
+                    WHERE {where_sql}
+                    RETURNING common_symbol, class_name, class_type, class_symbol
+                """
+        else:
+            # SELECT query for preview/counting
+            query = f"""
+                SELECT am.common_symbol, am.class_name, am.class_type, am.class_symbol
+                FROM {from_sql}
+                WHERE {where_sql}
+            """
+
+        return query, params
 
     async def handle_create_asset_mapping(
         self,

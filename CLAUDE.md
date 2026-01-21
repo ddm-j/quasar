@@ -118,3 +118,10 @@ Check these files when working on specific areas:
 | Lib common utilities | `docs/reference/lib-common.md` |
 | Docstring conventions | `docs/contributing/docstrings.md` |
 | Git workflow | `docs/git-workflow.md` |
+
+## Active Technologies
+- Python 3.12 (backend), JavaScript/React 18 (frontend) + FastAPI, asyncpg, Pydantic (backend); CoreUI Pro, Redux (frontend) (001-asset-remap)
+- PostgreSQL 17 with TimescaleDB; existing `asset_mapping`, `common_symbols`, `index_memberships` tables (001-asset-remap)
+
+## Recent Changes
+- 001-asset-remap: Added Python 3.12 (backend), JavaScript/React 18 (frontend) + FastAPI, asyncpg, Pydantic (backend); CoreUI Pro, Redux (frontend)
