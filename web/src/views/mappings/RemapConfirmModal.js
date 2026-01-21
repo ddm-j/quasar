@@ -324,9 +324,28 @@ const RemapConfirmModal = ({
             Close
           </CButton>
         ) : remapError ? (
-          <CButton color="secondary" onClick={handleClose}>
-            Close
-          </CButton>
+          <>
+            <CButton color="secondary" onClick={handleClose} disabled={remapping}>
+              Close
+            </CButton>
+            <CButton
+              color="warning"
+              onClick={handleConfirm}
+              disabled={remapping}
+            >
+              {remapping ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <CIcon icon={cilSync} className="me-2" />
+                  Retry
+                </>
+              )}
+            </CButton>
+          </>
         ) : (
           <>
             <CButton color="secondary" onClick={handleClose} disabled={remapping}>
