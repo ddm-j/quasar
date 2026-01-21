@@ -40,6 +40,21 @@ import {
     deleteAssetMapping,
 } from '../services/registry_api';
 
+// Asset class options for filtering (matches backend enums.py)
+const ASSET_CLASS_OPTIONS = [
+  { label: 'All Asset Classes', value: '' },
+  { label: 'Equity', value: 'equity' },
+  { label: 'Fund', value: 'fund' },
+  { label: 'ETF', value: 'etf' },
+  { label: 'Bond', value: 'bond' },
+  { label: 'Crypto', value: 'crypto' },
+  { label: 'Currency', value: 'currency' },
+  { label: 'Future', value: 'future' },
+  { label: 'Option', value: 'option' },
+  { label: 'Index', value: 'index' },
+  { label: 'Commodity', value: 'commodity' },
+];
+
 const Mappings = () => {
   // State
   const [mappings, setMappings] = useState([]);
@@ -54,6 +69,9 @@ const Mappings = () => {
 
   // Tab state
   const [activeTab, setActiveTab] = useState('mappings');
+
+  // Asset class filter state for re-map functionality
+  const [assetClassFilter, setAssetClassFilter] = useState('');
 
   // Pagination state
   const [totalItems, setTotalItems] = useState(0);
@@ -106,6 +124,11 @@ const Mappings = () => {
       }
     }
 
+    // Add asset class filter if set
+    if (assetClassFilter) {
+      apiParams.asset_class = assetClassFilter;
+    }
+
     try {
       const data = await getAssetMappings(apiParams);
       setMappings(data.items || []);
@@ -146,7 +169,7 @@ const Mappings = () => {
       setError(null);
       fetchMappings();
     }
-  }, [activeTab, activePage, itemsPerPage, sorter, columnFilter]);
+  }, [activeTab, activePage, itemsPerPage, sorter, columnFilter, assetClassFilter]);
 
   // Define columns for CSmartTable
   const columns = [
@@ -219,6 +242,11 @@ const Mappings = () => {
     const newSize = parseInt(event.target.value, 10);
     setActivePage(1); // Reset to first page when changing page size
     setItemsPerPage(newSize);
+  };
+
+  const handleAssetClassFilterChange = (event) => {
+    setActivePage(1); // Reset to first page when changing filter
+    setAssetClassFilter(event.target.value);
   };
 
   const handleSorterChange = (sorterData) => {
@@ -294,6 +322,21 @@ const Mappings = () => {
                 </CRow>
               </CCardHeader>
               <CCardBody>
+                {/* Asset Class Filter Row */}
+                <CRow className="mb-3 align-items-center">
+                  <CCol xs="auto">
+                    <label htmlFor="assetClassFilter" className="col-form-label">Asset Class:</label>
+                  </CCol>
+                  <CCol xs="auto">
+                    <CFormSelect
+                      id="assetClassFilter"
+                      value={assetClassFilter}
+                      onChange={handleAssetClassFilterChange}
+                      options={ASSET_CLASS_OPTIONS}
+                      style={{ minWidth: '180px' }}
+                    />
+                  </CCol>
+                </CRow>
                 <CSmartTable
                   loading={loading}
                   items={mappings}
