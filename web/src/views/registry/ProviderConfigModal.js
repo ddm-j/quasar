@@ -89,6 +89,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
   // Track original quote preference to detect changes for re-map prompt
   const [originalQuotePreference, setOriginalQuotePreference] = useState(null)
+  // Control visibility of re-map prompt modal
+  const [showRemapPrompt, setShowRemapPrompt] = useState(false)
 
   // Ref to track which provider's secret keys have been loaded
   const secretKeysLoadedRef = useRef(null)
@@ -227,8 +229,14 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
         })
       }
 
-      // Close modal on success
-      handleClose()
+      // Check if quote preference changed - if so, prompt for re-map
+      if (hasQuotePreferenceChanged()) {
+        setShowRemapPrompt(true)
+        // Don't close yet - wait for user to respond to re-map prompt
+      } else {
+        // Close modal on success
+        handleClose()
+      }
     } catch (err) {
       console.error('Failed to update provider configuration:', err)
       setError(`Failed to save configuration: ${err.message}`)
@@ -245,6 +253,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
     setSecretValues({})
     setShowConfirmDialog(false)
     setOriginalQuotePreference(null)
+    setShowRemapPrompt(false)
     secretKeysLoadedRef.current = null
     onClose()
   }
@@ -341,6 +350,15 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   const hasChanges = () => {
     // Simple change detection - in a real app you'd do deep comparison
     return true // For now, always allow saving
+  }
+
+  // Check if quote preference changed in a meaningful way (for re-map prompt)
+  const hasQuotePreferenceChanged = () => {
+    const currentPref = config.crypto?.preferred_quote_currency || null
+    // Both null/empty means no change
+    if (!originalQuotePreference && !currentPref) return false
+    // One is set, other is not, or different values
+    return originalQuotePreference !== currentPref
   }
 
   return (
