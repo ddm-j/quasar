@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 import {
   CModal,
   CModalHeader,
@@ -6,9 +6,9 @@ import {
   CModalBody,
   CModalFooter,
   CButton,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilWarning } from '@coreui/icons';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilWarning } from '@coreui/icons'
 
 const ConfirmModal = ({
   visible,
@@ -38,7 +38,7 @@ const ConfirmModal = ({
         </CButton>
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
-export default ConfirmModal;
+export default ConfirmModal

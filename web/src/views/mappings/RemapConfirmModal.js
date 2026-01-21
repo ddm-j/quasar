@@ -102,17 +102,16 @@ const RemapConfirmModal = ({
   }
 
   return (
-    <CModal
-      visible={visible}
-      onClose={handleClose}
-      backdrop="static"
-      size="lg"
-    >
+    <CModal visible={visible} onClose={handleClose} backdrop="static" size="lg">
       <CModalHeader>
         <CModalTitle>
           {remapResult ? (
             <>
-              <CIcon icon={cilCheckCircle} className="me-2" style={{ color: 'var(--cui-success)' }} />
+              <CIcon
+                icon={cilCheckCircle}
+                className="me-2"
+                style={{ color: 'var(--cui-success)' }}
+              />
               Re-map Complete
             </>
           ) : remapError ? (
@@ -146,9 +145,7 @@ const RemapConfirmModal = ({
                 Re-map operation failed
               </span>
             </div>
-            <p className="mb-0 text-body-secondary">
-              {remapError}
-            </p>
+            <p className="mb-0 text-body-secondary">{remapError}</p>
             <p className="mb-0 mt-2 small text-body-secondary">
               The operation has been rolled back. No mappings were modified.
             </p>
@@ -189,7 +186,8 @@ const RemapConfirmModal = ({
             {remapResult.failed_mappings > 0 && (
               <div className="mt-3 text-center">
                 <span className="text-danger fw-medium">
-                  {remapResult.failed_mappings} mapping{remapResult.failed_mappings !== 1 ? 's' : ''} failed to create
+                  {remapResult.failed_mappings} mapping
+                  {remapResult.failed_mappings !== 1 ? 's' : ''} failed to create
                 </span>
               </div>
             )}
@@ -207,114 +205,118 @@ const RemapConfirmModal = ({
             <p className="text-body-secondary">
               This will delete existing mappings matching your filters and regenerate them.
             </p>
-        <div className="mb-3">
-          <strong>Filters Applied:</strong>
-          <ul className="mb-0 mt-2">
-            {providerFilter && (
-              <li>Provider: {providerFilter} ({providerClassType || 'provider'})</li>
-            )}
-            {assetClassFilter && (
-              <li>Asset Class: {assetClassFilter}</li>
-            )}
-            {!providerFilter && !assetClassFilter && (
-              <li className="text-warning-emphasis">No filters - all mappings will be affected</li>
-            )}
-          </ul>
-        </div>
-
-        {/* Loading state */}
-        {loading && (
-          <div className="text-center py-3">
-            <CSpinner size="sm" className="me-2" />
-            <span className="text-body-secondary">Fetching preview...</span>
-          </div>
-        )}
-
-        {/* Preview error */}
-        {previewError && (
-          <CAlert color="danger" className="d-flex align-items-center mb-3">
-            <CIcon icon={cilWarning} className="me-2 flex-shrink-0" />
-            Failed to load preview: {previewError}
-          </CAlert>
-        )}
-
-        {/* Preview data with filter summary and mappings count */}
-        {preview && !loading && (
-          <div className="mb-3">
-            <strong>Impact Summary:</strong>
-            <div
-              className="mt-2 p-3 rounded"
-              style={{ backgroundColor: 'var(--cui-tertiary-bg)' }}
-            >
-              {/* Mappings count - prominently displayed */}
-              <div className="d-flex align-items-center mb-2">
-                <span className="fs-4 fw-semibold text-warning me-2">
-                  {preview.mappings_to_delete}
-                </span>
-                <span className="text-body-secondary">
-                  mapping{preview.mappings_to_delete !== 1 ? 's' : ''} will be deleted and regenerated
-                </span>
-              </div>
-
-              {/* Filter summary from server response */}
-              {preview.filter_applied && Object.keys(preview.filter_applied).length > 0 && (
-                <div className="small text-body-secondary">
-                  <span className="fw-medium">Filters: </span>
-                  {preview.filter_applied.class_name && (
-                    <span className="me-2">
-                      Provider: <span className="text-body">{preview.filter_applied.class_name}</span>
-                    </span>
-                  )}
-                  {preview.filter_applied.asset_class && (
-                    <span>
-                      Asset Class: <span className="text-body">{preview.filter_applied.asset_class}</span>
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Providers affected list */}
-              {preview.providers_affected && preview.providers_affected.length > 0 && (
-                <div className="mt-2 small text-body-secondary">
-                  <span className="fw-medium">Providers affected: </span>
-                  <span className="text-body">
-                    {preview.providers_affected.join(', ')}
-                  </span>
-                </div>
-              )}
-
-              {/* Affected indices display with warning styling */}
-              {preview.affected_indices && preview.affected_indices.length > 0 && (
-                <div
-                  className="mt-3 p-2 rounded d-flex align-items-start"
-                  style={{ backgroundColor: 'var(--cui-warning-bg-subtle)' }}
-                >
-                  <CIcon
-                    icon={cilWarning}
-                    className="me-2 flex-shrink-0"
-                    style={{ color: 'var(--cui-warning)' }}
-                  />
-                  <div>
-                    <span className="fw-medium" style={{ color: 'var(--cui-warning)' }}>
-                      Affected Indices:
-                    </span>
-                    <ul className="mb-0 mt-1 ps-3">
-                      {preview.affected_indices.map((indexName) => (
-                        <li key={indexName} className="text-body-secondary">
-                          {indexName}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mb-0 mt-2 small text-body-secondary">
-                      These indices reference common symbols that will have their mappings regenerated.
-                      Index composition will remain unchanged, but underlying asset mappings may differ.
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className="mb-3">
+              <strong>Filters Applied:</strong>
+              <ul className="mb-0 mt-2">
+                {providerFilter && (
+                  <li>
+                    Provider: {providerFilter} ({providerClassType || 'provider'})
+                  </li>
+                )}
+                {assetClassFilter && <li>Asset Class: {assetClassFilter}</li>}
+                {!providerFilter && !assetClassFilter && (
+                  <li className="text-warning-emphasis">
+                    No filters - all mappings will be affected
+                  </li>
+                )}
+              </ul>
             </div>
-          </div>
-        )}
+
+            {/* Loading state */}
+            {loading && (
+              <div className="text-center py-3">
+                <CSpinner size="sm" className="me-2" />
+                <span className="text-body-secondary">Fetching preview...</span>
+              </div>
+            )}
+
+            {/* Preview error */}
+            {previewError && (
+              <CAlert color="danger" className="d-flex align-items-center mb-3">
+                <CIcon icon={cilWarning} className="me-2 flex-shrink-0" />
+                Failed to load preview: {previewError}
+              </CAlert>
+            )}
+
+            {/* Preview data with filter summary and mappings count */}
+            {preview && !loading && (
+              <div className="mb-3">
+                <strong>Impact Summary:</strong>
+                <div
+                  className="mt-2 p-3 rounded"
+                  style={{ backgroundColor: 'var(--cui-tertiary-bg)' }}
+                >
+                  {/* Mappings count - prominently displayed */}
+                  <div className="d-flex align-items-center mb-2">
+                    <span className="fs-4 fw-semibold text-warning me-2">
+                      {preview.mappings_to_delete}
+                    </span>
+                    <span className="text-body-secondary">
+                      mapping{preview.mappings_to_delete !== 1 ? 's' : ''} will be deleted and
+                      regenerated
+                    </span>
+                  </div>
+
+                  {/* Filter summary from server response */}
+                  {preview.filter_applied && Object.keys(preview.filter_applied).length > 0 && (
+                    <div className="small text-body-secondary">
+                      <span className="fw-medium">Filters: </span>
+                      {preview.filter_applied.class_name && (
+                        <span className="me-2">
+                          Provider:{' '}
+                          <span className="text-body">{preview.filter_applied.class_name}</span>
+                        </span>
+                      )}
+                      {preview.filter_applied.asset_class && (
+                        <span>
+                          Asset Class:{' '}
+                          <span className="text-body">{preview.filter_applied.asset_class}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Providers affected list */}
+                  {preview.providers_affected && preview.providers_affected.length > 0 && (
+                    <div className="mt-2 small text-body-secondary">
+                      <span className="fw-medium">Providers affected: </span>
+                      <span className="text-body">{preview.providers_affected.join(', ')}</span>
+                    </div>
+                  )}
+
+                  {/* Affected indices display with warning styling */}
+                  {preview.affected_indices && preview.affected_indices.length > 0 && (
+                    <div
+                      className="mt-3 p-2 rounded d-flex align-items-start"
+                      style={{ backgroundColor: 'var(--cui-warning-bg-subtle)' }}
+                    >
+                      <CIcon
+                        icon={cilWarning}
+                        className="me-2 flex-shrink-0"
+                        style={{ color: 'var(--cui-warning)' }}
+                      />
+                      <div>
+                        <span className="fw-medium" style={{ color: 'var(--cui-warning)' }}>
+                          Affected Indices:
+                        </span>
+                        <ul className="mb-0 mt-1 ps-3">
+                          {preview.affected_indices.map((indexName) => (
+                            <li key={indexName} className="text-body-secondary">
+                              {indexName}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mb-0 mt-2 small text-body-secondary">
+                          These indices reference common symbols that will have their mappings
+                          regenerated. Index composition will remain unchanged, but underlying asset
+                          mappings may differ.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </CModalBody>
@@ -328,11 +330,7 @@ const RemapConfirmModal = ({
             <CButton color="secondary" onClick={handleClose} disabled={remapping}>
               Close
             </CButton>
-            <CButton
-              color="warning"
-              onClick={handleConfirm}
-              disabled={remapping}
-            >
+            <CButton color="warning" onClick={handleConfirm} disabled={remapping}>
               {remapping ? (
                 <>
                   <CSpinner size="sm" className="me-2" />

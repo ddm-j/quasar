@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react'
 import {
   CButton,
   CCard,
@@ -14,29 +14,29 @@ import {
   CToastHeader,
   CToastBody,
   CSpinner,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilCheckCircle, cilWarning, cilPlus } from '@coreui/icons';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilCheckCircle, cilWarning, cilPlus } from '@coreui/icons'
 
-import IndexDetailModal from './IndexDetailModal';
-import CreateIndexModal from './CreateIndexModal';
-import { getIndices } from '../services/registry_api';
-import { formatDate } from '../../utils/formatting';
+import IndexDetailModal from './IndexDetailModal'
+import CreateIndexModal from './CreateIndexModal'
+import { getIndices } from '../services/registry_api'
+import { formatDate } from '../../utils/formatting'
 
 const Indices = () => {
   // Data state
-  const [indices, setIndices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [indices, setIndices] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   // Modal state
-  const [selectedIndex, setSelectedIndex] = useState(null);
-  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(null)
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false)
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false)
 
   // Toast state
-  const [toastToShow, setToastToShow] = useState(null);
-  const toasterRef = useRef(null);
+  const [toastToShow, setToastToShow] = useState(null)
+  const toasterRef = useRef(null)
 
   const pushToast = ({ title, body, color = 'info', icon = null }) => {
     const toast = (
@@ -47,79 +47,79 @@ const Indices = () => {
         </CToastHeader>
         <CToastBody>{body}</CToastBody>
       </CToast>
-    );
-    setToastToShow(toast);
-  };
+    )
+    setToastToShow(toast)
+  }
 
   // Fetch all indices
   const fetchIndices = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
-      const data = await getIndices({ limit: 100 });
-      setIndices(data.items || []);
+      const data = await getIndices({ limit: 100 })
+      setIndices(data.items || [])
     } catch (err) {
-      setError(err.message || 'Failed to fetch indices');
-      setIndices([]);
+      setError(err.message || 'Failed to fetch indices')
+      setIndices([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchIndices();
-  }, []);
+    fetchIndices()
+  }, [])
 
   // Handle row click to open detail modal
   const handleRowClick = (item) => {
-    setSelectedIndex(item);
-    setIsDetailModalVisible(true);
-  };
+    setSelectedIndex(item)
+    setIsDetailModalVisible(true)
+  }
 
   // Handle modal close
   const handleModalClose = () => {
-    setIsDetailModalVisible(false);
-    setSelectedIndex(null);
-  };
+    setIsDetailModalVisible(false)
+    setSelectedIndex(null)
+  }
 
   // Handle refresh callback from modal
   const handleRefresh = () => {
-    fetchIndices();
+    fetchIndices()
     pushToast({
       title: 'Index Refreshed',
       body: 'Index data has been updated successfully.',
       color: 'success',
       icon: cilCheckCircle,
-    });
-  };
+    })
+  }
 
   // Get badge color for index type
   const getTypeBadgeColor = (indexType) => {
-    return indexType === 'IndexProvider' ? 'primary' : 'success';
-  };
+    return indexType === 'IndexProvider' ? 'primary' : 'success'
+  }
 
   // Format sync frequency for display
   const formatSyncFrequency = (item) => {
     // Only IndexProviders have sync frequency
     if (item.index_type !== 'IndexProvider') {
-      return 'N/A';
+      return 'N/A'
     }
-    const freq = item.preferences?.scheduling?.sync_frequency;
+    const freq = item.preferences?.scheduling?.sync_frequency
     if (!freq) {
-      return 'Weekly'; // Default per spec
+      return 'Weekly' // Default per spec
     }
     switch (freq) {
       case '1d':
-        return 'Daily';
+        return 'Daily'
       case '1w':
-        return 'Weekly';
+        return 'Weekly'
       case '1M':
-        return 'Monthly';
+        return 'Monthly'
       default:
-        return freq;
+        return freq
     }
-  };
+  }
 
   // Table columns - use width: '1%' + whiteSpace: 'nowrap' for auto-fit
   const columns = [
@@ -159,7 +159,7 @@ const Indices = () => {
       sorter: true,
       filter: false,
     },
-  ];
+  ]
 
   return (
     <>
@@ -172,10 +172,7 @@ const Indices = () => {
                   <h5 className="mb-0">Indices</h5>
                 </CCol>
                 <CCol xs="auto">
-                  <CButton
-                    color="primary"
-                    onClick={() => setIsCreateModalVisible(true)}
-                  >
+                  <CButton color="primary" onClick={() => setIsCreateModalVisible(true)}>
                     <CIcon icon={cilPlus} className="me-1" />
                     Create Index
                   </CButton>
@@ -228,17 +225,11 @@ const Indices = () => {
                         </CBadge>
                       </td>
                     ),
-                    sync_frequency: (item) => (
-                      <td>{formatSyncFrequency(item)}</td>
-                    ),
+                    sync_frequency: (item) => <td>{formatSyncFrequency(item)}</td>,
                     current_member_count: (item) => (
-                      <td className="text-center">
-                        {item.current_member_count ?? 0}
-                      </td>
+                      <td className="text-center">{item.current_member_count ?? 0}</td>
                     ),
-                    uploaded_at: (item) => (
-                      <td>{formatDate(item.uploaded_at)}</td>
-                    ),
+                    uploaded_at: (item) => <td>{formatDate(item.uploaded_at)}</td>,
                   }}
                   noItemsLabel="No indices found"
                 />
@@ -265,7 +256,7 @@ const Indices = () => {
 
       <CToaster ref={toasterRef} push={toastToShow} placement="top-end" />
     </>
-  );
-};
+  )
+}
 
-export default Indices;
+export default Indices

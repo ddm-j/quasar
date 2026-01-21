@@ -87,7 +87,20 @@ const Dashboard = () => {
   ]
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July']
-  const allMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const allMonths = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ]
 
   return (
     <>
@@ -292,9 +305,7 @@ const Dashboard = () => {
                   <CRow>
                     <CCol xs={6}>
                       <div className="border-start border-start-4 border-start-info py-1 px-3 mb-3">
-                        <div className="text-body-secondary text-truncate small">
-                          New Clients
-                        </div>
+                        <div className="text-body-secondary text-truncate small">New Clients</div>
                         <div className="fs-5 fw-semibold">9,123</div>
                       </div>
                     </CCol>
@@ -324,17 +335,13 @@ const Dashboard = () => {
                   <CRow>
                     <CCol xs={6}>
                       <div className="border-start border-start-4 border-start-warning py-1 px-3 mb-3">
-                        <div className="text-body-secondary text-truncate small">
-                          Pageviews
-                        </div>
+                        <div className="text-body-secondary text-truncate small">Pageviews</div>
                         <div className="fs-5 fw-semibold">78,623</div>
                       </div>
                     </CCol>
                     <CCol xs={6}>
                       <div className="border-start border-start-4 border-start-success py-1 px-3 mb-3">
-                        <div className="text-body-secondary text-truncate small">
-                          Organic
-                        </div>
+                        <div className="text-body-secondary text-truncate small">Organic</div>
                         <div className="fs-5 fw-semibold">49,123</div>
                       </div>
                     </CCol>

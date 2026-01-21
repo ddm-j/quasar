@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef } from 'react'
 import {
   CTable,
   CTableHead,
@@ -9,41 +9,41 @@ import {
   CButton,
   CFormInput,
   CAlert,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilTrash, cilPlus, cilWarning } from '@coreui/icons';
-import AsyncSelect from 'react-select/async';
-import { getCommonSymbols } from '../services/registry_api';
-import { formatWeightForInput } from '../../utils/formatting';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilTrash, cilPlus, cilWarning } from '@coreui/icons'
+import AsyncSelect from 'react-select/async'
+import { getCommonSymbols } from '../services/registry_api'
+import { formatWeightForInput } from '../../utils/formatting'
 
 const EditableMembersTable = ({ members, onChange, disabled }) => {
   // Counter for generating unique row IDs (scoped to component instance)
-  const rowIdCounterRef = useRef(0);
-  const generateId = useCallback(() => `new_${++rowIdCounterRef.current}`, []);
+  const rowIdCounterRef = useRef(0)
+  const generateId = useCallback(() => `new_${++rowIdCounterRef.current}`, [])
   // Load common symbol options for AsyncSelect
   const loadSymbolOptions = useCallback(async (inputValue, callback) => {
     if (inputValue.length < 1) {
-      callback([]);
-      return;
+      callback([])
+      return
     }
 
     try {
       const data = await getCommonSymbols({
         common_symbol_like: inputValue,
         limit: 50,
-      });
+      })
 
       const options = (data.items || []).map((item) => ({
         value: item.common_symbol,
         label: item.common_symbol,
-      }));
+      }))
 
-      callback(options);
+      callback(options)
     } catch (error) {
-      console.error('Error loading symbol options:', error);
-      callback([]);
+      console.error('Error loading symbol options:', error)
+      callback([])
     }
-  }, []);
+  }, [])
 
   // Handle symbol change for a row
   const handleSymbolChange = (rowId, selectedOption) => {
@@ -54,25 +54,23 @@ const EditableMembersTable = ({ members, onChange, disabled }) => {
             common_symbol: selectedOption?.value || null,
             selectOption: selectedOption,
           }
-        : m
-    );
-    onChange(updated);
-  };
+        : m,
+    )
+    onChange(updated)
+  }
 
   // Handle weight change for a row (input is percentage, store as decimal)
   const handleWeightChange = (rowId, value) => {
-    const numValue = value === '' ? null : parseFloat(value) / 100;
-    const updated = members.map((m) =>
-      m.id === rowId ? { ...m, weight: numValue } : m
-    );
-    onChange(updated);
-  };
+    const numValue = value === '' ? null : parseFloat(value) / 100
+    const updated = members.map((m) => (m.id === rowId ? { ...m, weight: numValue } : m))
+    onChange(updated)
+  }
 
   // Handle delete row
   const handleDeleteRow = (rowId) => {
-    const updated = members.filter((m) => m.id !== rowId);
-    onChange(updated);
-  };
+    const updated = members.filter((m) => m.id !== rowId)
+    onChange(updated)
+  }
 
   // Handle add new row
   const handleAddRow = () => {
@@ -82,35 +80,31 @@ const EditableMembersTable = ({ members, onChange, disabled }) => {
       weight: null,
       isNew: true,
       selectOption: null,
-    };
-    onChange([...members, newRow]);
-  };
+    }
+    onChange([...members, newRow])
+  }
 
   // Calculate validation warnings
   const getValidationWarnings = () => {
-    const warnings = [];
+    const warnings = []
 
     // Check for duplicate symbols
-    const symbols = members
-      .map((m) => m.common_symbol)
-      .filter((s) => s !== null);
-    const duplicates = symbols.filter(
-      (s, i) => symbols.indexOf(s) !== i
-    );
+    const symbols = members.map((m) => m.common_symbol).filter((s) => s !== null)
+    const duplicates = symbols.filter((s, i) => symbols.indexOf(s) !== i)
     if (duplicates.length > 0) {
-      warnings.push(`Duplicate symbols: ${[...new Set(duplicates)].join(', ')}`);
+      warnings.push(`Duplicate symbols: ${[...new Set(duplicates)].join(', ')}`)
     }
 
     // Check for empty symbols in new rows
-    const emptyNewRows = members.filter((m) => m.isNew && !m.common_symbol);
+    const emptyNewRows = members.filter((m) => m.isNew && !m.common_symbol)
     if (emptyNewRows.length > 0) {
-      warnings.push(`${emptyNewRows.length} row(s) have no symbol selected`);
+      warnings.push(`${emptyNewRows.length} row(s) have no symbol selected`)
     }
 
-    return warnings;
-  };
+    return warnings
+  }
 
-  const warnings = getValidationWarnings();
+  const warnings = getValidationWarnings()
 
   return (
     <div>
@@ -214,7 +208,7 @@ const EditableMembersTable = ({ members, onChange, disabled }) => {
         </CButton>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default EditableMembersTable;
+export default EditableMembersTable

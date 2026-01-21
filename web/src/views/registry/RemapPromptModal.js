@@ -79,9 +79,7 @@ const RemapPromptModal = ({
                 Re-map operation failed
               </span>
             </div>
-            <p className="mb-0 text-body-secondary">
-              {error}
-            </p>
+            <p className="mb-0 text-body-secondary">{error}</p>
             <p className="mb-0 mt-2 small text-body-secondary">
               The operation has been rolled back. No mappings were modified.
             </p>
@@ -97,8 +95,9 @@ const RemapPromptModal = ({
                 You changed the preferred quote currency for <strong>{className}</strong>.
               </p>
               <p className="mb-0 text-body-secondary">
-                Would you like to re-map crypto asset mappings to use the new quote currency preference?
-                This will delete existing crypto mappings and regenerate them with the new preference.
+                Would you like to re-map crypto asset mappings to use the new quote currency
+                preference? This will delete existing crypto mappings and regenerate them with the
+                new preference.
               </p>
             </div>
           </div>
@@ -110,11 +109,7 @@ const RemapPromptModal = ({
             <CButton color="secondary" onClick={handleDecline} disabled={isProcessing}>
               Close
             </CButton>
-            <CButton
-              color="warning"
-              onClick={onRetry || handleConfirm}
-              disabled={isProcessing}
-            >
+            <CButton color="warning" onClick={onRetry || handleConfirm} disabled={isProcessing}>
               {isProcessing ? (
                 <>
                   <CSpinner size="sm" className="me-2" />

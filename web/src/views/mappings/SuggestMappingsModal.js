@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   CModal,
   CModalHeader,
@@ -20,131 +20,135 @@ import {
   CTableBody,
   CTableDataCell,
   CBadge,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilArrowRight, cilWarning, cilLink } from '@coreui/icons';
-import { getRegisteredClasses, getAssetMappingSuggestions, createAssetMapping } from '../services/registry_api';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilArrowRight, cilWarning, cilLink } from '@coreui/icons'
+import {
+  getRegisteredClasses,
+  getAssetMappingSuggestions,
+  createAssetMapping,
+} from '../services/registry_api'
 
 const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
   // Dropdown selections
-  const [sourceClass, setSourceClass] = useState('');
-  const [targetClass, setTargetClass] = useState('');
+  const [sourceClass, setSourceClass] = useState('')
+  const [targetClass, setTargetClass] = useState('')
 
   // Class data from API
-  const [classData, setClassData] = useState([]);
-  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
-  const [errorClasses, setErrorClasses] = useState(null);
+  const [classData, setClassData] = useState([])
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false)
+  const [errorClasses, setErrorClasses] = useState(null)
 
   // Suggestions data
-  const [suggestions, setSuggestions] = useState([]);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const [errorSuggestions, setErrorSuggestions] = useState(null);
+  const [suggestions, setSuggestions] = useState([])
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const [errorSuggestions, setErrorSuggestions] = useState(null)
 
   // Pagination
-  const [nextCursor, setNextCursor] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [totalCount, setTotalCount] = useState(null);
+  const [nextCursor, setNextCursor] = useState(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [totalCount, setTotalCount] = useState(null)
 
   // Editable common symbols and creation state
-  const [editedSymbols, setEditedSymbols] = useState({});
-  const [creatingRows, setCreatingRows] = useState({});
-  const [createdRows, setCreatedRows] = useState({});
+  const [editedSymbols, setEditedSymbols] = useState({})
+  const [creatingRows, setCreatingRows] = useState({})
+  const [createdRows, setCreatedRows] = useState({})
 
   // Search and filter state
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [minScoreFilter, setMinScoreFilter] = useState(30);
-  const [rowErrors, setRowErrors] = useState({});
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [minScoreFilter, setMinScoreFilter] = useState(30)
+  const [rowErrors, setRowErrors] = useState({})
 
   // Helper function for score badge styling with proper contrast
   const getScoreBadgeStyle = (score) => {
     if (score >= 70) {
-      return { color: 'success', textColor: 'white' };  // Green - white text
+      return { color: 'success', textColor: 'white' } // Green - white text
     }
     if (score >= 50) {
-      return { color: 'warning', textColor: 'dark' };   // Yellow/Orange - dark text
+      return { color: 'warning', textColor: 'dark' } // Yellow/Orange - dark text
     }
-    return { color: 'secondary', textColor: 'white' };  // Grey - white text is fine for secondary
-  };
+    return { color: 'secondary', textColor: 'white' } // Grey - white text is fine for secondary
+  }
 
   // Helper for ID match badge styling
   const getIdMatchBadgeStyle = (isMatch) => {
     if (isMatch) {
-      return { color: 'success', textColor: 'white' };  // Green - white text
+      return { color: 'success', textColor: 'white' } // Green - white text
     }
-    return { color: 'light', textColor: 'dark' };       // Light grey - dark text for contrast
-  };
+    return { color: 'light', textColor: 'dark' } // Light grey - dark text for contrast
+  }
 
   // Debounce search input (400ms)
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+      setDebouncedSearch(searchTerm)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   // Fetch classes when modal opens
   useEffect(() => {
     if (visible) {
       // Reset all state when modal opens
-      setSourceClass('');
-      setTargetClass('');
-      setErrorClasses(null);
-      setClassData([]);
+      setSourceClass('')
+      setTargetClass('')
+      setErrorClasses(null)
+      setClassData([])
       // Reset suggestions state
-      setSuggestions([]);
-      setNextCursor(null);
-      setHasMore(false);
-      setTotalCount(null);
-      setErrorSuggestions(null);
+      setSuggestions([])
+      setNextCursor(null)
+      setHasMore(false)
+      setTotalCount(null)
+      setErrorSuggestions(null)
       // Reset editing state
-      setEditedSymbols({});
-      setCreatingRows({});
-      setCreatedRows({});
+      setEditedSymbols({})
+      setCreatingRows({})
+      setCreatedRows({})
       // Reset filters and errors
-      setSearchTerm('');
-      setDebouncedSearch('');
-      setMinScoreFilter(30);
-      setRowErrors({});
+      setSearchTerm('')
+      setDebouncedSearch('')
+      setMinScoreFilter(30)
+      setRowErrors({})
 
       const fetchClasses = async () => {
-        setIsLoadingClasses(true);
+        setIsLoadingClasses(true)
         try {
-          const data = await getRegisteredClasses();
-          setClassData(data || []);
+          const data = await getRegisteredClasses()
+          setClassData(data || [])
         } catch (error) {
-          console.error("Error fetching classes:", error);
-          setErrorClasses(error.message);
+          console.error('Error fetching classes:', error)
+          setErrorClasses(error.message)
         } finally {
-          setIsLoadingClasses(false);
+          setIsLoadingClasses(false)
         }
-      };
-      fetchClasses();
+      }
+      fetchClasses()
     }
-  }, [visible]);
+  }, [visible])
 
   // Fetch suggestions when source, target, or filters change
   useEffect(() => {
     if (sourceClass && targetClass) {
       // Reset suggestions state for new query
-      setSuggestions([]);
-      setNextCursor(null);
-      setHasMore(false);
-      setTotalCount(null);
-      setErrorSuggestions(null);
+      setSuggestions([])
+      setNextCursor(null)
+      setHasMore(false)
+      setTotalCount(null)
+      setErrorSuggestions(null)
       // Reset editing state
-      setEditedSymbols({});
-      setCreatingRows({});
-      setCreatedRows({});
-      setRowErrors({});
+      setEditedSymbols({})
+      setCreatingRows({})
+      setCreatedRows({})
+      setRowErrors({})
 
-      fetchSuggestions();
+      fetchSuggestions()
     }
-  }, [sourceClass, targetClass, debouncedSearch, minScoreFilter]);
+  }, [sourceClass, targetClass, debouncedSearch, minScoreFilter])
 
   const fetchSuggestions = async (cursor = null) => {
-    setIsLoadingSuggestions(true);
-    setErrorSuggestions(null);
+    setIsLoadingSuggestions(true)
+    setErrorSuggestions(null)
 
     try {
       const params = {
@@ -153,127 +157,125 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
         limit: 50,
         min_score: minScoreFilter,
         include_total: cursor === null, // Only get total on first fetch
-      };
+      }
       if (cursor) {
-        params.cursor = cursor;
+        params.cursor = cursor
       }
       if (debouncedSearch) {
-        params.search = debouncedSearch;
+        params.search = debouncedSearch
       }
 
-      const data = await getAssetMappingSuggestions(params);
+      const data = await getAssetMappingSuggestions(params)
 
       if (cursor) {
         // Append to existing suggestions
-        setSuggestions(prev => [...prev, ...data.items]);
+        setSuggestions((prev) => [...prev, ...data.items])
       } else {
         // Replace suggestions (first load)
-        setSuggestions(data.items || []);
+        setSuggestions(data.items || [])
         if (data.total !== null && data.total !== undefined) {
-          setTotalCount(data.total);
+          setTotalCount(data.total)
         }
       }
 
-      setNextCursor(data.next_cursor);
-      setHasMore(data.has_more);
+      setNextCursor(data.next_cursor)
+      setHasMore(data.has_more)
     } catch (error) {
-      console.error("Error fetching suggestions:", error);
-      setErrorSuggestions(error.message);
+      console.error('Error fetching suggestions:', error)
+      setErrorSuggestions(error.message)
     } finally {
-      setIsLoadingSuggestions(false);
+      setIsLoadingSuggestions(false)
     }
-  };
+  }
 
   const handleLoadMore = () => {
     if (nextCursor && !isLoadingSuggestions) {
-      fetchSuggestions(nextCursor);
+      fetchSuggestions(nextCursor)
     }
-  };
+  }
 
   // Handle source change - reset target if it matches new source
   const handleSourceChange = (e) => {
-    const newSource = e.target.value;
-    setSourceClass(newSource);
+    const newSource = e.target.value
+    setSourceClass(newSource)
     // Reset target if it was the same as new source
     if (targetClass === newSource) {
-      setTargetClass('');
+      setTargetClass('')
     }
     // Reset filters when source changes
-    setSearchTerm('');
-    setMinScoreFilter(30);
-    setRowErrors({});
-  };
+    setSearchTerm('')
+    setMinScoreFilter(30)
+    setRowErrors({})
+  }
 
   // Handle target change
   const handleTargetChange = (e) => {
-    setTargetClass(e.target.value);
+    setTargetClass(e.target.value)
     // Reset filters when target changes
-    setSearchTerm('');
-    setMinScoreFilter(30);
-    setRowErrors({});
-  };
+    setSearchTerm('')
+    setMinScoreFilter(30)
+    setRowErrors({})
+  }
 
   // Get the common symbol for a row (edited value or proposed value)
   const getCommonSymbol = (item, index) => {
-    return editedSymbols[index] !== undefined
-      ? editedSymbols[index]
-      : item.proposed_common_symbol;
-  };
+    return editedSymbols[index] !== undefined ? editedSymbols[index] : item.proposed_common_symbol
+  }
 
   const isPairCompletion = (item) => {
     return Boolean(
       item.target_already_mapped &&
-      item.target_common_symbol &&
-      item.proposed_common_symbol === item.target_common_symbol
-    );
-  };
+        item.target_common_symbol &&
+        item.proposed_common_symbol === item.target_common_symbol,
+    )
+  }
 
   const isConflict = (item) => {
-    return Boolean(item.target_already_mapped && !isPairCompletion(item));
-  };
+    return Boolean(item.target_already_mapped && !isPairCompletion(item))
+  }
 
   // Handle common symbol editing
   const handleSymbolChange = (index, value) => {
-    setEditedSymbols(prev => ({ ...prev, [index]: value }));
+    setEditedSymbols((prev) => ({ ...prev, [index]: value }))
     // Clear any existing error for this row
     if (rowErrors[index] || createdRows[index]) {
-      setRowErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[index];
-        return newErrors;
-      });
+      setRowErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[index]
+        return newErrors
+      })
       // Reset created flag on edit to avoid stale badge
-      setCreatedRows(prev => {
-        const newCreated = { ...prev };
-        delete newCreated[index];
-        return newCreated;
-      });
+      setCreatedRows((prev) => {
+        const newCreated = { ...prev }
+        delete newCreated[index]
+        return newCreated
+      })
     }
-  };
+  }
 
   // Handle creating mappings for a suggestion row
   const handleCreateMapping = async (item, index) => {
-    const commonSymbol = getCommonSymbol(item, index);
+    const commonSymbol = getCommonSymbol(item, index)
     if (!commonSymbol?.trim()) {
-      return;
+      return
     }
 
     if (isConflict(item)) {
-      const context = `${item.target_class}/${item.target_symbol}`;
-      const message = `Target already mapped to a different symbol (${item.target_common_symbol || 'unknown'}).`;
+      const context = `${item.target_class}/${item.target_symbol}`
+      const message = `Target already mapped to a different symbol (${item.target_common_symbol || 'unknown'}).`
       if (pushToast) {
         pushToast({
-          title: "Cannot create mapping",
+          title: 'Cannot create mapping',
           body: `${context}: ${message}`,
-          color: "warning",
-        });
+          color: 'warning',
+        })
       }
-      return;
+      return
     }
 
-    const pairCompletion = isPairCompletion(item);
+    const pairCompletion = isPairCompletion(item)
 
-    setCreatingRows(prev => ({ ...prev, [index]: true }));
+    setCreatingRows((prev) => ({ ...prev, [index]: true }))
 
     try {
       const payload = [
@@ -284,7 +286,7 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
           class_symbol: item.source_symbol,
           is_active: true,
         },
-      ];
+      ]
 
       // Only add target mapping when it isn't already mapped to the same common_symbol
       if (!pairCompletion) {
@@ -294,38 +296,38 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
           class_type: item.target_type,
           class_symbol: item.target_symbol,
           is_active: true,
-        });
+        })
       }
 
-      await createAssetMapping(payload);
+      await createAssetMapping(payload)
 
       // Mark as created only when both succeed
-      setCreatedRows(prev => ({ ...prev, [index]: true }));
+      setCreatedRows((prev) => ({ ...prev, [index]: true }))
 
       // Call onSuccess to refresh parent data if provided
       if (onSuccess) {
-        onSuccess();
+        onSuccess()
       }
     } catch (error) {
-      console.error("Error creating mapping:", error);
-      const context = `${item.source_class}/${item.source_symbol} → ${item.target_class}/${item.target_symbol}`;
+      console.error('Error creating mapping:', error)
+      const context = `${item.source_class}/${item.source_symbol} → ${item.target_class}/${item.target_symbol}`
       if (pushToast) {
         pushToast({
-          title: "Create mappings failed",
-          body: `${context}: ${error.message || "Failed to create mappings."}`,
-          color: "danger",
-        });
+          title: 'Create mappings failed',
+          body: `${context}: ${error.message || 'Failed to create mappings.'}`,
+          color: 'danger',
+        })
       }
     } finally {
-      setCreatingRows(prev => ({ ...prev, [index]: false }));
+      setCreatingRows((prev) => ({ ...prev, [index]: false }))
     }
-  };
+  }
 
   return (
-    <CModal 
-      visible={visible} 
-      onClose={onClose} 
-      backdrop="static" 
+    <CModal
+      visible={visible}
+      onClose={onClose}
+      backdrop="static"
       fullscreen="lg"
       size="xl"
       className="suggest-mappings-modal"
@@ -354,13 +356,11 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
             <CRow className="mb-4 align-items-end">
               <CCol md={5}>
                 <CFormLabel htmlFor="source_class">Source Provider/Broker</CFormLabel>
-                <CFormSelect
-                  id="source_class"
-                  value={sourceClass}
-                  onChange={handleSourceChange}
-                >
-                  <option value="" disabled>Select source...</option>
-                  {classData.map(cls => (
+                <CFormSelect id="source_class" value={sourceClass} onChange={handleSourceChange}>
+                  <option value="" disabled>
+                    Select source...
+                  </option>
+                  {classData.map((cls) => (
                     <option key={cls.class_name} value={cls.class_name}>
                       {cls.class_name} ({cls.class_type})
                     </option>
@@ -380,10 +380,12 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                   onChange={handleTargetChange}
                   disabled={!sourceClass}
                 >
-                  <option value="" disabled>Select target...</option>
+                  <option value="" disabled>
+                    Select target...
+                  </option>
                   {classData
-                    .filter(cls => cls.class_name !== sourceClass)
-                    .map(cls => (
+                    .filter((cls) => cls.class_name !== sourceClass)
+                    .map((cls) => (
                       <option key={cls.class_name} value={cls.class_name}>
                         {cls.class_name} ({cls.class_type})
                       </option>
@@ -448,27 +450,45 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                         <CTable striped hover responsive>
                           <CTableHead>
                             <CTableRow>
-                              <CTableHeaderCell style={{ width: '12%' }}>Source Symbol</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '15%' }}>Source Name</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '12%' }}>Target Symbol</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '15%' }}>Target Name</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '8%' }} className="text-center">ID Match</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '8%' }} className="text-center">Score</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '18%' }}>Common Symbol</CTableHeaderCell>
-                              <CTableHeaderCell style={{ width: '12%' }} className="text-center">Actions</CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '12%' }}>
+                                Source Symbol
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '15%' }}>
+                                Source Name
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '12%' }}>
+                                Target Symbol
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '15%' }}>
+                                Target Name
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '8%' }} className="text-center">
+                                ID Match
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '8%' }} className="text-center">
+                                Score
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '18%' }}>
+                                Common Symbol
+                              </CTableHeaderCell>
+                              <CTableHeaderCell style={{ width: '12%' }} className="text-center">
+                                Actions
+                              </CTableHeaderCell>
                             </CTableRow>
                           </CTableHead>
                           <CTableBody>
                             {suggestions.map((item, index) => {
-                              const idMatchStyle = getIdMatchBadgeStyle(item.id_match);
-                              const scoreStyle = getScoreBadgeStyle(item.score);
-                              const isCreating = creatingRows[index];
-                              const isCreated = createdRows[index];
-                              const commonSymbol = getCommonSymbol(item, index);
-                              const pairCompletion = isPairCompletion(item);
-                              const conflict = isConflict(item);
+                              const idMatchStyle = getIdMatchBadgeStyle(item.id_match)
+                              const scoreStyle = getScoreBadgeStyle(item.score)
+                              const isCreating = creatingRows[index]
+                              const isCreated = createdRows[index]
+                              const commonSymbol = getCommonSymbol(item, index)
+                              const pairCompletion = isPairCompletion(item)
+                              const conflict = isConflict(item)
                               return (
-                                <CTableRow key={`${item.source_symbol}-${item.target_symbol}-${index}`}>
+                                <CTableRow
+                                  key={`${item.source_symbol}-${item.target_symbol}-${index}`}
+                                >
                                   <CTableDataCell>{item.source_symbol}</CTableDataCell>
                                   <CTableDataCell>{item.source_name || '-'}</CTableDataCell>
                                   <CTableDataCell>
@@ -492,12 +512,18 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                                   </CTableDataCell>
                                   <CTableDataCell>{item.target_name || '-'}</CTableDataCell>
                                   <CTableDataCell className="text-center">
-                                    <CBadge color={idMatchStyle.color} textColor={idMatchStyle.textColor}>
+                                    <CBadge
+                                      color={idMatchStyle.color}
+                                      textColor={idMatchStyle.textColor}
+                                    >
                                       {item.id_match ? 'Yes' : 'No'}
                                     </CBadge>
                                   </CTableDataCell>
                                   <CTableDataCell className="text-center">
-                                    <CBadge color={scoreStyle.color} textColor={scoreStyle.textColor}>
+                                    <CBadge
+                                      color={scoreStyle.color}
+                                      textColor={scoreStyle.textColor}
+                                    >
                                       {item.score.toFixed(1)}
                                     </CBadge>
                                   </CTableDataCell>
@@ -512,7 +538,9 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                                   </CTableDataCell>
                                   <CTableDataCell className="text-center">
                                     {isCreated ? (
-                                      <CBadge color="success" textColor="white">Created</CBadge>
+                                      <CBadge color="success" textColor="white">
+                                        Created
+                                      </CBadge>
                                     ) : (
                                       <CButton
                                         size="sm"
@@ -520,16 +548,12 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
                                         onClick={() => handleCreateMapping(item, index)}
                                         disabled={isCreating || !commonSymbol?.trim()}
                                       >
-                                        {isCreating ? (
-                                          <CSpinner size="sm" />
-                                        ) : (
-                                          'Create'
-                                        )}
+                                        {isCreating ? <CSpinner size="sm" /> : 'Create'}
                                       </CButton>
                                     )}
                                   </CTableDataCell>
                                 </CTableRow>
-                              );
+                              )
                             })}
                           </CTableBody>
                         </CTable>
@@ -575,7 +599,7 @@ const SuggestMappingsModal = ({ visible, onClose, onSuccess, pushToast }) => {
         </CButton>
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
-export default SuggestMappingsModal;
+export default SuggestMappingsModal

@@ -1,19 +1,29 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react'
 import {
-  CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
-  CButton, CForm, CRow, CCol, CFormLabel, CFormSelect, CFormInput,
-  CSpinner
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilArrowRight } from '@coreui/icons';
-import AsyncSelect from 'react-select/async'; // For asynchronous server-side search
-import AsyncCreatableSelect from 'react-select/async-creatable'; // For async search with create option
-import { 
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CForm,
+  CRow,
+  CCol,
+  CFormLabel,
+  CFormSelect,
+  CFormInput,
+  CSpinner,
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilArrowRight } from '@coreui/icons'
+import AsyncSelect from 'react-select/async' // For asynchronous server-side search
+import AsyncCreatableSelect from 'react-select/async-creatable' // For async search with create option
+import {
   getAssets,
   getRegisteredClasses,
   createAssetMapping,
   getAssetMappings,
-} from '../services/registry_api';  
+} from '../services/registry_api'
 
 // Format option label for custom display in dropdown and selected value
 const formatOptionLabel = (data, { context }) => {
@@ -22,73 +32,71 @@ const formatOptionLabel = (data, { context }) => {
     return (
       <div>
         <div style={{ fontWeight: 'bold' }}>{data.symbol}</div>
-        <div style={{ fontSize: '0.85em', opacity: 0.7 }}>
-          {data.name}
-        </div>
+        <div style={{ fontSize: '0.85em', opacity: 0.7 }}>{data.name}</div>
       </div>
-    );
+    )
   }
   // Selected value display
   return (
     <span>
       {data.symbol} <span style={{ fontSize: '0.9em', opacity: 0.7 }}>({data.name})</span>
     </span>
-  );
-};
-
+  )
+}
 
 const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
-  const [fromClassName, setFromClassName] = useState('');
+  const [fromClassName, setFromClassName] = useState('')
   // For react-select, the value is an object or null
-  const [fromClassSymbol, setFromClassSymbol] = useState(null);
+  const [fromClassSymbol, setFromClassSymbol] = useState(null)
   // For common symbol, using react-select format (object with value/label) or string for new values
-  const [toCommonSymbol, setToCommonSymbol] = useState(null);
+  const [toCommonSymbol, setToCommonSymbol] = useState(null)
 
-  const [isLoadingSymbols, setIsLoadingSymbols] = useState(false);
-  const [isLoadingCommonSymbols, setIsLoadingCommonSymbols] = useState(false);
+  const [isLoadingSymbols, setIsLoadingSymbols] = useState(false)
+  const [isLoadingCommonSymbols, setIsLoadingCommonSymbols] = useState(false)
 
   // State for loading class names
-  const [classData, setClassData] = useState([]);
-  const [isLoadingClassData, setIsLoadingClassData] = useState(false);
-  const [errorClassData, setErrorClassData] = useState(null);
+  const [classData, setClassData] = useState([])
+  const [isLoadingClassData, setIsLoadingClassData] = useState(false)
+  const [errorClassData, setErrorClassData] = useState(null)
 
   // State for saving
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   useEffect(() => {
     if (visible) {
-      setFromClassName("");
-      setFromClassSymbol(null);
-      setToCommonSymbol(null);
-      setErrorClassData(null);
-      setClassData([]);
-      setSaveError(null);
+      setFromClassName('')
+      setFromClassSymbol(null)
+      setToCommonSymbol(null)
+      setErrorClassData(null)
+      setClassData([])
+      setSaveError(null)
 
       const fetchClassNames = async () => {
-        setIsLoadingClassData(true);
+        setIsLoadingClassData(true)
         try {
-          const data = await getRegisteredClasses();
-          setClassData(data || []);
+          const data = await getRegisteredClasses()
+          setClassData(data || [])
         } catch (error) {
-          console.error("Error fetching class names:", error);
-          setErrorClassData(error.message);
+          console.error('Error fetching class names:', error)
+          setErrorClassData(error.message)
         } finally {
-          setIsLoadingClassData(false);
+          setIsLoadingClassData(false)
         }
       }
-      fetchClassNames();
+      fetchClassNames()
     }
-  }, [visible]); // Fetch class names when modal opens
+  }, [visible]) // Fetch class names when modal opens
 
   // This function will be called by AsyncSelect to load options
   const loadSymbolOptions = useCallback(
     async (inputValue, callback) => {
-      if (!fromClassName || inputValue.length < 1) { // Don't search if no class or input is too short
-        callback([]);
-        return;
+      if (!fromClassName || inputValue.length < 1) {
+        // Don't search if no class or input is too short
+        callback([])
+        return
       }
-      setIsLoadingSymbols(true);
+      setIsLoadingSymbols(true)
       try {
         const params = {
           class_name_like: fromClassName,
@@ -96,106 +104,106 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
           // name_like: inputValue,
           limit: 50,
         }
-        console.log("Loading symbols with params:", params);
-        const assetData = await getAssets(params);
+        console.log('Loading symbols with params:', params)
+        const assetData = await getAssets(params)
 
         // Format the Options
-        const options = (assetData.items || []).map(item => ({
+        const options = (assetData.items || []).map((item) => ({
           value: item.symbol,
           label: `${item.symbol} (${item.name || 'N/A'})`,
           symbol: item.symbol,
           name: item.name || 'N/A',
-        }));
+        }))
 
-        callback(options);
+        callback(options)
       } catch (error) {
-        console.error("Error loading symbol options:", error);
-        callback([]); // Send empty array on error
+        console.error('Error loading symbol options:', error)
+        callback([]) // Send empty array on error
       } finally {
-        setIsLoadingSymbols(false);
+        setIsLoadingSymbols(false)
       }
     },
-    [fromClassName] // Dependency: re-create this function if fromClassName changes
-  );
+    [fromClassName], // Dependency: re-create this function if fromClassName changes
+  )
 
   // This function will be called by AsyncCreatableSelect to load existing common symbol options
   const loadCommonSymbolOptions = useCallback(
     async (inputValue, callback) => {
       if (inputValue.length < 1) {
         // Load some default options when input is empty
-        setIsLoadingCommonSymbols(true);
+        setIsLoadingCommonSymbols(true)
         try {
-          const mappings = await getAssetMappings();
+          const mappings = await getAssetMappings()
           // Extract unique common symbols
-          const uniqueSymbols = [...new Set(mappings.map(m => m.common_symbol))].sort();
-          const options = uniqueSymbols.map(symbol => ({
+          const uniqueSymbols = [...new Set(mappings.map((m) => m.common_symbol))].sort()
+          const options = uniqueSymbols.map((symbol) => ({
             value: symbol,
             label: symbol,
-          }));
-          callback(options);
+          }))
+          callback(options)
         } catch (error) {
-          console.error("Error loading common symbol options:", error);
-          callback([]);
+          console.error('Error loading common symbol options:', error)
+          callback([])
         } finally {
-          setIsLoadingCommonSymbols(false);
+          setIsLoadingCommonSymbols(false)
         }
-        return;
+        return
       }
 
       // Filter existing common symbols based on input
-      setIsLoadingCommonSymbols(true);
+      setIsLoadingCommonSymbols(true)
       try {
-        const mappings = await getAssetMappings();
+        const mappings = await getAssetMappings()
         // Filter common symbols that match the input (case-insensitive)
-        const filteredSymbols = [...new Set(mappings.map(m => m.common_symbol))]
-          .filter(symbol => symbol.toLowerCase().includes(inputValue.toLowerCase()))
-          .sort();
-        
-        const options = filteredSymbols.map(symbol => ({
+        const filteredSymbols = [...new Set(mappings.map((m) => m.common_symbol))]
+          .filter((symbol) => symbol.toLowerCase().includes(inputValue.toLowerCase()))
+          .sort()
+
+        const options = filteredSymbols.map((symbol) => ({
           value: symbol,
           label: symbol,
-        }));
-        callback(options);
+        }))
+        callback(options)
       } catch (error) {
-        console.error("Error loading common symbol options:", error);
-        callback([]);
+        console.error('Error loading common symbol options:', error)
+        callback([])
       } finally {
-        setIsLoadingCommonSymbols(false);
+        setIsLoadingCommonSymbols(false)
       }
     },
-    [] // No dependencies - loads all mappings
-  );
+    [], // No dependencies - loads all mappings
+  )
 
   const handleFromClassNameChange = (e) => {
-    setFromClassName(e.target.value);
-    setFromClassSymbol(null); // Reset symbol when class name changes
-  };
+    setFromClassName(e.target.value)
+    setFromClassSymbol(null) // Reset symbol when class name changes
+  }
 
   const handleSave = async () => {
     // Validate required fields
     if (!fromClassName || !fromClassSymbol || !toCommonSymbol) {
-      setSaveError("Please fill in all required fields.");
-      return;
+      setSaveError('Please fill in all required fields.')
+      return
     }
 
     // Extract common symbol value from react-select option object
     // AsyncCreatableSelect always provides an object with { value, label } format
-    const commonSymbolValue = toCommonSymbol.value ? toCommonSymbol.value.trim() : null;
-    
+    const commonSymbolValue = toCommonSymbol.value ? toCommonSymbol.value.trim() : null
+
     if (!commonSymbolValue) {
-      setSaveError("Common symbol cannot be empty.");
-      return;
+      setSaveError('Common symbol cannot be empty.')
+      return
     }
 
     // Find the class type from classData
-    const selectedClass = classData.find(cls => cls.class_name === fromClassName);
+    const selectedClass = classData.find((cls) => cls.class_name === fromClassName)
     if (!selectedClass) {
-      setSaveError("Selected class not found.");
-      return;
+      setSaveError('Selected class not found.')
+      return
     }
 
-    const classType = selectedClass.class_type;
-    const classSymbol = fromClassSymbol.value;
+    const classType = selectedClass.class_type
+    const classSymbol = fromClassSymbol.value
 
     // Build the request payload
     const mappingData = {
@@ -204,45 +212,46 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
       class_type: classType,
       class_symbol: classSymbol,
       is_active: true,
-    };
+    }
 
-    setIsSaving(true);
-    setSaveError(null);
+    setIsSaving(true)
+    setSaveError(null)
 
     try {
-      const created = await createAssetMapping(mappingData);
-      const createdMapping = Array.isArray(created) ? created[0] : created;
+      const created = await createAssetMapping(mappingData)
+      const createdMapping = Array.isArray(created) ? created[0] : created
       if (!createdMapping) {
-        throw new Error("Failed to create mapping");
+        throw new Error('Failed to create mapping')
       }
       // Success - close modal and refresh parent list
       if (onSuccess) {
-        onSuccess();
+        onSuccess()
       }
-      onClose();
+      onClose()
     } catch (error) {
-      console.error("Error creating asset mapping:", error);
+      console.error('Error creating asset mapping:', error)
       if (pushToast) {
         pushToast({
-          title: "Create mapping failed",
-          body: error.message || "Failed to create mapping. Please try again.",
-          color: "danger",
-        });
+          title: 'Create mapping failed',
+          body: error.message || 'Failed to create mapping. Please try again.',
+          color: 'danger',
+        })
       } else {
-        setSaveError(error.message || "Failed to create mapping. Please try again.");
+        setSaveError(error.message || 'Failed to create mapping. Please try again.')
       }
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
-
+  }
 
   return (
     <CModal visible={visible} onClose={onClose} backdrop="static" size="lg">
       <CModalHeader onClose={onClose}>
         <CModalTitle>Create New Asset Mapping (Basic)</CModalTitle>
       </CModalHeader>
-      <CForm onSubmit={(e) => e.preventDefault()}> {/* Prevent default form submission */}
+      <CForm onSubmit={(e) => e.preventDefault()}>
+        {' '}
+        {/* Prevent default form submission */}
         <CModalBody>
           <CRow>
             {/* "FROM" Side */}
@@ -257,9 +266,13 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
                     onChange={handleFromClassNameChange}
                     disabled={isLoadingClassData}
                   >
-                      <option value="" disabled>Select Class Name</option>
-                    {classData.map(opt => (
-                      <option key={opt.class_name} value={opt.class_name}>{opt.class_name}</option>
+                    <option value="" disabled>
+                      Select Class Name
+                    </option>
+                    {classData.map((opt) => (
+                      <option key={opt.class_name} value={opt.class_name}>
+                        {opt.class_name}
+                      </option>
                     ))}
                   </CFormSelect>
                 </CCol>
@@ -282,9 +295,9 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
                     formatOptionLabel={formatOptionLabel}
                     classNamePrefix="themed-select"
                     noOptionsMessage={({ inputValue }) =>
-                        !inputValue ? "Type to search..." : "No symbols found"
+                      !inputValue ? 'Type to search...' : 'No symbols found'
                     }
-                    loadingMessage={() => "Loading symbols..."}
+                    loadingMessage={() => 'Loading symbols...'}
                   />
                 </CCol>
               </CRow>
@@ -314,9 +327,11 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
                     isClearable
                     formatCreateLabel={(inputValue) => `Create "${inputValue}"`}
                     noOptionsMessage={({ inputValue }) =>
-                      !inputValue ? "Type to search or create..." : `No matches found. Press Enter to create "${inputValue}"`
+                      !inputValue
+                        ? 'Type to search or create...'
+                        : `No matches found. Press Enter to create "${inputValue}"`
                     }
-                    loadingMessage={() => "Loading common symbols..."}
+                    loadingMessage={() => 'Loading common symbols...'}
                     classNamePrefix="themed-select"
                   />
                 </CCol>
@@ -337,7 +352,11 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
           <CButton color="secondary" onClick={onClose} disabled={isSaving}>
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleSave} disabled={!fromClassName || !fromClassSymbol || !toCommonSymbol || isSaving}>
+          <CButton
+            color="primary"
+            onClick={handleSave}
+            disabled={!fromClassName || !fromClassSymbol || !toCommonSymbol || isSaving}
+          >
             {isSaving ? (
               <>
                 <CSpinner size="sm" className="me-2" />
@@ -350,7 +369,7 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
-export default MappingAddModal;
+export default MappingAddModal

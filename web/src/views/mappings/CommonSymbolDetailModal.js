@@ -1,64 +1,64 @@
-import { React, useState, useEffect } from 'react';
+import { React, useState, useEffect } from 'react'
 import {
-    CModal,
-    CModalHeader,
-    CModalTitle,
-    CModalBody,
-    CModalFooter,
-    CButton,
-    CTable,
-    CTableHead,
-    CTableRow,
-    CTableHeaderCell,
-    CTableBody,
-    CTableDataCell,
-    CBadge,
-    CSpinner,
-    CAlert,
-} from '@coreui/react-pro';
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CTable,
+  CTableHead,
+  CTableRow,
+  CTableHeaderCell,
+  CTableBody,
+  CTableDataCell,
+  CBadge,
+  CSpinner,
+  CAlert,
+} from '@coreui/react-pro'
 
 // API Imports
-import { getAssetMappingsForSymbol } from '../services/registry_api';
+import { getAssetMappingsForSymbol } from '../services/registry_api'
 
 // Component Imports
-import CommonSymbolRenameModal from './CommonSymbolRenameModal';
+import CommonSymbolRenameModal from './CommonSymbolRenameModal'
 
 const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymbol }) => {
-  const [mappings, setMappings] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
+  const [mappings, setMappings] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false)
 
   const handleRenameSuccess = (result) => {
-    setIsRenameModalVisible(false);
+    setIsRenameModalVisible(false)
     if (onRenameSuccess) {
-      onRenameSuccess(result);
+      onRenameSuccess(result)
     }
-    onClose();
-  };
+    onClose()
+  }
 
   useEffect(() => {
     const fetchMappingsForSymbol = async () => {
-      if (!commonSymbol) return;
+      if (!commonSymbol) return
 
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
       try {
         // Use the new efficient API endpoint that filters by common symbol server-side
-        const mappings = await getAssetMappingsForSymbol(commonSymbol);
-        setMappings(mappings);
+        const mappings = await getAssetMappingsForSymbol(commonSymbol)
+        setMappings(mappings)
       } catch (err) {
-        console.error('Error fetching mappings for symbol:', err);
-        setError(err.message || 'Failed to fetch mappings for this symbol');
+        console.error('Error fetching mappings for symbol:', err)
+        setError(err.message || 'Failed to fetch mappings for this symbol')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
     if (visible && commonSymbol) {
-      fetchMappingsForSymbol();
+      fetchMappingsForSymbol()
     }
-  }, [visible, commonSymbol]);
+  }, [visible, commonSymbol])
 
   const getClassBadge = (class_type) => {
     switch (class_type) {
@@ -72,11 +72,11 @@ const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymb
         return 'primary'
       }
     }
-  };
+  }
 
   const getActiveBadge = (is_active) => {
-    return is_active ? 'success' : 'danger';
-  };
+    return is_active ? 'success' : 'danger'
+  }
 
   return (
     <CModal
@@ -109,9 +109,7 @@ const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymb
         )}
 
         {!loading && !error && mappings.length === 0 && (
-          <CAlert color="info">
-            No mappings found for common symbol "{commonSymbol}".
-          </CAlert>
+          <CAlert color="info">No mappings found for common symbol "{commonSymbol}".</CAlert>
         )}
 
         {!loading && !error && mappings.length > 0 && (
@@ -146,12 +144,8 @@ const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymb
                     <CTableDataCell>
                       <code>{mapping.class_symbol}</code>
                     </CTableDataCell>
-                    <CTableDataCell>
-                      {mapping.primary_id || '-'}
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      {mapping.asset_class || '-'}
-                    </CTableDataCell>
+                    <CTableDataCell>{mapping.primary_id || '-'}</CTableDataCell>
+                    <CTableDataCell>{mapping.asset_class || '-'}</CTableDataCell>
                     <CTableDataCell className="text-center">
                       <CBadge color={getActiveBadge(mapping.is_active)}>
                         {mapping.is_active ? 'Active' : 'Inactive'}
@@ -181,7 +175,7 @@ const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymb
         commonSymbol={commonSymbol}
       />
     </CModal>
-  );
-};
+  )
+}
 
-export default CommonSymbolDetailModal;
+export default CommonSymbolDetailModal

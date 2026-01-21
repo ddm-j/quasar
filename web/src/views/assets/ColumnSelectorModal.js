@@ -1,7 +1,7 @@
 /**
  * ColumnSelectorModal - Modal for selecting which columns to display in the Assets table.
  */
-import React from 'react';
+import React from 'react'
 import {
   CModal,
   CModalHeader,
@@ -11,34 +11,34 @@ import {
   CButton,
   CFormCheck,
   CRow,
-  CCol
-} from '@coreui/react-pro';
-import { ASSET_COLUMNS, getDefaultVisibleColumns, getColumnKeys } from '../../configs/assetColumns';
+  CCol,
+} from '@coreui/react-pro'
+import { ASSET_COLUMNS, getDefaultVisibleColumns, getColumnKeys } from '../../configs/assetColumns'
 
 const ColumnSelectorModal = ({ visible, onClose, visibleColumns, setVisibleColumns }) => {
-  const allColumnKeys = getColumnKeys();
+  const allColumnKeys = getColumnKeys()
 
   const handleToggleColumn = (columnKey) => {
     setVisibleColumns((prev) => {
       if (prev.includes(columnKey)) {
-        return prev.filter((key) => key !== columnKey);
+        return prev.filter((key) => key !== columnKey)
       } else {
-        return [...prev, columnKey];
+        return [...prev, columnKey]
       }
-    });
-  };
+    })
+  }
 
   const handleSelectAll = () => {
-    setVisibleColumns(allColumnKeys);
-  };
+    setVisibleColumns(allColumnKeys)
+  }
 
   const handleDeselectAll = () => {
-    setVisibleColumns([]);
-  };
+    setVisibleColumns([])
+  }
 
   const handleResetToDefaults = () => {
-    setVisibleColumns(getDefaultVisibleColumns());
-  };
+    setVisibleColumns(getDefaultVisibleColumns())
+  }
 
   return (
     <CModal visible={visible} onClose={onClose} size="lg">
@@ -61,7 +61,7 @@ const ColumnSelectorModal = ({ visible, onClose, visibleColumns, setVisibleColum
         </CRow>
         <CRow>
           {allColumnKeys.map((columnKey) => {
-            const columnConfig = ASSET_COLUMNS[columnKey];
+            const columnConfig = ASSET_COLUMNS[columnKey]
             return (
               <CCol xs={6} md={4} lg={3} key={columnKey} className="mb-2">
                 <CFormCheck
@@ -71,7 +71,7 @@ const ColumnSelectorModal = ({ visible, onClose, visibleColumns, setVisibleColum
                   onChange={() => handleToggleColumn(columnKey)}
                 />
               </CCol>
-            );
+            )
           })}
         </CRow>
       </CModalBody>
@@ -81,7 +81,7 @@ const ColumnSelectorModal = ({ visible, onClose, visibleColumns, setVisibleColum
         </CButton>
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
-export default ColumnSelectorModal;
+export default ColumnSelectorModal

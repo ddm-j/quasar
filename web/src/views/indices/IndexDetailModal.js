@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   CModal,
   CModalHeader,
@@ -22,32 +22,48 @@ import {
   CTableDataCell,
   CFormInput,
   CFormLabel,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilReload, cilWarning, cilPencil, cilTrash, cilHistory } from '@coreui/icons';
-import { CChartPie } from '@coreui/react-chartjs';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilReload, cilWarning, cilPencil, cilTrash, cilHistory } from '@coreui/icons'
+import { CChartPie } from '@coreui/react-chartjs'
 
-import CommonSymbolDetailModal from '../mappings/CommonSymbolDetailModal';
-import EditableMembersTable from './EditableMembersTable';
-import DeleteIndexModal from './DeleteIndexModal';
-import SaveChangesModal from './SaveChangesModal';
-import ConfirmModal from './ConfirmModal';
+import CommonSymbolDetailModal from '../mappings/CommonSymbolDetailModal'
+import EditableMembersTable from './EditableMembersTable'
+import DeleteIndexModal from './DeleteIndexModal'
+import SaveChangesModal from './SaveChangesModal'
+import ConfirmModal from './ConfirmModal'
 import {
   getIndexDetail,
   getIndexMembers,
   getIndexHistory,
   updateAssetsForClass,
   updateUserIndexMembers,
-} from '../services/registry_api';
-import { formatDate, formatWeight } from '../../utils/formatting';
+} from '../services/registry_api'
+import { formatDate, formatWeight } from '../../utils/formatting'
 
 // Color palette for pie chart
 const CHART_COLORS = [
-  '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-  '#FF9F40', '#E7E9ED', '#7BC225', '#EE82EE', '#00CED1',
-  '#FFD700', '#DC143C', '#00FA9A', '#8A2BE2', '#FF7F50',
-  '#6495ED', '#DEB887', '#5F9EA0', '#D2691E', '#FF69B4',
-];
+  '#FF6384',
+  '#36A2EB',
+  '#FFCE56',
+  '#4BC0C0',
+  '#9966FF',
+  '#FF9F40',
+  '#E7E9ED',
+  '#7BC225',
+  '#EE82EE',
+  '#00CED1',
+  '#FFD700',
+  '#DC143C',
+  '#00FA9A',
+  '#8A2BE2',
+  '#FF7F50',
+  '#6495ED',
+  '#DEB887',
+  '#5F9EA0',
+  '#D2691E',
+  '#FF69B4',
+]
 
 const PIE_CHART_OPTIONS = {
   plugins: {
@@ -61,203 +77,203 @@ const PIE_CHART_OPTIONS = {
   maintainAspectRatio: true,
   aspectRatio: 1,
   responsive: true,
-};
+}
 
 const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast }) => {
   // Tab state
-  const [activeTab, setActiveTab] = useState('constituents');
+  const [activeTab, setActiveTab] = useState('constituents')
 
   // Data state
-  const [indexDetail, setIndexDetail] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
+  const [indexDetail, setIndexDetail] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(null)
 
   // Edit mode state
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editableMembers, setEditableMembers] = useState([]);
-  const [originalMembers, setOriginalMembers] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editableMembers, setEditableMembers] = useState([])
+  const [originalMembers, setOriginalMembers] = useState([])
+  const [isSaving, setIsSaving] = useState(false)
 
   // Sub-modal state
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
-  const [isSymbolDetailModalVisible, setIsSymbolDetailModalVisible] = useState(false);
-  const [selectedCommonSymbol, setSelectedCommonSymbol] = useState(null);
-  const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false);
-  const [discardAction, setDiscardAction] = useState(null); // 'cancel' or 'close'
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false)
+  const [isSaveModalVisible, setIsSaveModalVisible] = useState(false)
+  const [isSymbolDetailModalVisible, setIsSymbolDetailModalVisible] = useState(false)
+  const [selectedCommonSymbol, setSelectedCommonSymbol] = useState(null)
+  const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false)
+  const [discardAction, setDiscardAction] = useState(null) // 'cancel' or 'close'
 
   // Historical view state
-  const [asOfDate, setAsOfDate] = useState(null); // null = current, string = historical (YYYY-MM-DD)
-  const [historicalMembers, setHistoricalMembers] = useState(null);
-  const [isLoadingHistorical, setIsLoadingHistorical] = useState(false);
+  const [asOfDate, setAsOfDate] = useState(null) // null = current, string = historical (YYYY-MM-DD)
+  const [historicalMembers, setHistoricalMembers] = useState(null)
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState(false)
 
   // Timeline (history) state
-  const [history, setHistory] = useState(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [history, setHistory] = useState(null)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
   // Abort controller for cancelling stale historical view requests
-  const historicalAbortRef = useRef(null);
+  const historicalAbortRef = useRef(null)
 
   // Fetch index details (defined before useEffect that uses it)
   const fetchIndexDetail = useCallback(async () => {
-    if (!indexItem?.class_name) return;
+    if (!indexItem?.class_name) return
 
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
-      const data = await getIndexDetail(indexItem.class_name);
-      setIndexDetail(data);
+      const data = await getIndexDetail(indexItem.class_name)
+      setIndexDetail(data)
     } catch (err) {
-      setError(err.message || 'Failed to fetch index details');
-      setIndexDetail(null);
+      setError(err.message || 'Failed to fetch index details')
+      setIndexDetail(null)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [indexItem?.class_name]);
+  }, [indexItem?.class_name])
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (visible && indexItem) {
-      fetchIndexDetail();
-      setActiveTab('constituents');
-      setIsEditMode(false);
-      setEditableMembers([]);
-      setOriginalMembers([]);
-      setError(null);
+      fetchIndexDetail()
+      setActiveTab('constituents')
+      setIsEditMode(false)
+      setEditableMembers([])
+      setOriginalMembers([])
+      setError(null)
       // Reset historical view
-      setAsOfDate(null);
-      setHistoricalMembers(null);
+      setAsOfDate(null)
+      setHistoricalMembers(null)
       // Reset timeline
-      setHistory(null);
+      setHistory(null)
     }
-  }, [visible, indexItem, fetchIndexDetail]);
+  }, [visible, indexItem, fetchIndexDetail])
 
   // Derived data - simple operations don't need useMemo
-  const members = indexDetail?.members || [];
-  const hasWeights = members.some((m) => m.weight != null);
-  const weightedMembers = members.filter((m) => m.weight != null);
-  const isUserIndex = indexItem?.index_type === 'UserIndex';
+  const members = indexDetail?.members || []
+  const hasWeights = members.some((m) => m.weight != null)
+  const weightedMembers = members.filter((m) => m.weight != null)
+  const isUserIndex = indexItem?.index_type === 'UserIndex'
 
   // Historical view derived state
-  const isViewingHistorical = asOfDate !== null;
-  const displayMembers = isViewingHistorical ? (historicalMembers || []) : members;
+  const isViewingHistorical = asOfDate !== null
+  const displayMembers = isViewingHistorical ? historicalMembers || [] : members
 
   // Handle date change for historical view
   const handleDateChange = async (dateString) => {
     // Cancel any pending request
     if (historicalAbortRef.current) {
-      historicalAbortRef.current.abort();
+      historicalAbortRef.current.abort()
     }
 
     if (!dateString) {
-      setAsOfDate(null);
-      setHistoricalMembers(null);
-      return;
+      setAsOfDate(null)
+      setHistoricalMembers(null)
+      return
     }
 
-    setAsOfDate(dateString);
-    setIsLoadingHistorical(true);
+    setAsOfDate(dateString)
+    setIsLoadingHistorical(true)
 
     // Create new abort controller for this request
-    historicalAbortRef.current = new AbortController();
-    const currentController = historicalAbortRef.current;
+    historicalAbortRef.current = new AbortController()
+    const currentController = historicalAbortRef.current
 
     try {
       // Convert date to end-of-day ISO 8601
-      const asOfDateTime = `${dateString}T23:59:59Z`;
+      const asOfDateTime = `${dateString}T23:59:59Z`
       const response = await getIndexMembers(indexItem.class_name, {
         as_of: asOfDateTime,
         limit: 500,
-      });
+      })
       // Only update if this request wasn't superseded
       if (!currentController.signal.aborted) {
-        setHistoricalMembers(response.items);
+        setHistoricalMembers(response.items)
       }
     } catch (err) {
       // Ignore abort errors
-      if (err.name === 'AbortError') return;
-      console.error('Failed to fetch historical members:', err);
+      if (err.name === 'AbortError') return
+      console.error('Failed to fetch historical members:', err)
       if (pushToast) {
         pushToast({
           title: 'Error',
           body: err.message || 'Failed to fetch historical data',
           color: 'danger',
           icon: cilWarning,
-        });
+        })
       }
       // Reset to current view on error
-      setAsOfDate(null);
-      setHistoricalMembers(null);
+      setAsOfDate(null)
+      setHistoricalMembers(null)
     } finally {
       if (!currentController.signal.aborted) {
-        setIsLoadingHistorical(false);
+        setIsLoadingHistorical(false)
       }
     }
-  };
+  }
 
   // Fetch timeline history
   const fetchHistory = async () => {
-    if (!indexItem?.class_name || history) return; // Don't refetch if already loaded
+    if (!indexItem?.class_name || history) return // Don't refetch if already loaded
 
-    setIsLoadingHistory(true);
+    setIsLoadingHistory(true)
     try {
-      const response = await getIndexHistory(indexItem.class_name);
-      setHistory(response.changes || []);
+      const response = await getIndexHistory(indexItem.class_name)
+      setHistory(response.changes || [])
     } catch (err) {
-      console.error('Failed to fetch history:', err);
+      console.error('Failed to fetch history:', err)
       if (pushToast) {
         pushToast({
           title: 'Error',
           body: err.message || 'Failed to fetch history',
           color: 'danger',
           icon: cilWarning,
-        });
+        })
       }
     } finally {
-      setIsLoadingHistory(false);
+      setIsLoadingHistory(false)
     }
-  };
+  }
 
   // Handle tab change (fetch history when timeline tab is selected)
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
+    setActiveTab(tab)
     if (tab === 'timeline') {
-      fetchHistory();
+      fetchHistory()
     }
-  };
+  }
 
   // Check for unsaved changes
   const hasUnsavedChanges = () => {
-    return JSON.stringify(editableMembers) !== JSON.stringify(originalMembers);
-  };
+    return JSON.stringify(editableMembers) !== JSON.stringify(originalMembers)
+  }
 
   // Handle refresh for IndexProviders
   const handleRefresh = async () => {
-    if (!indexItem) return;
+    if (!indexItem) return
 
-    setRefreshing(true);
-    setError(null);
+    setRefreshing(true)
+    setError(null)
 
     try {
-      await updateAssetsForClass('provider', indexItem.class_name);
-      await fetchIndexDetail();
-      if (onRefresh) onRefresh();
+      await updateAssetsForClass('provider', indexItem.class_name)
+      await fetchIndexDetail()
+      if (onRefresh) onRefresh()
     } catch (err) {
-      setError(err.message || 'Failed to refresh index');
+      setError(err.message || 'Failed to refresh index')
       if (pushToast) {
         pushToast({
           title: 'Refresh Failed',
           body: err.message || 'Failed to refresh index',
           color: 'danger',
           icon: cilWarning,
-        });
+        })
       }
     } finally {
-      setRefreshing(false);
+      setRefreshing(false)
     }
-  };
+  }
 
   // Enter edit mode
   const handleEnterEditMode = () => {
@@ -267,93 +283,89 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
       weight: m.weight,
       isNew: false,
       selectOption: null,
-    }));
-    setEditableMembers(editable);
-    setOriginalMembers(editable.map((m) => ({ ...m })));
-    setIsEditMode(true);
-  };
+    }))
+    setEditableMembers(editable)
+    setOriginalMembers(editable.map((m) => ({ ...m })))
+    setIsEditMode(true)
+  }
 
   // Cancel edit mode - show confirmation if unsaved changes
   const handleCancelEdit = () => {
     if (hasUnsavedChanges()) {
-      setDiscardAction('cancel');
-      setIsDiscardModalVisible(true);
+      setDiscardAction('cancel')
+      setIsDiscardModalVisible(true)
     } else {
-      exitEditMode();
+      exitEditMode()
     }
-  };
+  }
 
   // Exit edit mode without saving
   const exitEditMode = () => {
-    setIsEditMode(false);
-    setEditableMembers([]);
-    setOriginalMembers([]);
-  };
+    setIsEditMode(false)
+    setEditableMembers([])
+    setOriginalMembers([])
+  }
 
   // Handle discard confirmation
   const handleDiscardConfirm = () => {
-    setIsDiscardModalVisible(false);
+    setIsDiscardModalVisible(false)
     if (discardAction === 'cancel') {
-      exitEditMode();
+      exitEditMode()
     } else if (discardAction === 'close') {
-      onClose();
+      onClose()
     }
-    setDiscardAction(null);
-  };
+    setDiscardAction(null)
+  }
 
   // Calculate changes summary for save modal
   const changesSummary = useMemo(() => {
-    if (!isEditMode) return { added: [], removed: [], weightChanges: [], totalWeight: 0 };
+    if (!isEditMode) return { added: [], removed: [], weightChanges: [], totalWeight: 0 }
 
-    const originalMap = new Map(
-      originalMembers.map((m) => [m.common_symbol, m.weight])
-    );
+    const originalMap = new Map(originalMembers.map((m) => [m.common_symbol, m.weight]))
     const editedMap = new Map(
-      editableMembers
-        .filter((m) => m.common_symbol)
-        .map((m) => [m.common_symbol, m.weight])
-    );
+      editableMembers.filter((m) => m.common_symbol).map((m) => [m.common_symbol, m.weight]),
+    )
 
-    const added = [];
-    const removed = [];
-    const weightChanges = [];
+    const added = []
+    const removed = []
+    const weightChanges = []
 
     // Find added and changed
     for (const [symbol, weight] of editedMap) {
       if (!originalMap.has(symbol)) {
-        added.push(symbol);
+        added.push(symbol)
       } else if (originalMap.get(symbol) !== weight) {
         weightChanges.push({
           symbol,
           old: originalMap.get(symbol),
           new: weight,
-        });
+        })
       }
     }
 
     // Find removed
     for (const symbol of originalMap.keys()) {
       if (!editedMap.has(symbol)) {
-        removed.push(symbol);
+        removed.push(symbol)
       }
     }
 
     const totalWeight = Array.from(editedMap.values())
       .filter((w) => w != null)
-      .reduce((sum, w) => sum + w, 0);
+      .reduce((sum, w) => sum + w, 0)
 
-    return { added, removed, weightChanges, totalWeight };
-  }, [isEditMode, editableMembers, originalMembers]);
+    return { added, removed, weightChanges, totalWeight }
+  }, [isEditMode, editableMembers, originalMembers])
 
   // Calculate total weight for edit mode display
   const editTotalWeight = editableMembers
     .filter((m) => m.weight != null)
-    .reduce((sum, m) => sum + m.weight, 0);
+    .reduce((sum, m) => sum + m.weight, 0)
 
   // Handle save
   const handleSave = async () => {
-    setIsSaving(true);
-    setError(null);
+    setIsSaving(true)
+    setError(null)
 
     try {
       const membersPayload = editableMembers
@@ -361,141 +373,127 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
         .map((m) => ({
           common_symbol: m.common_symbol,
           weight: m.weight,
-        }));
+        }))
 
-      await updateUserIndexMembers(indexItem.class_name, { members: membersPayload });
+      await updateUserIndexMembers(indexItem.class_name, { members: membersPayload })
 
       if (pushToast) {
         pushToast({
           title: 'Index Updated',
           body: `Index "${indexItem.class_name}" has been updated successfully.`,
           color: 'success',
-        });
+        })
       }
 
-      setIsSaveModalVisible(false);
-      setIsEditMode(false);
-      await fetchIndexDetail();
-      if (onRefresh) onRefresh();
+      setIsSaveModalVisible(false)
+      setIsEditMode(false)
+      await fetchIndexDetail()
+      if (onRefresh) onRefresh()
     } catch (err) {
-      setError(err.message || 'Failed to save changes');
+      setError(err.message || 'Failed to save changes')
       if (pushToast) {
         pushToast({
           title: 'Save Failed',
           body: err.message || 'Failed to save changes',
           color: 'danger',
           icon: cilWarning,
-        });
+        })
       }
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   // Handle delete success
   const handleDeleteSuccess = () => {
-    setIsDeleteModalVisible(false);
-    onClose();
-    if (onRefresh) onRefresh();
-  };
+    setIsDeleteModalVisible(false)
+    onClose()
+    if (onRefresh) onRefresh()
+  }
 
   // Weight utilities
   const handleNormalize = () => {
-    const withWeights = editableMembers.filter((m) => m.weight != null);
-    const total = withWeights.reduce((sum, m) => sum + m.weight, 0);
+    const withWeights = editableMembers.filter((m) => m.weight != null)
+    const total = withWeights.reduce((sum, m) => sum + m.weight, 0)
 
     if (total === 0) {
-      handleEqualWeight();
-      return;
+      handleEqualWeight()
+      return
     }
 
     setEditableMembers((prev) =>
-      prev.map((m) =>
-        m.weight != null ? { ...m, weight: m.weight / total } : m
-      )
-    );
-  };
+      prev.map((m) => (m.weight != null ? { ...m, weight: m.weight / total } : m)),
+    )
+  }
 
   const handleEqualWeight = () => {
-    const count = editableMembers.length;
-    if (count === 0) return;
-    const equalWeight = 1 / count;
+    const count = editableMembers.length
+    if (count === 0) return
+    const equalWeight = 1 / count
 
-    setEditableMembers((prev) =>
-      prev.map((m) => ({ ...m, weight: equalWeight }))
-    );
-  };
+    setEditableMembers((prev) => prev.map((m) => ({ ...m, weight: equalWeight })))
+  }
 
   // Handle common symbol click (view mode) - opens symbol detail modal
   const handleCommonSymbolClick = (member) => {
-    const symbol = member.mapped_common_symbol || member.common_symbol;
+    const symbol = member.mapped_common_symbol || member.common_symbol
     if (symbol) {
-      setSelectedCommonSymbol(symbol);
-      setIsSymbolDetailModalVisible(true);
+      setSelectedCommonSymbol(symbol)
+      setIsSymbolDetailModalVisible(true)
     }
-  };
+  }
 
   // Handle modal close with unsaved changes check
   const handleClose = () => {
     if (isEditMode && hasUnsavedChanges()) {
-      setDiscardAction('close');
-      setIsDiscardModalVisible(true);
+      setDiscardAction('close')
+      setIsDiscardModalVisible(true)
     } else {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   // Get badge color for index type
   const getTypeBadgeColor = (indexType) => {
-    return indexType === 'IndexProvider' ? 'primary' : 'success';
-  };
+    return indexType === 'IndexProvider' ? 'primary' : 'success'
+  }
 
   // Prepare pie chart data with "Others" aggregation for <1% weights
   const pieChartData = useMemo(() => {
-    if (!weightedMembers.length) return null;
+    if (!weightedMembers.length) return null
 
-    const significantMembers = weightedMembers.filter((m) => m.weight >= 0.01);
-    const smallMembers = weightedMembers.filter((m) => m.weight < 0.01);
-    const othersWeight = smallMembers.reduce((sum, m) => sum + m.weight, 0);
+    const significantMembers = weightedMembers.filter((m) => m.weight >= 0.01)
+    const smallMembers = weightedMembers.filter((m) => m.weight < 0.01)
+    const othersWeight = smallMembers.reduce((sum, m) => sum + m.weight, 0)
 
-    const labels = significantMembers.map(
-      (m) => m.effective_symbol || m.common_symbol || 'Unknown'
-    );
-    const data = significantMembers.map((m) => m.weight * 100);
-    const colors = significantMembers.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+    const labels = significantMembers.map((m) => m.effective_symbol || m.common_symbol || 'Unknown')
+    const data = significantMembers.map((m) => m.weight * 100)
+    const colors = significantMembers.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])
 
     if (smallMembers.length > 0 && othersWeight > 0) {
-      labels.push(`Others (${smallMembers.length})`);
-      data.push(othersWeight * 100);
-      colors.push('#9E9E9E');
+      labels.push(`Others (${smallMembers.length})`)
+      data.push(othersWeight * 100)
+      colors.push('#9E9E9E')
     }
 
     return {
       labels,
       datasets: [{ data, backgroundColor: colors, hoverBackgroundColor: colors }],
-    };
-  }, [weightedMembers]);
+    }
+  }, [weightedMembers])
 
   // Check for validation issues in edit mode
   const hasValidationErrors = useMemo(() => {
-    if (!isEditMode) return false;
-    const symbols = editableMembers
-      .map((m) => m.common_symbol)
-      .filter((s) => s !== null);
-    const hasDuplicates = symbols.length !== new Set(symbols).size;
-    const hasEmptyNewRows = editableMembers.some((m) => m.isNew && !m.common_symbol);
-    return hasDuplicates || hasEmptyNewRows;
-  }, [isEditMode, editableMembers]);
+    if (!isEditMode) return false
+    const symbols = editableMembers.map((m) => m.common_symbol).filter((s) => s !== null)
+    const hasDuplicates = symbols.length !== new Set(symbols).size
+    const hasEmptyNewRows = editableMembers.some((m) => m.isNew && !m.common_symbol)
+    return hasDuplicates || hasEmptyNewRows
+  }, [isEditMode, editableMembers])
 
   return (
     <>
-      <CModal
-        visible={visible}
-        onClose={handleClose}
-        backdrop="static"
-        size="lg"
-        scrollable
-      >
+      <CModal visible={visible} onClose={handleClose} backdrop="static" size="lg" scrollable>
         <CModalHeader onClose={handleClose}>
           <CModalTitle className="d-flex align-items-center gap-2">
             <strong>{indexItem?.class_name || 'Index Details'}</strong>
@@ -505,9 +503,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
               </CBadge>
             )}
             {indexDetail?.index?.current_member_count !== undefined && (
-              <small className="text-muted">
-                {indexDetail.index.current_member_count} members
-              </small>
+              <small className="text-muted">{indexDetail.index.current_member_count} members</small>
             )}
             {isEditMode && (
               <CBadge color="warning" className="ms-2">
@@ -702,9 +698,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                               <CTableRow>
                                 <CTableHeaderCell>Symbol</CTableHeaderCell>
                                 <CTableHeaderCell>Common Symbol</CTableHeaderCell>
-                                <CTableHeaderCell className="text-end">
-                                  Weight
-                                </CTableHeaderCell>
+                                <CTableHeaderCell className="text-end">Weight</CTableHeaderCell>
                                 <CTableHeaderCell>Valid From</CTableHeaderCell>
                               </CTableRow>
                             </CTableHead>
@@ -770,10 +764,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                             aspectRatio: '1',
                           }}
                         >
-                          <CChartPie
-                            data={pieChartData}
-                            options={PIE_CHART_OPTIONS}
-                          />
+                          <CChartPie data={pieChartData} options={PIE_CHART_OPTIONS} />
                         </div>
                       </div>
                     )}
@@ -821,8 +812,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
                                 key={eventIdx}
                                 className={event.type === 'added' ? 'text-success' : 'text-danger'}
                               >
-                                {event.type === 'added' ? '+' : '−'}{' '}
-                                {event.symbol}
+                                {event.type === 'added' ? '+' : '−'} {event.symbol}
                                 {event.weight != null && ` ${(event.weight * 100).toFixed(0)}%`}
                               </div>
                             ))}
@@ -845,11 +835,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
           {isEditMode ? (
             /* Edit mode footer */
             <>
-              <CButton
-                color="secondary"
-                onClick={handleCancelEdit}
-                disabled={isSaving}
-              >
+              <CButton color="secondary" onClick={handleCancelEdit} disabled={isSaving}>
                 Cancel
               </CButton>
               <CButton
@@ -891,8 +877,8 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
       <CommonSymbolDetailModal
         visible={isSymbolDetailModalVisible}
         onClose={() => {
-          setIsSymbolDetailModalVisible(false);
-          setSelectedCommonSymbol(null);
+          setIsSymbolDetailModalVisible(false)
+          setSelectedCommonSymbol(null)
         }}
         commonSymbol={selectedCommonSymbol}
       />
@@ -927,7 +913,7 @@ const IndexDetailModal = ({ visible, onClose, indexItem, onRefresh, pushToast })
         confirmColor="danger"
       />
     </>
-  );
-};
+  )
+}
 
-export default IndexDetailModal;
+export default IndexDetailModal

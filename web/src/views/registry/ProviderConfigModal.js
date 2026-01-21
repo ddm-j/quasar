@@ -27,7 +27,14 @@ import {
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilLockLocked, cilChartLine, cilClock, cilStorage } from '@coreui/icons'
-import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies, getSecretKeys, updateSecrets, remapAssetMappings } from '../services/registry_api'
+import {
+  getProviderConfig,
+  updateProviderConfig,
+  getAvailableQuoteCurrencies,
+  getSecretKeys,
+  updateSecrets,
+  remapAssetMappings,
+} from '../services/registry_api'
 import RemapPromptModal from './RemapPromptModal'
 
 // Default values for live provider scheduling
@@ -57,9 +64,17 @@ const LOOKBACK_PRESETS = [
   { label: 'Max', value: 8000 },
 ]
 
-const ProviderConfigModal = ({ visible, onClose, classType, className, classSubtype, displayToast }) => {
+const ProviderConfigModal = ({
+  visible,
+  onClose,
+  classType,
+  className,
+  classSubtype,
+  displayToast,
+}) => {
   // Determine which tabs should be visible based on class_subtype
-  const showSchedulingTab = classSubtype === 'Historical' || classSubtype === 'Live' || classSubtype === 'IndexProvider'
+  const showSchedulingTab =
+    classSubtype === 'Historical' || classSubtype === 'Live' || classSubtype === 'IndexProvider'
   const showDataTab = classSubtype === 'Historical'
 
   const [activeTab, setActiveTab] = useState('trading')
@@ -69,11 +84,11 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       delay_hours: 0,
       pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
       post_close_seconds: DEFAULT_POST_CLOSE_SECONDS,
-      sync_frequency: DEFAULT_SYNC_FREQUENCY
+      sync_frequency: DEFAULT_SYNC_FREQUENCY,
     },
     data: {
-      lookback_days: DEFAULT_LOOKBACK_DAYS
-    }
+      lookback_days: DEFAULT_LOOKBACK_DAYS,
+    },
   })
   const [availableCurrencies, setAvailableCurrencies] = useState([])
   const [loading, setLoading] = useState(false)
@@ -115,7 +130,13 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   // Load secret keys when API tab is activated
   useEffect(() => {
     const providerKey = `${classType}:${className}`
-    if (visible && activeTab === 'api' && classType && className && secretKeysLoadedRef.current !== providerKey) {
+    if (
+      visible &&
+      activeTab === 'api' &&
+      classType &&
+      className &&
+      secretKeysLoadedRef.current !== providerKey
+    ) {
       secretKeysLoadedRef.current = providerKey
       loadSecretKeys()
     }
@@ -134,11 +155,11 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           delay_hours: prefs.scheduling?.delay_hours ?? 0,
           pre_close_seconds: prefs.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS,
           post_close_seconds: prefs.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS,
-          sync_frequency: prefs.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY
+          sync_frequency: prefs.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY,
         },
         data: {
-          lookback_days: prefs.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS
-        }
+          lookback_days: prefs.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS,
+        },
       })
       // Track original quote preference for re-map detection
       setOriginalQuotePreference(cryptoPrefs.preferred_quote_currency)
@@ -152,11 +173,11 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           delay_hours: 0,
           pre_close_seconds: DEFAULT_PRE_CLOSE_SECONDS,
           post_close_seconds: DEFAULT_POST_CLOSE_SECONDS,
-          sync_frequency: DEFAULT_SYNC_FREQUENCY
+          sync_frequency: DEFAULT_SYNC_FREQUENCY,
         },
         data: {
-          lookback_days: DEFAULT_LOOKBACK_DAYS
-        }
+          lookback_days: DEFAULT_LOOKBACK_DAYS,
+        },
       })
     } finally {
       setLoading(false)
@@ -182,7 +203,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       setSecretKeys(keys)
       // Initialize empty values for each key
       const initialValues = {}
-      keys.forEach(key => {
+      keys.forEach((key) => {
         initialValues[key] = ''
       })
       setSecretValues(initialValues)
@@ -207,19 +228,19 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       // Add scheduling fields based on provider subtype
       if (classSubtype === 'Historical') {
         updateData.scheduling = {
-          delay_hours: config.scheduling.delay_hours
+          delay_hours: config.scheduling.delay_hours,
         }
         updateData.data = {
-          lookback_days: config.data.lookback_days
+          lookback_days: config.data.lookback_days,
         }
       } else if (classSubtype === 'Live') {
         updateData.scheduling = {
           pre_close_seconds: config.scheduling.pre_close_seconds,
-          post_close_seconds: config.scheduling.post_close_seconds
+          post_close_seconds: config.scheduling.post_close_seconds,
         }
       } else if (classSubtype === 'IndexProvider') {
         updateData.scheduling = {
-          sync_frequency: config.scheduling.sync_frequency
+          sync_frequency: config.scheduling.sync_frequency,
         }
       }
 
@@ -266,19 +287,19 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   }
 
   const handleSecretChange = (key, value) => {
-    setSecretValues(prev => ({
+    setSecretValues((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }))
   }
 
   const handleUpdateSecretsClick = () => {
     // Check if all fields are filled (after trimming whitespace)
     const trimmedValues = {}
-    secretKeys.forEach(key => {
+    secretKeys.forEach((key) => {
       trimmedValues[key] = secretValues[key]?.trim() || ''
     })
-    const emptyFields = secretKeys.filter(key => trimmedValues[key] === '')
+    const emptyFields = secretKeys.filter((key) => trimmedValues[key] === '')
     if (emptyFields.length > 0) {
       setSecretsError(`Please fill in all credential fields. Missing: ${emptyFields.join(', ')}`)
       return
@@ -305,7 +326,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       }
       // Clear the values after successful update (for security)
       const clearedValues = {}
-      secretKeys.forEach(key => {
+      secretKeys.forEach((key) => {
         clearedValues[key] = ''
       })
       setSecretValues(clearedValues)
@@ -318,32 +339,32 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   }
 
   const handlePreferenceChange = (field, value) => {
-    setConfig(prevConfig => ({
+    setConfig((prevConfig) => ({
       ...prevConfig,
       crypto: {
         ...prevConfig.crypto,
-        [field]: value || null
-      }
+        [field]: value || null,
+      },
     }))
   }
 
   const handleSchedulingChange = (field, value) => {
-    setConfig(prevConfig => ({
+    setConfig((prevConfig) => ({
       ...prevConfig,
       scheduling: {
         ...prevConfig.scheduling,
-        [field]: value
-      }
+        [field]: value,
+      },
     }))
   }
 
   const handleDataChange = (field, value) => {
-    setConfig(prevConfig => ({
+    setConfig((prevConfig) => ({
       ...prevConfig,
       data: {
         ...prevConfig.data,
-        [field]: value
-      }
+        [field]: value,
+      },
     }))
   }
 
@@ -376,7 +397,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
       const result = await remapAssetMappings({
         class_name: className,
         class_type: classType,
-        asset_class: 'crypto'
+        asset_class: 'crypto',
       })
       if (displayToast) {
         displayToast({
@@ -490,19 +511,23 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                     <CFormSelect
                       id="preferredQuoteCurrency"
                       value={config.crypto?.preferred_quote_currency || ''}
-                      onChange={(e) => handlePreferenceChange('preferred_quote_currency', e.target.value)}
+                      onChange={(e) =>
+                        handlePreferenceChange('preferred_quote_currency', e.target.value)
+                      }
                       disabled={saving}
                     >
                       <option value="">No preference</option>
-                      {availableCurrencies.map(currency => (
+                      {availableCurrencies.map((currency) => (
                         <option key={currency} value={currency}>
                           {currency}
                         </option>
                       ))}
                     </CFormSelect>
                     <small className="form-text text-body-secondary">
-                      For crypto pairs, prefer this quote currency when available (e.g., USDC over USDT).
-                      {availableCurrencies.length === 0 && ' No crypto assets found for this provider.'}
+                      For crypto pairs, prefer this quote currency when available (e.g., USDC over
+                      USDT).
+                      {availableCurrencies.length === 0 &&
+                        ' No crypto assets found for this provider.'}
                     </small>
                   </CCol>
                 </CRow>
@@ -521,17 +546,15 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                         <CCol>
                           <CAlert color="info">
                             <CIcon icon={cilClock} className="me-2" />
-                            Configure the delay offset for daily data collection.
-                            Historical providers pull data at midnight UTC by default.
+                            Configure the delay offset for daily data collection. Historical
+                            providers pull data at midnight UTC by default.
                           </CAlert>
                         </CCol>
                       </CRow>
 
                       <CRow className="mb-4">
                         <CCol md={8}>
-                          <CFormLabel htmlFor="delayHours">
-                            Delay Hours
-                          </CFormLabel>
+                          <CFormLabel htmlFor="delayHours">Delay Hours</CFormLabel>
                           <div className="d-flex align-items-center gap-3">
                             <CFormRange
                               id="delayHours"
@@ -539,11 +562,17 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                               max={24}
                               step={1}
                               value={config.scheduling?.delay_hours || 0}
-                              onChange={(e) => handleSchedulingChange('delay_hours', parseInt(e.target.value, 10))}
+                              onChange={(e) =>
+                                handleSchedulingChange('delay_hours', parseInt(e.target.value, 10))
+                              }
                               disabled={saving}
                               className="flex-grow-1"
                             />
-                            <CBadge color="primary" className="px-3 py-2" style={{ minWidth: '50px' }}>
+                            <CBadge
+                              color="primary"
+                              className="px-3 py-2"
+                              style={{ minWidth: '50px' }}
+                            >
                               {config.scheduling?.delay_hours || 0}h
                             </CBadge>
                           </div>
@@ -555,7 +584,10 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
                       <CRow className="mb-3">
                         <CCol md={8}>
-                          <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
+                          <div
+                            className="p-3 border rounded"
+                            style={{ backgroundColor: 'var(--cui-body-secondary)' }}
+                          >
                             <strong>Pull Time Preview</strong>
                             <p className="mb-0 mt-2">
                               Daily data collection will run at{' '}
@@ -587,59 +619,82 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
                       <CRow className="mb-4">
                         <CCol md={8}>
-                          <CFormLabel htmlFor="preCloseSeconds">
-                            Pre-Close Seconds
-                          </CFormLabel>
+                          <CFormLabel htmlFor="preCloseSeconds">Pre-Close Seconds</CFormLabel>
                           <div className="d-flex align-items-center gap-3">
                             <CFormRange
                               id="preCloseSeconds"
                               min={0}
                               max={300}
                               step={5}
-                              value={config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}
-                              onChange={(e) => handleSchedulingChange('pre_close_seconds', parseInt(e.target.value, 10))}
+                              value={
+                                config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS
+                              }
+                              onChange={(e) =>
+                                handleSchedulingChange(
+                                  'pre_close_seconds',
+                                  parseInt(e.target.value, 10),
+                                )
+                              }
                               disabled={saving}
                               className="flex-grow-1"
                             />
-                            <CBadge color="primary" className="px-3 py-2" style={{ minWidth: '60px' }}>
+                            <CBadge
+                              color="primary"
+                              className="px-3 py-2"
+                              style={{ minWidth: '60px' }}
+                            >
                               {config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}s
                             </CBadge>
                           </div>
                           <small className="form-text text-body-secondary">
-                            Start listening this many seconds before bar close. Range: 0-300 seconds.
+                            Start listening this many seconds before bar close. Range: 0-300
+                            seconds.
                           </small>
                         </CCol>
                       </CRow>
 
                       <CRow className="mb-4">
                         <CCol md={8}>
-                          <CFormLabel htmlFor="postCloseSeconds">
-                            Post-Close Seconds
-                          </CFormLabel>
+                          <CFormLabel htmlFor="postCloseSeconds">Post-Close Seconds</CFormLabel>
                           <div className="d-flex align-items-center gap-3">
                             <CFormRange
                               id="postCloseSeconds"
                               min={0}
                               max={60}
                               step={1}
-                              value={config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS}
-                              onChange={(e) => handleSchedulingChange('post_close_seconds', parseInt(e.target.value, 10))}
+                              value={
+                                config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS
+                              }
+                              onChange={(e) =>
+                                handleSchedulingChange(
+                                  'post_close_seconds',
+                                  parseInt(e.target.value, 10),
+                                )
+                              }
                               disabled={saving}
                               className="flex-grow-1"
                             />
-                            <CBadge color="primary" className="px-3 py-2" style={{ minWidth: '60px' }}>
+                            <CBadge
+                              color="primary"
+                              className="px-3 py-2"
+                              style={{ minWidth: '60px' }}
+                            >
                               {config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS}s
                             </CBadge>
                           </div>
                           <small className="form-text text-body-secondary">
-                            Continue listening this many seconds after bar close to capture late data. Range: 0-60 seconds.
+                            Continue listening this many seconds after bar close to capture late
+                            data. Range: 0-60 seconds.
                           </small>
                         </CCol>
                       </CRow>
 
                       <CRow className="mb-3">
                         <CCol md={10}>
-                          <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
+                          <div
+                            className="p-3 border rounded"
+                            style={{ backgroundColor: 'var(--cui-body-secondary)' }}
+                          >
                             <strong>Listening Window Preview</strong>
                             <div className="mt-3 position-relative" style={{ height: '60px' }}>
                               {/* Timeline visualization */}
@@ -650,7 +705,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                                   right: '0%',
                                   top: '25px',
                                   height: '4px',
-                                  borderRadius: '2px'
+                                  borderRadius: '2px',
                                 }}
                               />
 
@@ -663,7 +718,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                                   top: '20px',
                                   height: '14px',
                                   borderRadius: '4px 0 0 4px',
-                                  opacity: 0.8
+                                  opacity: 0.8,
                                 }}
                               />
 
@@ -676,7 +731,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                                   width: '3px',
                                   height: '24px',
                                   marginLeft: '-1.5px',
-                                  borderRadius: '2px'
+                                  borderRadius: '2px',
                                 }}
                               />
 
@@ -689,39 +744,82 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                                   top: '20px',
                                   height: '14px',
                                   borderRadius: '0 4px 4px 0',
-                                  opacity: 0.8
+                                  opacity: 0.8,
                                 }}
                               />
 
                               {/* Labels */}
-                              <div className="position-absolute text-muted small" style={{ left: '0%', top: '45px' }}>
-                                -{config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}s
+                              <div
+                                className="position-absolute text-muted small"
+                                style={{ left: '0%', top: '45px' }}
+                              >
+                                -{config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS}
+                                s
                               </div>
-                              <div className="position-absolute text-danger small fw-bold" style={{ left: '50%', top: '0px', transform: 'translateX(-50%)' }}>
+                              <div
+                                className="position-absolute text-danger small fw-bold"
+                                style={{ left: '50%', top: '0px', transform: 'translateX(-50%)' }}
+                              >
                                 Bar Close
                               </div>
-                              <div className="position-absolute text-muted small" style={{ right: '0%', top: '45px' }}>
-                                +{config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS}s
+                              <div
+                                className="position-absolute text-muted small"
+                                style={{ right: '0%', top: '45px' }}
+                              >
+                                +
+                                {config.scheduling?.post_close_seconds ??
+                                  DEFAULT_POST_CLOSE_SECONDS}
+                                s
                               </div>
                             </div>
                             <div className="mt-4 d-flex justify-content-between small text-body-secondary">
                               <span>
-                                <span className="d-inline-block me-1" style={{ width: '12px', height: '12px', backgroundColor: 'var(--cui-info)', borderRadius: '2px', opacity: 0.8 }}></span>
+                                <span
+                                  className="d-inline-block me-1"
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    backgroundColor: 'var(--cui-info)',
+                                    borderRadius: '2px',
+                                    opacity: 0.8,
+                                  }}
+                                ></span>
                                 Pre-close listening
                               </span>
                               <span>
-                                <span className="d-inline-block me-1" style={{ width: '12px', height: '12px', backgroundColor: 'var(--cui-danger)', borderRadius: '2px' }}></span>
+                                <span
+                                  className="d-inline-block me-1"
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    backgroundColor: 'var(--cui-danger)',
+                                    borderRadius: '2px',
+                                  }}
+                                ></span>
                                 Bar close time
                               </span>
                               <span>
-                                <span className="d-inline-block me-1" style={{ width: '12px', height: '12px', backgroundColor: 'var(--cui-success)', borderRadius: '2px', opacity: 0.8 }}></span>
+                                <span
+                                  className="d-inline-block me-1"
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    backgroundColor: 'var(--cui-success)',
+                                    borderRadius: '2px',
+                                    opacity: 0.8,
+                                  }}
+                                ></span>
                                 Post-close listening
                               </span>
                             </div>
                             <p className="mb-0 mt-3 small">
                               Total listening window:{' '}
                               <CBadge color="success">
-                                {(config.scheduling?.pre_close_seconds ?? DEFAULT_PRE_CLOSE_SECONDS) + (config.scheduling?.post_close_seconds ?? DEFAULT_POST_CLOSE_SECONDS)} seconds
+                                {(config.scheduling?.pre_close_seconds ??
+                                  DEFAULT_PRE_CLOSE_SECONDS) +
+                                  (config.scheduling?.post_close_seconds ??
+                                    DEFAULT_POST_CLOSE_SECONDS)}{' '}
+                                seconds
                               </CBadge>
                             </p>
                           </div>
@@ -736,7 +834,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                         <CCol>
                           <CAlert color="info">
                             <CIcon icon={cilClock} className="me-2" />
-                            Configure how often this IndexProvider automatically syncs its constituents.
+                            Configure how often this IndexProvider automatically syncs its
+                            constituents.
                           </CAlert>
                         </CCol>
                       </CRow>
@@ -745,7 +844,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                         <CCol md={10}>
                           <CFormLabel className="fw-semibold">Sync Frequency</CFormLabel>
                           <p className="text-body-secondary small mb-3">
-                            How often should this IndexProvider automatically fetch and sync its constituents?
+                            How often should this IndexProvider automatically fetch and sync its
+                            constituents?
                           </p>
                           <div className="d-flex flex-column gap-2 mb-3">
                             {SYNC_FREQUENCY_OPTIONS.map((option) => (
@@ -762,8 +862,13 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                                     </span>
                                   </span>
                                 }
-                                checked={(config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY) === option.value}
-                                onChange={() => handleSchedulingChange('sync_frequency', option.value)}
+                                checked={
+                                  (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY) ===
+                                  option.value
+                                }
+                                onChange={() =>
+                                  handleSchedulingChange('sync_frequency', option.value)
+                                }
                                 disabled={saving}
                               />
                             ))}
@@ -773,16 +878,27 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
 
                       <CRow className="mb-3">
                         <CCol md={8}>
-                          <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
+                          <div
+                            className="p-3 border rounded"
+                            style={{ backgroundColor: 'var(--cui-body-secondary)' }}
+                          >
                             <strong>Sync Schedule Preview</strong>
                             <p className="mb-0 mt-2">
                               Constituents will be synced{' '}
                               <CBadge color="success" className="ms-1">
-                                {SYNC_FREQUENCY_OPTIONS.find(o => o.value === (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY))?.label || 'Weekly'}
+                                {SYNC_FREQUENCY_OPTIONS.find(
+                                  (o) =>
+                                    o.value ===
+                                    (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY),
+                                )?.label || 'Weekly'}
                               </CBadge>
                             </p>
                             <small className="text-body-secondary">
-                              {SYNC_FREQUENCY_OPTIONS.find(o => o.value === (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY))?.description || 'Sync at midnight UTC every Monday'}
+                              {SYNC_FREQUENCY_OPTIONS.find(
+                                (o) =>
+                                  o.value ===
+                                  (config.scheduling?.sync_frequency ?? DEFAULT_SYNC_FREQUENCY),
+                              )?.description || 'Sync at midnight UTC every Monday'}
                             </small>
                           </div>
                         </CCol>
@@ -813,7 +929,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                     <CCol md={10}>
                       <CFormLabel className="fw-semibold">Lookback Period</CFormLabel>
                       <p className="text-body-secondary small mb-3">
-                        When subscribing to a new symbol, how much historical data should be fetched?
+                        When subscribing to a new symbol, how much historical data should be
+                        fetched?
                       </p>
                       <div className="d-flex flex-wrap gap-3 mb-3">
                         {LOOKBACK_PRESETS.map((preset) => (
@@ -823,7 +940,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                             name="lookbackPreset"
                             id={`lookback-${preset.value}`}
                             label={preset.label}
-                            checked={(config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS) === preset.value}
+                            checked={
+                              (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS) === preset.value
+                            }
                             onChange={() => handleDataChange('lookback_days', preset.value)}
                             disabled={saving}
                           />
@@ -833,11 +952,16 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                           name="lookbackPreset"
                           id="lookback-custom"
                           label="Custom"
-                          checked={!LOOKBACK_PRESETS.some(p => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS))}
+                          checked={
+                            !LOOKBACK_PRESETS.some(
+                              (p) =>
+                                p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS),
+                            )
+                          }
                           onChange={() => {
                             // When switching to custom, keep current value if valid, otherwise set to a reasonable default
                             const currentValue = config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS
-                            if (!LOOKBACK_PRESETS.some(p => p.value === currentValue)) {
+                            if (!LOOKBACK_PRESETS.some((p) => p.value === currentValue)) {
                               // Already custom, keep value
                               return
                             }
@@ -847,7 +971,9 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                           disabled={saving}
                         />
                       </div>
-                      {!LOOKBACK_PRESETS.some(p => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS)) && (
+                      {!LOOKBACK_PRESETS.some(
+                        (p) => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS),
+                      ) && (
                         <div className="mb-3">
                           <CFormLabel htmlFor="customLookbackDays" className="small">
                             Custom Lookback Days
@@ -889,14 +1015,21 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                           </small>
                         </div>
                       )}
-                      <div className="p-3 border rounded" style={{ backgroundColor: 'var(--cui-body-secondary)' }}>
+                      <div
+                        className="p-3 border rounded"
+                        style={{ backgroundColor: 'var(--cui-body-secondary)' }}
+                      >
                         <p className="mb-0 text-body-secondary small">
                           Selected lookback:{' '}
                           <CBadge color="primary">
                             {config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS} days
-                          </CBadge>
-                          {' '}
-                          ({LOOKBACK_PRESETS.find(p => p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS))?.label || 'Custom'})
+                          </CBadge>{' '}
+                          (
+                          {LOOKBACK_PRESETS.find(
+                            (p) =>
+                              p.value === (config.data?.lookback_days ?? DEFAULT_LOOKBACK_DAYS),
+                          )?.label || 'Custom'}
+                          )
                         </p>
                       </div>
                     </CCol>
@@ -907,7 +1040,8 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
               <CTabPane visible={activeTab === 'api'}>
                 <h6>API Secrets</h6>
                 <p className="text-body-secondary mb-3">
-                  Update API credentials for this provider. All credentials must be provided together.
+                  Update API credentials for this provider. All credentials must be provided
+                  together.
                 </p>
 
                 {secretsError && <CAlert color="danger">{secretsError}</CAlert>}
@@ -925,18 +1059,16 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                 ) : (
                   <>
                     <CAlert color="warning" className="mb-4">
-                      <strong>Important:</strong> Updating credentials will replace all existing values.
-                      You must provide values for all fields. The provider will be automatically reloaded
-                      to use the new credentials.
+                      <strong>Important:</strong> Updating credentials will replace all existing
+                      values. You must provide values for all fields. The provider will be
+                      automatically reloaded to use the new credentials.
                     </CAlert>
 
                     <CRow className="mb-4">
                       <CCol md={8}>
                         {secretKeys.map((key) => (
                           <div key={key} className="mb-3">
-                            <CFormLabel htmlFor={`secret-${key}`}>
-                              {key}
-                            </CFormLabel>
+                            <CFormLabel htmlFor={`secret-${key}`}>{key}</CFormLabel>
                             <CFormInput
                               id={`secret-${key}`}
                               type="password"
@@ -956,7 +1088,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
                         <CButton
                           color="warning"
                           onClick={handleUpdateSecretsClick}
-                          disabled={savingSecrets || secretKeys.some(key => !secretValues[key])}
+                          disabled={savingSecrets || secretKeys.some((key) => !secretValues[key])}
                         >
                           {savingSecrets ? <CSpinner size="sm" className="me-1" /> : null}
                           {savingSecrets ? 'Updating Credentials...' : 'Update Credentials'}
@@ -975,11 +1107,7 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
         <CButton color="secondary" onClick={handleClose} disabled={saving}>
           Cancel
         </CButton>
-        <CButton
-          color="primary"
-          onClick={handleSave}
-          disabled={saving || loading}
-        >
+        <CButton color="primary" onClick={handleSave} disabled={saving || loading}>
           {saving ? <CSpinner size="sm" className="me-1" /> : null}
           {saving ? 'Saving...' : 'Save Changes'}
         </CButton>
@@ -1004,8 +1132,10 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
           </CAlert>
           <p className="mb-2">You are about to update the following credentials:</p>
           <ul className="mb-3">
-            {secretKeys.map(key => (
-              <li key={key}><code>{key}</code></li>
+            {secretKeys.map((key) => (
+              <li key={key}>
+                <code>{key}</code>
+              </li>
             ))}
           </ul>
           <p className="text-body-secondary small mb-0">

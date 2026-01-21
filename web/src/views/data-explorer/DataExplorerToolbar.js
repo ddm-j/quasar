@@ -1,21 +1,15 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import {
-  CFormInput,
-  CFormSelect,
-  CButton,
-  CSpinner,
-  CInputGroup,
-} from '@coreui/react-pro'
+import { CFormInput, CFormSelect, CButton, CSpinner, CInputGroup } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilMagnifyingGlass, cilCloudDownload } from '@coreui/icons'
 
 /**
  * DataExplorerToolbar Component
- * 
+ *
  * Reusable toolbar component for Data Explorer views (Chart and Table).
  * Uses idPrefix to generate unique accessibility IDs for each view instance.
- * 
+ *
  * @param {string} idPrefix - Prefix for generating unique IDs (e.g., 'chart' or 'table')
  * @param {string} searchQuery - Current search query value
  * @param {function} setSearchQuery - Handler to update search query
@@ -77,24 +71,23 @@ const DataExplorerToolbar = ({
             color="primary"
             onClick={handleSearch}
             disabled={isSearching}
-            aria-label={isSearching ? "Searching symbols" : "Search for symbols"}
+            aria-label={isSearching ? 'Searching symbols' : 'Search for symbols'}
             title="Search symbols"
           >
-            {isSearching ? <CSpinner size="sm" aria-hidden="true" /> : <CIcon icon={cilMagnifyingGlass} />}
+            {isSearching ? (
+              <CSpinner size="sm" aria-hidden="true" />
+            ) : (
+              <CIcon icon={cilMagnifyingGlass} />
+            )}
           </CButton>
         </CInputGroup>
         {searchError && (
-          <div 
-            id={errorId}
-            className="text-danger small mt-1" 
-            role="alert"
-            aria-live="polite"
-          >
+          <div id={errorId} className="text-danger small mt-1" role="alert" aria-live="polite">
             {searchError}
           </div>
         )}
       </div>
-      
+
       {/* Symbol Select */}
       <div className="flex-grow-1" style={{ minWidth: '280px' }}>
         <CFormSelect
@@ -107,12 +100,18 @@ const DataExplorerToolbar = ({
           {searchResults.map((symbol, index) => (
             <option key={index} value={index}>
               {symbol.common_symbol} ({symbol.provider}/{symbol.provider_symbol})
-              {symbol.has_historical && symbol.has_live ? ' [H+L]' : symbol.has_historical ? ' [H]' : symbol.has_live ? ' [L]' : ''}
+              {symbol.has_historical && symbol.has_live
+                ? ' [H+L]'
+                : symbol.has_historical
+                  ? ' [H]'
+                  : symbol.has_live
+                    ? ' [L]'
+                    : ''}
             </option>
           ))}
         </CFormSelect>
       </div>
-      
+
       {/* Data Type - only show when symbol selected */}
       {selectedSymbol && (
         <div style={{ minWidth: '140px' }}>
@@ -123,12 +122,8 @@ const DataExplorerToolbar = ({
             aria-describedby={!selectedDataType ? dataTypeHelpId : undefined}
           >
             <option value="">Type...</option>
-            {selectedSymbol.has_historical && (
-              <option value="historical">Historical</option>
-            )}
-            {selectedSymbol.has_live && (
-              <option value="live">Live</option>
-            )}
+            {selectedSymbol.has_historical && <option value="historical">Historical</option>}
+            {selectedSymbol.has_live && <option value="live">Live</option>}
           </CFormSelect>
           {!selectedDataType && (
             <div id={dataTypeHelpId} className="sr-only">
@@ -137,7 +132,7 @@ const DataExplorerToolbar = ({
           )}
         </div>
       )}
-      
+
       {/* Interval - only show when data type selected */}
       {selectedDataType && (
         <div style={{ minWidth: '120px' }}>
@@ -156,13 +151,18 @@ const DataExplorerToolbar = ({
             ))}
           </CFormSelect>
           {availableIntervals.length === 0 && (
-            <div id={intervalHelpId} className="text-muted small mt-1" role="status" aria-live="polite">
+            <div
+              id={intervalHelpId}
+              className="text-muted small mt-1"
+              role="status"
+              aria-live="polite"
+            >
               No intervals available
             </div>
           )}
         </div>
       )}
-      
+
       {/* Download Button - progressive disclosure */}
       {selectedSymbol && selectedDataType && selectedInterval && (
         <div>
@@ -172,8 +172,8 @@ const DataExplorerToolbar = ({
             size="sm"
             onClick={handleDownload}
             disabled={!canDownload}
-            title={canDownload ? "Download data as CSV" : "Select data to download"}
-            aria-label={canDownload ? "Download data as CSV file" : "Select data to download"}
+            title={canDownload ? 'Download data as CSV' : 'Select data to download'}
+            aria-label={canDownload ? 'Download data as CSV file' : 'Select data to download'}
           >
             <CIcon icon={cilCloudDownload} size="sm" />
           </CButton>
@@ -209,4 +209,3 @@ DataExplorerToolbar.defaultProps = {
 }
 
 export default DataExplorerToolbar
-

@@ -19,13 +19,13 @@ import { INTERVALS } from '../../enums'
 
 const DataExplorer = () => {
   const [activeKey, setActiveKey] = useState(1)
-  
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [searchError, setSearchError] = useState(null)
-  
+
   // Selection state
   const [selectedSymbol, setSelectedSymbol] = useState(null)
   const [selectedProvider, setSelectedProvider] = useState('')
@@ -33,7 +33,7 @@ const DataExplorer = () => {
   const [selectedDataType, setSelectedDataType] = useState('')
   const [selectedInterval, setSelectedInterval] = useState('')
   const [availableIntervals, setAvailableIntervals] = useState([])
-  
+
   // Data state for download functionality
   const [currentData, setCurrentData] = useState([])
 
@@ -53,7 +53,7 @@ const DataExplorer = () => {
 
     setIsSearching(true)
     setSearchError(null)
-    
+
     // Clear previous selection when performing new search
     // This prevents stale object references from breaking the select dropdown
     setSelectedSymbol(null)
@@ -98,7 +98,7 @@ const DataExplorer = () => {
       const canonicalIntervals = symbolIntervals.filter((iv) => INTERVALS.includes(iv))
       const intervalsToUse = canonicalIntervals.length > 0 ? canonicalIntervals : symbolIntervals
       setAvailableIntervals(intervalsToUse)
-      
+
       // Auto-select data type if only one is available
       if (symbol.has_historical && !symbol.has_live) {
         setSelectedDataType('historical')
@@ -108,7 +108,7 @@ const DataExplorer = () => {
         // Default to historical if both available
         setSelectedDataType('historical')
       }
-      
+
       // Auto-select first interval if available
       if (intervalsToUse && intervalsToUse.length > 0) {
         setSelectedInterval(intervalsToUse[0])
@@ -122,7 +122,7 @@ const DataExplorer = () => {
   const handleDataTypeChange = (e) => {
     setSelectedDataType(e.target.value)
     setSelectedInterval('')
-    
+
     // Update available intervals based on selected symbol and data type
     if (selectedSymbol) {
       const symbolIntervals = selectedSymbol.available_intervals || []
@@ -150,7 +150,13 @@ const DataExplorer = () => {
 
   // Handle download click
   const handleDownload = () => {
-    if (currentData && currentData.length > 0 && selectedSymbol && selectedDataType && selectedInterval) {
+    if (
+      currentData &&
+      currentData.length > 0 &&
+      selectedSymbol &&
+      selectedDataType &&
+      selectedInterval
+    ) {
       // Convert chart data format to OHLC format if needed
       // Chart data has time, open, high, low, close (no volume in chartData)
       // We need to get the full data from the API response
@@ -160,7 +166,8 @@ const DataExplorer = () => {
   }
 
   // Determine if download button should be enabled
-  const canDownload = selectedSymbol && selectedDataType && selectedInterval && currentData && currentData.length > 0
+  const canDownload =
+    selectedSymbol && selectedDataType && selectedInterval && currentData && currentData.length > 0
 
   return (
     <CRow>
@@ -230,8 +237,8 @@ const DataExplorer = () => {
                 {selectedSymbol && (
                   <div className="mt-2 pt-2 border-top">
                     <small className="text-muted">
-                      <strong>Common:</strong> {selectedSymbol.common_symbol} | 
-                      <strong> Provider:</strong> {selectedSymbol.provider} | 
+                      <strong>Common:</strong> {selectedSymbol.common_symbol} |
+                      <strong> Provider:</strong> {selectedSymbol.provider} |
                       <strong> Symbol:</strong> {selectedSymbol.provider_symbol}
                     </small>
                   </div>
@@ -273,8 +280,8 @@ const DataExplorer = () => {
                 {selectedSymbol && (
                   <div className="mt-2 pt-2 border-top">
                     <small className="text-muted">
-                      <strong>Common:</strong> {selectedSymbol.common_symbol} | 
-                      <strong> Provider:</strong> {selectedSymbol.provider} | 
+                      <strong>Common:</strong> {selectedSymbol.common_symbol} |
+                      <strong> Provider:</strong> {selectedSymbol.provider} |
                       <strong> Symbol:</strong> {selectedSymbol.provider_symbol}
                     </small>
                   </div>
@@ -289,4 +296,3 @@ const DataExplorer = () => {
 }
 
 export default DataExplorer
-

@@ -32,7 +32,9 @@ const AppBreadcrumb = () => {
 
   return (
     <>
-      <div className="fs-2 fw-semibold">{breadcrumbs.length > 0 ? [...breadcrumbs].pop().name : 'Home'}</div>
+      <div className="fs-2 fw-semibold">
+        {breadcrumbs.length > 0 ? [...breadcrumbs].pop().name : 'Home'}
+      </div>
       <CBreadcrumb className="mb-4">
         <CBreadcrumbItem href="/">Home</CBreadcrumbItem>
         {breadcrumbs.map((breadcrumb, index) => {

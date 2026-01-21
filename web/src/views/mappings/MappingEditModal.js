@@ -1,26 +1,33 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react'
 import {
-  CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
-  CButton, CForm, CRow, CCol, CFormLabel, CFormInput, CFormCheck,
-  CSpinner
-} from '@coreui/react-pro';
-import AsyncCreatableSelect from 'react-select/async-creatable';
-import { 
-  getAssetMappings,
-  updateAssetMapping,
-} from '../services/registry_api';  
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CForm,
+  CRow,
+  CCol,
+  CFormLabel,
+  CFormInput,
+  CFormCheck,
+  CSpinner,
+} from '@coreui/react-pro'
+import AsyncCreatableSelect from 'react-select/async-creatable'
+import { getAssetMappings, updateAssetMapping } from '../services/registry_api'
 
 const MappingEditModal = ({ visible, onClose, onSuccess, mapping }) => {
   // State for editable fields
-  const [commonSymbol, setCommonSymbol] = useState(null);
-  const [isActive, setIsActive] = useState(true);
+  const [commonSymbol, setCommonSymbol] = useState(null)
+  const [isActive, setIsActive] = useState(true)
 
   // State for loading common symbols
-  const [isLoadingCommonSymbols, setIsLoadingCommonSymbols] = useState(false);
+  const [isLoadingCommonSymbols, setIsLoadingCommonSymbols] = useState(false)
 
   // State for saving
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   // Initialize form when modal opens or mapping changes
   useEffect(() => {
@@ -29,107 +36,107 @@ const MappingEditModal = ({ visible, onClose, onSuccess, mapping }) => {
       setCommonSymbol({
         value: mapping.common_symbol,
         label: mapping.common_symbol,
-      });
-      setIsActive(mapping.is_active);
-      setSaveError(null);
+      })
+      setIsActive(mapping.is_active)
+      setSaveError(null)
     }
-  }, [visible, mapping]);
+  }, [visible, mapping])
 
   // This function will be called by AsyncCreatableSelect to load existing common symbol options
   const loadCommonSymbolOptions = useCallback(
     async (inputValue, callback) => {
       if (inputValue.length < 1) {
         // Load some default options when input is empty
-        setIsLoadingCommonSymbols(true);
+        setIsLoadingCommonSymbols(true)
         try {
-          const mappings = await getAssetMappings();
+          const mappings = await getAssetMappings()
           // Extract unique common symbols
-          const uniqueSymbols = [...new Set(mappings.map(m => m.common_symbol))].sort();
-          const options = uniqueSymbols.map(symbol => ({
+          const uniqueSymbols = [...new Set(mappings.map((m) => m.common_symbol))].sort()
+          const options = uniqueSymbols.map((symbol) => ({
             value: symbol,
             label: symbol,
-          }));
-          callback(options);
+          }))
+          callback(options)
         } catch (error) {
-          console.error("Error loading common symbol options:", error);
-          callback([]);
+          console.error('Error loading common symbol options:', error)
+          callback([])
         } finally {
-          setIsLoadingCommonSymbols(false);
+          setIsLoadingCommonSymbols(false)
         }
-        return;
+        return
       }
 
       // Filter existing common symbols based on input
-      setIsLoadingCommonSymbols(true);
+      setIsLoadingCommonSymbols(true)
       try {
-        const mappings = await getAssetMappings();
+        const mappings = await getAssetMappings()
         // Filter common symbols that match the input (case-insensitive)
-        const filteredSymbols = [...new Set(mappings.map(m => m.common_symbol))]
-          .filter(symbol => symbol.toLowerCase().includes(inputValue.toLowerCase()))
-          .sort();
-        
-        const options = filteredSymbols.map(symbol => ({
+        const filteredSymbols = [...new Set(mappings.map((m) => m.common_symbol))]
+          .filter((symbol) => symbol.toLowerCase().includes(inputValue.toLowerCase()))
+          .sort()
+
+        const options = filteredSymbols.map((symbol) => ({
           value: symbol,
           label: symbol,
-        }));
-        callback(options);
+        }))
+        callback(options)
       } catch (error) {
-        console.error("Error loading common symbol options:", error);
-        callback([]);
+        console.error('Error loading common symbol options:', error)
+        callback([])
       } finally {
-        setIsLoadingCommonSymbols(false);
+        setIsLoadingCommonSymbols(false)
       }
     },
-    [] // No dependencies - loads all mappings
-  );
+    [], // No dependencies - loads all mappings
+  )
 
   const handleSave = async () => {
     // Validate required fields
     if (!mapping || !commonSymbol) {
-      setSaveError("Common symbol is required.");
-      return;
+      setSaveError('Common symbol is required.')
+      return
     }
 
     // Extract common symbol value from react-select option object
-    const commonSymbolValue = commonSymbol.value ? commonSymbol.value.trim() : null;
-    
+    const commonSymbolValue = commonSymbol.value ? commonSymbol.value.trim() : null
+
     if (!commonSymbolValue) {
-      setSaveError("Common symbol cannot be empty.");
-      return;
+      setSaveError('Common symbol cannot be empty.')
+      return
     }
 
     // Build the update payload (only fields that can be updated)
     const updateData = {
       common_symbol: commonSymbolValue,
       is_active: isActive,
-    };
+    }
 
-    setIsSaving(true);
-    setSaveError(null);
+    setIsSaving(true)
+    setSaveError(null)
 
     try {
       await updateAssetMapping(
         mapping.class_name,
         mapping.class_type,
         mapping.class_symbol,
-        updateData
-      );
+        updateData,
+      )
       // Success - close modal and refresh parent list
       if (onSuccess) {
-        onSuccess();
+        onSuccess()
       }
-      onClose();
+      onClose()
     } catch (error) {
-      console.error("Error updating asset mapping:", error);
-      setSaveError(error.message || "Failed to update mapping. Please try again.");
+      console.error('Error updating asset mapping:', error)
+      setSaveError(error.message || 'Failed to update mapping. Please try again.')
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   // Don't render if no mapping provided
   if (!mapping) {
-    return null;
+    return null
   }
 
   return (
@@ -199,10 +206,12 @@ const MappingEditModal = ({ visible, onClose, onSuccess, mapping }) => {
                     isLoading={isLoadingCommonSymbols}
                     isClearable
                     formatCreateLabel={(inputValue) => `Create "${inputValue}"`}
-                    noOptionsMessage={({ inputValue }) => 
-                      !inputValue ? "Type to search or create..." : `No matches found. Press Enter to create "${inputValue}"`
+                    noOptionsMessage={({ inputValue }) =>
+                      !inputValue
+                        ? 'Type to search or create...'
+                        : `No matches found. Press Enter to create "${inputValue}"`
                     }
-                    loadingMessage={() => "Loading common symbols..."}
+                    loadingMessage={() => 'Loading common symbols...'}
                     classNamePrefix="themed-select"
                   />
                 </CCol>
@@ -248,8 +257,7 @@ const MappingEditModal = ({ visible, onClose, onSuccess, mapping }) => {
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
-export default MappingEditModal;
-
+export default MappingEditModal

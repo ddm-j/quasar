@@ -1,64 +1,64 @@
 /**
  * Asset column configuration for the Assets view.
- * 
+ *
  * This file defines all available columns from the assets table,
  * their UI-friendly labels, filter types, and default visibility.
- * 
+ *
  * Adding a new column:
  * 1. Add entry to ASSET_COLUMNS with the DB column name as key
  * 2. Set appropriate filterType, defaultVisible, and other properties
  * 3. If dropdown filter, add options to dropdownOptions or reference an enum
  */
 
-import { ASSET_CLASSES } from '../enums';
+import { ASSET_CLASSES } from '../enums'
 
 // Filter type constants
 export const FILTER_TYPES = {
   TEXT: 'text',
   DROPDOWN: 'dropdown',
-  NONE: 'none'
-};
+  NONE: 'none',
+}
 
 // Dropdown options for specific columns
 export const DROPDOWN_OPTIONS = {
   class_type: [
     { value: '', label: 'All' },
     { value: 'provider', label: 'Provider' },
-    { value: 'broker', label: 'Broker' }
+    { value: 'broker', label: 'Broker' },
   ],
   primary_id_source: [
     { value: '', label: 'All' },
     { value: 'provider', label: 'Provider' },
     { value: 'matcher', label: 'Matcher' },
-    { value: 'manual', label: 'Manual' }
+    { value: 'manual', label: 'Manual' },
   ],
   identity_match_type: [
     { value: '', label: 'All' },
     { value: 'exact_alias', label: 'Exact Alias' },
-    { value: 'fuzzy_symbol', label: 'Fuzzy Symbol' }
+    { value: 'fuzzy_symbol', label: 'Fuzzy Symbol' },
   ],
   asset_class_group: [
     { value: '', label: 'All' },
     { value: 'securities', label: 'Securities' },
-    { value: 'crypto', label: 'Crypto' }
-  ]
-};
+    { value: 'crypto', label: 'Crypto' },
+  ],
+}
 
 // Generate asset_class dropdown options from enum
 const formatLabel = (value) => {
-  if (!value) return '';
-  const withSpaces = value.replace(/_/g, ' ');
-  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
-};
+  if (!value) return ''
+  const withSpaces = value.replace(/_/g, ' ')
+  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1)
+}
 
 DROPDOWN_OPTIONS.asset_class = [
   { value: '', label: 'All' },
-  ...ASSET_CLASSES.map((ac) => ({ value: ac, label: formatLabel(ac) }))
-];
+  ...ASSET_CLASSES.map((ac) => ({ value: ac, label: formatLabel(ac) })),
+]
 
 /**
  * Column definitions for the assets table.
- * 
+ *
  * Properties:
  * - key: DB column name (used as unique identifier)
  * - label: UI-friendly display name
@@ -78,7 +78,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: false,
     sortable: true,
     apiFilterKey: 'id',
-    apiExactMatch: true
+    apiExactMatch: true,
   },
   symbol: {
     key: 'symbol',
@@ -88,7 +88,7 @@ export const ASSET_COLUMNS = {
     sortable: true,
     props: { className: 'fw-semibold' },
     apiFilterKey: 'symbol_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   name: {
     key: 'name',
@@ -97,7 +97,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'name_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   class_name: {
     key: 'class_name',
@@ -106,7 +106,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'class_name_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   class_type: {
     key: 'class_type',
@@ -116,7 +116,7 @@ export const ASSET_COLUMNS = {
     sortable: false,
     render: 'badge',
     apiFilterKey: 'class_type',
-    apiExactMatch: true
+    apiExactMatch: true,
   },
   asset_class: {
     key: 'asset_class',
@@ -126,7 +126,7 @@ export const ASSET_COLUMNS = {
     sortable: false,
     render: 'badge',
     apiFilterKey: 'asset_class',
-    apiExactMatch: true
+    apiExactMatch: true,
   },
   exchange: {
     key: 'exchange',
@@ -135,7 +135,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'exchange_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   base_currency: {
     key: 'base_currency',
@@ -144,7 +144,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'base_currency_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   quote_currency: {
     key: 'quote_currency',
@@ -153,7 +153,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'quote_currency_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   country: {
     key: 'country',
@@ -162,7 +162,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'country_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   external_id: {
     key: 'external_id',
@@ -171,7 +171,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: false,
     sortable: true,
     apiFilterKey: 'external_id_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   primary_id: {
     key: 'primary_id',
@@ -180,7 +180,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: true,
     sortable: true,
     apiFilterKey: 'primary_id_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   primary_id_source: {
     key: 'primary_id_source',
@@ -190,7 +190,7 @@ export const ASSET_COLUMNS = {
     sortable: true,
     render: 'badge',
     apiFilterKey: 'primary_id_source',
-    apiExactMatch: true
+    apiExactMatch: true,
   },
   matcher_symbol: {
     key: 'matcher_symbol',
@@ -199,7 +199,7 @@ export const ASSET_COLUMNS = {
     defaultVisible: false,
     sortable: true,
     apiFilterKey: 'matcher_symbol_like',
-    apiExactMatch: false
+    apiExactMatch: false,
   },
   identity_conf: {
     key: 'identity_conf',
@@ -207,7 +207,7 @@ export const ASSET_COLUMNS = {
     filterType: FILTER_TYPES.NONE,
     defaultVisible: false,
     sortable: true,
-    render: 'number'
+    render: 'number',
   },
   identity_match_type: {
     key: 'identity_match_type',
@@ -217,7 +217,7 @@ export const ASSET_COLUMNS = {
     sortable: true,
     render: 'badge',
     apiFilterKey: 'identity_match_type',
-    apiExactMatch: true
+    apiExactMatch: true,
   },
   identity_updated_at: {
     key: 'identity_updated_at',
@@ -225,7 +225,7 @@ export const ASSET_COLUMNS = {
     filterType: FILTER_TYPES.NONE,
     defaultVisible: false,
     sortable: true,
-    render: 'date'
+    render: 'date',
   },
   asset_class_group: {
     key: 'asset_class_group',
@@ -235,57 +235,55 @@ export const ASSET_COLUMNS = {
     sortable: true,
     render: 'badge',
     apiFilterKey: 'asset_class_group',
-    apiExactMatch: true
+    apiExactMatch: true,
   },
   sym_norm_full: {
     key: 'sym_norm_full',
     label: 'Normalized Symbol',
     filterType: FILTER_TYPES.NONE,
     defaultVisible: false,
-    sortable: true
+    sortable: true,
   },
   sym_norm_root: {
     key: 'sym_norm_root',
     label: 'Root Symbol',
     filterType: FILTER_TYPES.NONE,
     defaultVisible: false,
-    sortable: true
-  }
-};
+    sortable: true,
+  },
+}
 
 /**
  * Get array of all column keys in display order.
  */
-export const getColumnKeys = () => Object.keys(ASSET_COLUMNS);
+export const getColumnKeys = () => Object.keys(ASSET_COLUMNS)
 
 /**
  * Get array of column keys that are visible by default.
  */
-export const getDefaultVisibleColumns = () => 
+export const getDefaultVisibleColumns = () =>
   Object.values(ASSET_COLUMNS)
-    .filter(col => col.defaultVisible)
-    .map(col => col.key);
+    .filter((col) => col.defaultVisible)
+    .map((col) => col.key)
 
 /**
  * Get array of column keys that use text input filtering.
  */
 export const getTextFilterKeys = () =>
   Object.values(ASSET_COLUMNS)
-    .filter(col => col.filterType === FILTER_TYPES.TEXT)
-    .map(col => col.key);
+    .filter((col) => col.filterType === FILTER_TYPES.TEXT)
+    .map((col) => col.key)
 
 /**
  * Get dropdown options for a specific column.
  * @param {string} columnKey - The column key
  * @returns {Array|null} - Array of {value, label} options or null if not dropdown
  */
-export const getDropdownOptions = (columnKey) => 
-  DROPDOWN_OPTIONS[columnKey] || null;
+export const getDropdownOptions = (columnKey) => DROPDOWN_OPTIONS[columnKey] || null
 
 /**
  * Get column configuration by key.
  * @param {string} columnKey - The column key
  * @returns {Object|null} - Column config object or null if not found
  */
-export const getColumnConfig = (columnKey) => 
-  ASSET_COLUMNS[columnKey] || null;
+export const getColumnConfig = (columnKey) => ASSET_COLUMNS[columnKey] || null
