@@ -106,14 +106,14 @@ async def test_live_gatekeeper_filters_closed_markets(mock_calendar, datahub_wit
     # Add the mock provider to the hub
     hub._providers["MockLive"] = mock_live_provider
 
-    # Mock: AAPL (XNAS) is closed, BTC (CRYPTO) is open
+    # Mock: AAPL (XNAS) is closed, BTC (no exchange) is open
     def mock_is_open(mic):
-        return mic == "CRYPTO"
+        return mic is None
     mock_calendar.is_open_now.side_effect = mock_is_open
 
     # Symbols and MICs
     symbols = ["AAPL", "BTC/USD"]
-    exchanges = ["XNAS", "CRYPTO"]
+    exchanges = ["XNAS", None]
 
     # Mock _insert_bars to do nothing
     with patch.object(hub, '_insert_bars', new_callable=AsyncMock):

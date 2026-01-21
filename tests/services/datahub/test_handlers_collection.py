@@ -345,7 +345,7 @@ class TestGetData:
         hub._providers["TestLiveProvider"] = mock_provider_live
 
         with patch.object(hub, '_insert_bars', new_callable=AsyncMock):
-            await hub.get_data("TestLiveProvider", "1h", ["TEST"], ["CRYPTO"])
+            await hub.get_data("TestLiveProvider", "1h", ["TEST"], [None])
 
             hub._insert_bars.assert_called()
 
