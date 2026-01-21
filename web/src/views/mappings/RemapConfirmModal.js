@@ -8,6 +8,7 @@ import {
   CModalFooter,
   CButton,
   CSpinner,
+  CAlert,
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSync, cilWarning, cilCheckCircle } from '@coreui/icons'
@@ -181,7 +182,7 @@ const RemapConfirmModal = ({
               <li>Asset Class: {assetClassFilter}</li>
             )}
             {!providerFilter && !assetClassFilter && (
-              <li className="text-warning">No filters - all mappings will be affected</li>
+              <li className="text-warning-emphasis">No filters - all mappings will be affected</li>
             )}
           </ul>
         </div>
@@ -196,9 +197,10 @@ const RemapConfirmModal = ({
 
         {/* Preview error */}
         {previewError && (
-          <div className="text-danger mb-3">
+          <CAlert color="danger" className="d-flex align-items-center mb-3">
+            <CIcon icon={cilWarning} className="me-2 flex-shrink-0" />
             Failed to load preview: {previewError}
-          </div>
+          </CAlert>
         )}
 
         {/* Preview data with filter summary and mappings count */}
