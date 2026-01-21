@@ -27,7 +27,7 @@ import {
 } from '@coreui/react-pro'
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilLockLocked, cilChartLine, cilClock, cilStorage } from '@coreui/icons'
-import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies, getSecretKeys, updateSecrets } from '../services/registry_api'
+import { getProviderConfig, updateProviderConfig, getAvailableQuoteCurrencies, getSecretKeys, updateSecrets, remapAssetMappings } from '../services/registry_api'
 import RemapPromptModal from './RemapPromptModal'
 
 // Default values for live provider scheduling
@@ -368,11 +368,23 @@ const ProviderConfigModal = ({ visible, onClose, classType, className, classSubt
   // Handler when user confirms re-map from the prompt modal
   const handleRemapConfirm = async () => {
     setIsRemapping(true)
-    // T023 will wire this to actually call remapAssetMappings()
-    // For now, just close and reset
-    setIsRemapping(false)
-    setShowRemapPrompt(false)
-    handleClose()
+    try {
+      await remapAssetMappings({
+        class_name: className,
+        class_type: classType,
+        asset_class: 'crypto'
+      })
+      // T024 will add success toast notification here
+      setShowRemapPrompt(false)
+      handleClose()
+    } catch (err) {
+      console.error('Failed to re-map asset mappings:', err)
+      // T024 will add error toast notification here
+      setShowRemapPrompt(false)
+      handleClose()
+    } finally {
+      setIsRemapping(false)
+    }
   }
 
   // Handler when user declines re-map from the prompt modal
