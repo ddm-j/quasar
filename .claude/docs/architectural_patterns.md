@@ -95,11 +95,11 @@ Function-level async timeout enforcement:
 
 ## Trading Calendar Abstraction
 
-Pluggable calendars for different asset classes:
+Pluggable calendars for different asset classes. Assets without an exchange (e.g., crypto)
+default to "always open" behavior:
 
-- `CryptoCalendar` (24/7): `quasar/lib/common/calendar.py:33-67`
-- `ForexCalendar` (24/5): `quasar/lib/common/calendar.py:70-119`
-- Registration: `quasar/lib/common/calendar.py:122-126`
+- `ForexCalendar` (24/5): `quasar/lib/common/calendar.py:21-79`
+- Registration: `quasar/lib/common/calendar.py:81-85`
 
 ## Matcher & Mapper Pattern
 

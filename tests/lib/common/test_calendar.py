@@ -5,17 +5,6 @@ import pandas as pd
 import pytz
 from quasar.lib.common.calendar import TradingCalendar
 
-def test_is_open_now_crypto():
-    """Verify that CRYPTO is always open."""
-    assert TradingCalendar.is_open_now("CRYPTO") is True
-
-def test_is_session_crypto():
-    """Verify that CRYPTO has a session every day."""
-    # A weekend
-    assert TradingCalendar.is_session("CRYPTO", date(2025, 12, 20)) is True
-    # A holiday
-    assert TradingCalendar.is_session("CRYPTO", date(2025, 12, 25)) is True
-
 def test_is_session_nyse_holiday():
     """Verify that NYSE correctly identifies holidays."""
     # Christmas 2025 (Thursday)
