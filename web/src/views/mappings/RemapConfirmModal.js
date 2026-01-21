@@ -109,13 +109,41 @@ const RemapConfirmModal = ({
           </div>
         )}
 
-        {/* Preview data placeholder - will be expanded in T030 */}
+        {/* Preview data with filter summary and mappings count */}
         {preview && !loading && (
           <div className="mb-3">
-            <strong>Preview:</strong>
-            <p className="text-body-secondary mt-2 mb-0">
-              {preview.mappings_to_delete} mapping(s) will be deleted and regenerated.
-            </p>
+            <strong>Impact Summary:</strong>
+            <div
+              className="mt-2 p-3 rounded"
+              style={{ backgroundColor: 'var(--cui-tertiary-bg)' }}
+            >
+              {/* Mappings count - prominently displayed */}
+              <div className="d-flex align-items-center mb-2">
+                <span className="fs-4 fw-semibold text-warning me-2">
+                  {preview.mappings_to_delete}
+                </span>
+                <span className="text-body-secondary">
+                  mapping{preview.mappings_to_delete !== 1 ? 's' : ''} will be deleted and regenerated
+                </span>
+              </div>
+
+              {/* Filter summary from server response */}
+              {preview.filter_applied && Object.keys(preview.filter_applied).length > 0 && (
+                <div className="small text-body-secondary">
+                  <span className="fw-medium">Filters: </span>
+                  {preview.filter_applied.class_name && (
+                    <span className="me-2">
+                      Provider: <span className="text-body">{preview.filter_applied.class_name}</span>
+                    </span>
+                  )}
+                  {preview.filter_applied.asset_class && (
+                    <span>
+                      Asset Class: <span className="text-body">{preview.filter_applied.asset_class}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </CModalBody>
