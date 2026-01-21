@@ -554,3 +554,74 @@ class IndexHistoryChange(BaseModel):
 class IndexHistoryResponse(BaseModel):
     """Response model for GET /api/registry/indices/{name}/history endpoint."""
     changes: List[IndexHistoryChange]
+
+
+# =============================================================================
+# Asset Re-Mapping Schemas
+# =============================================================================
+
+class AssetMappingRemapRequest(BaseModel):
+    """Request model for POST /api/registry/asset-mappings/re-map endpoint.
+
+    Filter parameters for the re-map operation. At least one filter should be
+    specified to avoid re-mapping all mappings.
+    """
+    class_name: Optional[str] = Field(
+        default=None,
+        description="Provider name to filter by. If omitted, all providers are included."
+    )
+    class_type: Optional[ClassType] = Field(
+        default=None,
+        description="Required when class_name is specified."
+    )
+    asset_class: Optional[str] = Field(
+        default=None,
+        description="Asset class to filter by. If omitted, all asset classes are included."
+    )
+
+
+class AssetMappingRemapPreview(BaseModel):
+    """Response model for GET /api/registry/asset-mappings/re-map/preview endpoint.
+
+    Preview of the impact of a re-map operation.
+    """
+    mappings_to_delete: int = Field(
+        ..., description="Number of mappings that will be deleted."
+    )
+    providers_affected: List[str] = Field(
+        ..., description="List of provider names whose mappings will be re-generated."
+    )
+    affected_indices: List[str] = Field(
+        ..., description="Names of user indices that may lose members due to common_symbol deletion."
+    )
+    filter_applied: Dict[str, Any] = Field(
+        ..., description="Echo of the filter parameters that were applied."
+    )
+
+
+class AssetMappingRemapResponse(BaseModel):
+    """Response model for POST /api/registry/asset-mappings/re-map endpoint.
+
+    Result of the re-map operation.
+    """
+    status: Literal["success", "no_mappings"] = Field(
+        ..., description="Outcome of the operation."
+    )
+    deleted_mappings: int = Field(
+        ..., description="Number of mappings that were deleted."
+    )
+    created_mappings: int = Field(
+        ..., description="Number of new mappings that were created."
+    )
+    skipped_mappings: int = Field(
+        ..., description="Number of mappings that already existed (edge case after delete)."
+    )
+    failed_mappings: int = Field(
+        ..., description="Number of mappings that failed to create."
+    )
+    providers_affected: List[str] = Field(
+        ..., description="List of providers that were re-mapped."
+    )
+    affected_indices: List[str] = Field(
+        ..., description="User indices that lost members due to common_symbol deletion."
+    )
