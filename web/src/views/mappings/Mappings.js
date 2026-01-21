@@ -64,6 +64,7 @@ const Mappings = () => {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isSuggestModalVisible, setIsSuggestModalVisible] = useState(false);
+  const [isRemapModalVisible, setIsRemapModalVisible] = useState(false);
   const [currentMapping, setCurrentMapping] = useState(null);
   const [toastToShow, setToastToShow] = useState(null);
   const toasterRef = useRef(null);
@@ -358,6 +359,9 @@ const Mappings = () => {
                     </CButton>
                     <CButton color="success" onClick={() => setIsSuggestModalVisible(true)}>
                       Suggest Mappings
+                    </CButton>
+                    <CButton color="warning" onClick={() => setIsRemapModalVisible(true)}>
+                      Re-map Filtered
                     </CButton>
                   </CCol>
                 </CRow>
