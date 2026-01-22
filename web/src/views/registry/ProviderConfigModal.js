@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import {
   CModal,
@@ -115,6 +115,17 @@ const ProviderConfigModal = ({
   // Ref to track which provider's secret keys have been loaded
   const secretKeysLoadedRef = useRef(null)
 
+  // Ref to track mounted state for async cleanup
+  const isMountedRef = useRef(false)
+
+  // Setup mounted ref lifecycle
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   // Load configuration and available currencies when modal opens
   useEffect(() => {
     if (visible && classType && className) {
@@ -125,7 +136,7 @@ const ProviderConfigModal = ({
       loadConfiguration()
       loadAvailableCurrencies()
     }
-  }, [visible, classType, className])
+  }, [visible, classType, className, loadConfiguration, loadAvailableCurrencies])
 
   // Load secret keys when API tab is activated
   useEffect(() => {
@@ -140,13 +151,17 @@ const ProviderConfigModal = ({
       secretKeysLoadedRef.current = providerKey
       loadSecretKeys()
     }
-  }, [visible, activeTab, classType, className])
+  }, [visible, activeTab, classType, className, loadSecretKeys])
 
-  const loadConfiguration = async () => {
+  const loadConfiguration = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     setLoading(true)
     setError('')
     try {
       const response = await getProviderConfig(classType, className)
+      if (!isMountedRef.current) return
+
       const prefs = response.preferences || {}
       const cryptoPrefs = prefs.crypto || { preferred_quote_currency: null }
       setConfig({
@@ -165,6 +180,8 @@ const ProviderConfigModal = ({
       setOriginalQuotePreference(cryptoPrefs.preferred_quote_currency)
     } catch (err) {
       console.error('Failed to load provider configuration:', err)
+      if (!isMountedRef.current) return
+
       setError(`Failed to load configuration: ${err.message}`)
       // Set default empty config on error
       setConfig({
@@ -180,25 +197,37 @@ const ProviderConfigModal = ({
         },
       })
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
-  }
+  }, [classType, className])
 
-  const loadAvailableCurrencies = async () => {
+  const loadAvailableCurrencies = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     try {
       const response = await getAvailableQuoteCurrencies(classType, className)
+      if (!isMountedRef.current) return
+
       setAvailableCurrencies(response.available_quote_currencies || [])
     } catch (err) {
       console.error('Failed to load available quote currencies:', err)
-      setAvailableCurrencies([])
+      if (isMountedRef.current) {
+        setAvailableCurrencies([])
+      }
     }
-  }
+  }, [classType, className])
 
-  const loadSecretKeys = async () => {
+  const loadSecretKeys = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     setLoadingSecrets(true)
     setSecretsError('')
     try {
       const response = await getSecretKeys(classType, className)
+      if (!isMountedRef.current) return
+
       const keys = response.keys || []
       setSecretKeys(keys)
       // Initialize empty values for each key
@@ -209,14 +238,20 @@ const ProviderConfigModal = ({
       setSecretValues(initialValues)
     } catch (err) {
       console.error('Failed to load secret keys:', err)
+      if (!isMountedRef.current) return
+
       setSecretsError(`Failed to load secret keys: ${err.message}`)
       setSecretKeys([])
     } finally {
-      setLoadingSecrets(false)
+      if (isMountedRef.current) {
+        setLoadingSecrets(false)
+      }
     }
-  }
+  }, [classType, className])
 
   const handleSave = async () => {
+    if (!isMountedRef.current) return
+
     setSaving(true)
     setError('')
     try {
@@ -244,7 +279,8 @@ const ProviderConfigModal = ({
         }
       }
 
-      const response = await updateProviderConfig(classType, className, updateData)
+      await updateProviderConfig(classType, className, updateData)
+      if (!isMountedRef.current) return
 
       if (displayToast) {
         displayToast({
@@ -265,9 +301,13 @@ const ProviderConfigModal = ({
       }
     } catch (err) {
       console.error('Failed to update provider configuration:', err)
+      if (!isMountedRef.current) return
+
       setError(`Failed to save configuration: ${err.message}`)
     } finally {
-      setSaving(false)
+      if (isMountedRef.current) {
+        setSaving(false)
+      }
     }
   }
 
@@ -311,11 +351,15 @@ const ProviderConfigModal = ({
   }
 
   const handleConfirmUpdateSecrets = async () => {
+    if (!isMountedRef.current) return
+
     setShowConfirmDialog(false)
     setSavingSecrets(true)
     setSecretsError('')
     try {
       await updateSecrets(classType, className, secretValues)
+      if (!isMountedRef.current) return
+
       if (displayToast) {
         displayToast({
           title: 'Credentials Updated',
@@ -332,9 +376,13 @@ const ProviderConfigModal = ({
       setSecretValues(clearedValues)
     } catch (err) {
       console.error('Failed to update secrets:', err)
+      if (!isMountedRef.current) return
+
       setSecretsError(`Failed to update credentials: ${err.message}`)
     } finally {
-      setSavingSecrets(false)
+      if (isMountedRef.current) {
+        setSavingSecrets(false)
+      }
     }
   }
 
@@ -391,6 +439,8 @@ const ProviderConfigModal = ({
 
   // Handler when user confirms re-map from the prompt modal
   const handleRemapConfirm = async () => {
+    if (!isMountedRef.current) return
+
     setIsRemapping(true)
     setRemapError(null)
     try {
@@ -399,6 +449,8 @@ const ProviderConfigModal = ({
         class_type: classType,
         asset_class: 'crypto',
       })
+      if (!isMountedRef.current) return
+
       if (displayToast) {
         displayToast({
           title: 'Crypto Mappings Re-mapped',
@@ -411,10 +463,14 @@ const ProviderConfigModal = ({
       handleClose()
     } catch (err) {
       console.error('Failed to re-map asset mappings:', err)
+      if (!isMountedRef.current) return
+
       // Store error for display in the modal with retry option
       setRemapError(err.message || 'Re-map operation failed. Please try again.')
     } finally {
-      setIsRemapping(false)
+      if (isMountedRef.current) {
+        setIsRemapping(false)
+      }
     }
   }
 

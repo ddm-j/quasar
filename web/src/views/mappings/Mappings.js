@@ -43,19 +43,19 @@ import {
 // Utils
 import { getClassBadge, getActiveBadge } from '../../utils/badgeHelpers'
 
-// Asset class options for filtering (matches backend enums.py)
+// Enums
+import { ASSET_CLASSES } from '../../enums'
+
+// Generate asset class options from enum (matches backend enums.py)
+const formatLabel = (value) => {
+  if (!value) return ''
+  const withSpaces = value.replace(/_/g, ' ')
+  return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1)
+}
+
 const ASSET_CLASS_OPTIONS = [
   { label: 'All Asset Classes', value: '' },
-  { label: 'Equity', value: 'equity' },
-  { label: 'Fund', value: 'fund' },
-  { label: 'ETF', value: 'etf' },
-  { label: 'Bond', value: 'bond' },
-  { label: 'Crypto', value: 'crypto' },
-  { label: 'Currency', value: 'currency' },
-  { label: 'Future', value: 'future' },
-  { label: 'Option', value: 'option' },
-  { label: 'Index', value: 'index' },
-  { label: 'Commodity', value: 'commodity' },
+  ...ASSET_CLASSES.map((ac) => ({ value: ac, label: formatLabel(ac) })),
 ]
 
 const Mappings = () => {

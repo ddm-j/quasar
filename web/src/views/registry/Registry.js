@@ -32,7 +32,6 @@ const Registry = () => {
     try {
       const response = await getRegisteredClasses()
       setClasses(response)
-      console.log('Registered classes:', response)
     } catch (error) {
       setError(null)
       console.error('Error fetching registered classes:', error)
@@ -68,7 +67,6 @@ const Registry = () => {
   }
 
   const handleRefreshComponents = () => {
-    console.log('Refreshing components (re-fetching classes)...')
     fetchClasses()
   }
 
@@ -163,15 +161,9 @@ const Registry = () => {
     }
 
     setUploading(true)
-    console.log(`Submitting code upload for ${classType}:`, {
-      fileName: file.name,
-      secretsCount: secrets.length,
-    })
-    console.log('Secrets:', secrets)
 
     try {
       const responseData = await uploadCode(classType, file, secrets)
-      console.log('Upload successful:', responseData)
       displayToast({
         // Use displayToast
         title: 'Upload Success',

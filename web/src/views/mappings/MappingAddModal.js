@@ -104,7 +104,6 @@ const MappingAddModal = ({ visible, onClose, onSuccess, pushToast }) => {
           // name_like: inputValue,
           limit: 50,
         }
-        console.log('Loading symbols with params:', params)
         const assetData = await getAssets(params)
 
         // Format the Options

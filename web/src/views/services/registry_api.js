@@ -362,8 +362,6 @@ export const getAssets = async (params = {}) => {
   const queryString = queryParams.toString()
   const url = `${API_BASE}assets${queryString ? `?${queryString}` : ''}`
 
-  console.log('Fetching assets with URL:', url) // For debugging
-
   const response = await fetch(url, {
     method: 'GET',
     headers: {

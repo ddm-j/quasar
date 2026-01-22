@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import PropTypes from 'prop-types'
 import {
   CModal,
@@ -33,6 +33,17 @@ const RemapConfirmModal = ({
   const [remapResult, setRemapResult] = useState(null)
   const [remapError, setRemapError] = useState(null)
 
+  // Ref to track mounted state for async cleanup
+  const isMountedRef = useRef(false)
+
+  // Setup mounted ref lifecycle
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   // Fetch preview when modal becomes visible
   useEffect(() => {
     if (!visible) {
@@ -46,6 +57,8 @@ const RemapConfirmModal = ({
     }
 
     const fetchPreview = async () => {
+      if (!isMountedRef.current) return
+
       setLoading(true)
       setPreviewError(null)
       try {
@@ -58,11 +71,17 @@ const RemapConfirmModal = ({
           params.asset_class = assetClassFilter
         }
         const data = await getRemapPreview(params)
+        if (!isMountedRef.current) return
+
         setPreview(data)
       } catch (err) {
+        if (!isMountedRef.current) return
+
         setPreviewError(err.message || 'Failed to fetch preview')
       } finally {
-        setLoading(false)
+        if (isMountedRef.current) {
+          setLoading(false)
+        }
       }
     }
 
@@ -71,6 +90,8 @@ const RemapConfirmModal = ({
 
   // Handle confirm button click - call remapAssetMappings and show result summary
   const handleConfirm = async () => {
+    if (!isMountedRef.current) return
+
     setRemapping(true)
     setRemapError(null)
     try {
@@ -83,16 +104,22 @@ const RemapConfirmModal = ({
         params.asset_class = assetClassFilter
       }
       const result = await remapAssetMappings(params)
+      if (!isMountedRef.current) return
+
       // Store result to show completion summary
       setRemapResult(result)
       // Pass the result to parent for toast notification and refresh
       onConfirm(result)
     } catch (err) {
+      console.error('Re-map failed:', err)
+      if (!isMountedRef.current) return
+
       // Store error for display in the modal
       setRemapError(err.message || 'Re-map operation failed. Please try again.')
-      console.error('Re-map failed:', err)
     } finally {
-      setRemapping(false)
+      if (isMountedRef.current) {
+        setRemapping(false)
+      }
     }
   }
 

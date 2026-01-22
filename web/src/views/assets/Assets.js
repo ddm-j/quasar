@@ -310,16 +310,8 @@ const Assets = () => {
       }
     }
 
-    console.log(
-      `[Assets.js] fetchAssetsData: For activePage=${activePage}, itemsPerPage=${itemsPerPage}. Requesting with API params: ${JSON.stringify(apiParams)}`,
-    )
-
     try {
       const data = await getAssets(apiParams)
-      console.log(
-        `[Assets.js] fetchAssetsData: API Response for page ${activePage}: items_count=${data.items?.length}, total_items_from_api=${data.total_items}`,
-      )
-
       setAssets(data.items || [])
       setTotalItems(data.total_items || 0)
     } catch (err) {
@@ -360,9 +352,6 @@ const Assets = () => {
 
   useEffect(() => {
     setError(null)
-    console.log(
-      `[Assets.js] useEffect: Triggering fetch. Current state: activePage=${activePage}, itemsPerPage=${itemsPerPage}, sorter=${JSON.stringify(sorter)}, columnFilter=${JSON.stringify(columnFilter)}`,
-    )
     fetchAssetsData()
   }, [activePage, itemsPerPage, sorter, columnFilter])
 
@@ -370,16 +359,11 @@ const Assets = () => {
 
   const handleItemsPerPageChange = (event) => {
     const newSize = parseInt(event.target.value, 10)
-    console.log(
-      `[Assets.js] handleItemsPerPageChange: newSize=${newSize}. Current itemsPerPage state is ${itemsPerPage}.`,
-    )
     setActivePage(1)
     setItemsPerPage(newSize)
   }
 
   const handleSorterChange = (sorterData) => {
-    console.log('[Assets.js] handleSorterChange:', sorterData)
-
     // CSmartTable provides SorterValue: { column: string, state: 'asc' | 'desc' | 0 }
     // When resetable=true, state can be 0 (null/cleared) on third click
 
