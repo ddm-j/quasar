@@ -1447,3 +1447,304 @@ class TestRenameCommonSymbol:
         # Verify transaction context manager was entered and exited
         txn.__aenter__.assert_awaited_once()
         txn.__aexit__.assert_awaited_once()
+
+
+class TestRemapPreview:
+    """Tests for handle_remap_preview endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_remap_preview_single_provider(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test preview with single provider filter returns expected counts."""
+        reg = registry_with_mocks
+
+        # Mock count query result (12 mappings for KRAKEN provider)
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=12)
+
+        # Mock providers_affected query result
+        provider_records = [MockRecord(class_name="KRAKEN")]
+        # Mock affected indices query result (empty)
+        index_records = []
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            provider_records,  # First fetch call: providers query
+            index_records,     # Second fetch call: affected indices query
+        ])
+
+        response = await reg.handle_remap_preview(
+            class_name="KRAKEN",
+            class_type="provider",
+            asset_class=None
+        )
+
+        assert response.mappings_to_delete == 12
+        assert response.providers_affected == ["KRAKEN"]
+        assert response.affected_indices == []
+        assert response.filter_applied == {"class_name": "KRAKEN", "class_type": "provider"}
+
+    @pytest.mark.asyncio
+    async def test_remap_preview_asset_class_filter(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test preview with asset_class filter returns filtered results."""
+        reg = registry_with_mocks
+
+        # Mock count query result (47 crypto mappings)
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=47)
+
+        # Mock providers_affected query result (multiple providers)
+        # The query has ORDER BY class_name, so return in sorted order
+        provider_records = [
+            MockRecord(class_name="EODHD"),
+            MockRecord(class_name="KRAKEN"),
+        ]
+        # Mock affected indices (none)
+        index_records = []
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            provider_records,
+            index_records,
+        ])
+
+        response = await reg.handle_remap_preview(
+            class_name=None,
+            class_type=None,
+            asset_class="crypto"
+        )
+
+        assert response.mappings_to_delete == 47
+        assert response.providers_affected == ["EODHD", "KRAKEN"]  # Sorted by query
+        assert response.affected_indices == []
+        assert response.filter_applied == {"asset_class": "crypto"}
+
+    @pytest.mark.asyncio
+    async def test_remap_preview_affected_indices(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test preview identifies user indices that would be affected."""
+        reg = registry_with_mocks
+
+        # Mock count query result
+        mock_asyncpg_conn.fetchval = AsyncMock(return_value=25)
+
+        # Mock providers_affected query result
+        provider_records = [MockRecord(class_name="KRAKEN")]
+        # Mock affected indices query result (2 indices would be affected)
+        index_records = [
+            MockRecord(index_class_name="MyPortfolio"),
+            MockRecord(index_class_name="CryptoBasket"),
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            provider_records,
+            index_records,
+        ])
+
+        response = await reg.handle_remap_preview(
+            class_name="KRAKEN",
+            class_type="provider",
+            asset_class="crypto"
+        )
+
+        assert response.mappings_to_delete == 25
+        assert response.providers_affected == ["KRAKEN"]
+        assert response.affected_indices == ["MyPortfolio", "CryptoBasket"]
+        assert response.filter_applied == {
+            "class_name": "KRAKEN",
+            "class_type": "provider",
+            "asset_class": "crypto"
+        }
+
+    @pytest.mark.asyncio
+    async def test_remap_preview_class_name_without_class_type_raises_400(
+        self, registry_with_mocks
+    ):
+        """Test 400 error when class_name is provided without class_type."""
+        reg = registry_with_mocks
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_remap_preview(
+                class_name="KRAKEN",
+                class_type=None,
+                asset_class=None
+            )
+
+        assert exc_info.value.status_code == 400
+        assert "class_type is required" in exc_info.value.detail
+
+
+class TestRemapExecute:
+    """Tests for handle_remap_assets endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_remap_execute_single_provider(
+        self, registry_with_mocks, mock_asyncpg_conn, mock_asyncpg_pool
+    ):
+        """Test remap execution deletes and regenerates mappings for single provider."""
+        reg = registry_with_mocks
+
+        # Setup transaction mock
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # Mock affected indices query (empty)
+        index_records = []
+
+        # Mock deleted rows (5 mappings deleted)
+        deleted_rows = [
+            MockRecord(common_symbol="BTCUSD", class_name="KRAKEN", class_type="provider", class_symbol="BTC/USD"),
+            MockRecord(common_symbol="ETHUSD", class_name="KRAKEN", class_type="provider", class_symbol="ETH/USD"),
+            MockRecord(common_symbol="XRPUSD", class_name="KRAKEN", class_type="provider", class_symbol="XRP/USD"),
+            MockRecord(common_symbol="ADAUSD", class_name="KRAKEN", class_type="provider", class_symbol="ADA/USD"),
+            MockRecord(common_symbol="DOTUSD", class_name="KRAKEN", class_type="provider", class_symbol="DOT/USD"),
+        ]
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            index_records,   # affected indices query
+            deleted_rows,    # DELETE ... RETURNING query
+        ])
+
+        # Mock AutomatedMapper.generate_mapping_candidates_for_provider
+        from unittest.mock import patch
+        from quasar.services.registry.mapper import MappingCandidate
+
+        mock_candidates = [
+            MappingCandidate(
+                common_symbol="BTCUSD", class_name="KRAKEN",
+                class_type="provider", class_symbol="BTC/USD",
+                primary_id="BTC", asset_class_group="crypto",
+                reasoning="Symbol match"
+            ),
+            MappingCandidate(
+                common_symbol="ETHUSD", class_name="KRAKEN",
+                class_type="provider", class_symbol="ETH/USD",
+                primary_id="ETH", asset_class_group="crypto",
+                reasoning="Symbol match"
+            ),
+        ]
+
+        # Mock _apply_automated_mappings return
+        with patch.object(
+            reg, '_apply_automated_mappings',
+            AsyncMock(return_value={'created': 2, 'skipped': 0, 'failed': 0})
+        ):
+            with patch(
+                'quasar.services.registry.handlers.mappings.AutomatedMapper'
+            ) as MockMapper:
+                mock_mapper_instance = AsyncMock()
+                mock_mapper_instance.generate_mapping_candidates_for_provider = AsyncMock(
+                    return_value=mock_candidates
+                )
+                MockMapper.return_value = mock_mapper_instance
+
+                from quasar.services.registry.schemas import AssetMappingRemapRequest
+                request = AssetMappingRemapRequest(
+                    class_name="KRAKEN",
+                    class_type="provider",
+                    asset_class=None
+                )
+
+                response = await reg.handle_remap_assets(request)
+
+        assert response.status == "success"
+        assert response.deleted_mappings == 5
+        assert response.created_mappings == 2
+        assert response.skipped_mappings == 0
+        assert response.failed_mappings == 0
+        assert response.providers_affected == ["KRAKEN"]
+        assert response.affected_indices == []
+
+    @pytest.mark.asyncio
+    async def test_remap_execute_no_matching_mappings(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test remap with no matching mappings returns no_mappings status."""
+        reg = registry_with_mocks
+
+        # Setup transaction mock
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # Mock affected indices query (empty)
+        index_records = []
+        # Mock deleted rows (none - empty result)
+        deleted_rows = []
+
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            index_records,
+            deleted_rows,
+        ])
+
+        from quasar.services.registry.schemas import AssetMappingRemapRequest
+        request = AssetMappingRemapRequest(
+            class_name="NONEXISTENT",
+            class_type="provider",
+            asset_class=None
+        )
+
+        response = await reg.handle_remap_assets(request)
+
+        assert response.status == "no_mappings"
+        assert response.deleted_mappings == 0
+        assert response.created_mappings == 0
+        assert response.skipped_mappings == 0
+        assert response.failed_mappings == 0
+        assert response.providers_affected == []
+        assert response.affected_indices == []
+
+    @pytest.mark.asyncio
+    async def test_remap_execute_rollback_on_error(
+        self, registry_with_mocks, mock_asyncpg_conn
+    ):
+        """Test remap operation rolls back on database error."""
+        reg = registry_with_mocks
+
+        # Setup transaction mock
+        txn = mock_asyncpg_conn.transaction.return_value
+        txn.__aenter__ = AsyncMock(return_value=None)
+        txn.__aexit__ = AsyncMock(return_value=None)
+
+        # First fetch succeeds (affected indices)
+        # Second fetch fails with database error
+        mock_asyncpg_conn.fetch = AsyncMock(side_effect=[
+            [],  # affected indices query succeeds
+            Exception("Database connection lost"),  # DELETE query fails
+        ])
+
+        from quasar.services.registry.schemas import AssetMappingRemapRequest
+        request = AssetMappingRemapRequest(
+            class_name="KRAKEN",
+            class_type="provider",
+            asset_class=None
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_remap_assets(request)
+
+        assert exc_info.value.status_code == 500
+        assert "rolled back" in exc_info.value.detail.lower()
+        # Verify transaction context manager was properly exited (rollback)
+        txn.__aexit__.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_remap_execute_class_name_without_class_type_raises_400(
+        self, registry_with_mocks
+    ):
+        """Test 400 error when class_name is provided without class_type."""
+        reg = registry_with_mocks
+
+        from quasar.services.registry.schemas import AssetMappingRemapRequest
+        request = AssetMappingRemapRequest(
+            class_name="KRAKEN",
+            class_type=None,
+            asset_class=None
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await reg.handle_remap_assets(request)
+
+        assert exc_info.value.status_code == 400
+        assert "class_type is required" in exc_info.value.detail

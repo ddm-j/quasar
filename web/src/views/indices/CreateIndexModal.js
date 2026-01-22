@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   CModal,
   CModalHeader,
@@ -12,80 +12,76 @@ import {
   CFormTextarea,
   CSpinner,
   CAlert,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilWarning } from '@coreui/icons';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilWarning } from '@coreui/icons'
 
-import { createUserIndex } from '../services/registry_api';
+import { createUserIndex } from '../services/registry_api'
 
 const CreateIndexModal = ({ visible, onClose, onSuccess, pushToast }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
 
   // Reset form when modal opens
   useEffect(() => {
     if (visible) {
-      setName('');
-      setDescription('');
-      setSaveError(null);
+      setName('')
+      setDescription('')
+      setSaveError(null)
     }
-  }, [visible]);
+  }, [visible])
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
     // Validate name
-    const trimmedName = name.trim();
+    const trimmedName = name.trim()
     if (!trimmedName) {
-      setSaveError('Index name is required.');
-      return;
+      setSaveError('Index name is required.')
+      return
     }
 
-    setIsSaving(true);
-    setSaveError(null);
+    setIsSaving(true)
+    setSaveError(null)
 
     try {
-      const data = { name: trimmedName };
+      const data = { name: trimmedName }
       if (description.trim()) {
-        data.description = description.trim();
+        data.description = description.trim()
       }
 
-      await createUserIndex(data);
+      await createUserIndex(data)
 
       if (pushToast) {
         pushToast({
           title: 'Index Created',
           body: `Index "${trimmedName}" has been created successfully.`,
           color: 'success',
-        });
+        })
       }
 
       if (onSuccess) {
-        onSuccess();
+        onSuccess()
       }
 
-      onClose();
+      onClose()
     } catch (err) {
-      setSaveError(err.message || 'Failed to create index.');
+      setSaveError(err.message || 'Failed to create index.')
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   const handleClose = () => {
     if (!isSaving) {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   return (
-    <CModal
-      visible={visible}
-      onClose={handleClose}
-      backdrop="static"
-    >
+    <CModal visible={visible} onClose={handleClose} backdrop="static">
       <CModalHeader onClose={handleClose}>
         <CModalTitle>Create New Index</CModalTitle>
       </CModalHeader>
@@ -113,9 +109,7 @@ const CreateIndexModal = ({ visible, onClose, onSuccess, pushToast }) => {
               maxLength={100}
               required
             />
-            <div className="form-text">
-              A unique name for your index (max 100 characters).
-            </div>
+            <div className="form-text">A unique name for your index (max 100 characters).</div>
           </div>
 
           <div className="mb-3">
@@ -132,18 +126,10 @@ const CreateIndexModal = ({ visible, onClose, onSuccess, pushToast }) => {
         </CModalBody>
 
         <CModalFooter>
-          <CButton
-            color="secondary"
-            onClick={handleClose}
-            disabled={isSaving}
-          >
+          <CButton color="secondary" onClick={handleClose} disabled={isSaving}>
             Cancel
           </CButton>
-          <CButton
-            color="primary"
-            type="submit"
-            disabled={isSaving || !name.trim()}
-          >
+          <CButton color="primary" type="submit" disabled={isSaving || !name.trim()}>
             {isSaving ? (
               <>
                 <CSpinner size="sm" className="me-1" />
@@ -156,7 +142,7 @@ const CreateIndexModal = ({ visible, onClose, onSuccess, pushToast }) => {
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
-export default CreateIndexModal;
+export default CreateIndexModal

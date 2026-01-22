@@ -1,5 +1,5 @@
 // API base path - uses relative URL for proxy compatibility (dev: Vite proxy, prod: nginx/ALB)
-const API_BASE = '/api/datahub/';
+const API_BASE = '/api/datahub/'
 
 /**
  * Safely parse JSON response with Content-Type validation.
@@ -9,22 +9,22 @@ const API_BASE = '/api/datahub/';
  */
 const parseJSONResponse = async (response) => {
   const contentType = response.headers.get('content-type')
-  
+
   // Read response as text first (response body can only be read once)
   const text = await response.text()
-  
+
   if (!contentType || !contentType.includes('application/json')) {
     throw new Error(
-      `Expected JSON response, got ${contentType || 'unknown content type'}. Response: ${text.substring(0, 200)}`
+      `Expected JSON response, got ${contentType || 'unknown content type'}. Response: ${text.substring(0, 200)}`,
     )
   }
-  
+
   // Try to parse the text as JSON
   try {
     return JSON.parse(text)
   } catch (err) {
     throw new Error(
-      `Failed to parse JSON response: ${err.message}. Response: ${text.substring(0, 200)}`
+      `Failed to parse JSON response: ${err.message}. Response: ${text.substring(0, 200)}`,
     )
   }
 }
@@ -83,14 +83,14 @@ const validateNumber = (value, name, min, max, required = false) => {
 export const searchSymbols = async (query, options = {}) => {
   // Validate inputs
   const validatedQuery = validateString(query, 'query', true)
-  
+
   const validatedOptions = {}
   if (options.data_type !== undefined) {
     validatedOptions.data_type = validateEnum(
-      options.data_type, 
-      'data_type', 
-      ['historical', 'live'], 
-      false
+      options.data_type,
+      'data_type',
+      ['historical', 'live'],
+      false,
     )
   }
   if (options.provider !== undefined) {
@@ -102,16 +102,16 @@ export const searchSymbols = async (query, options = {}) => {
 
   const params = new URLSearchParams({
     q: validatedQuery,
-  });
+  })
 
   if (validatedOptions.data_type) {
-    params.append('data_type', validatedOptions.data_type);
+    params.append('data_type', validatedOptions.data_type)
   }
   if (validatedOptions.provider) {
-    params.append('provider', validatedOptions.provider);
+    params.append('provider', validatedOptions.provider)
   }
   if (validatedOptions.limit !== undefined) {
-    params.append('limit', validatedOptions.limit.toString());
+    params.append('limit', validatedOptions.limit.toString())
   }
 
   const response = await fetch(`${API_BASE}symbols/search?${params.toString()}`, {
@@ -119,7 +119,7 @@ export const searchSymbols = async (query, options = {}) => {
     headers: {
       'Content-Type': 'application/json',
     },
-  });
+  })
 
   let data
   try {
@@ -133,12 +133,13 @@ export const searchSymbols = async (query, options = {}) => {
   }
 
   if (!response.ok) {
-    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
-    throw new Error(errorMessage);
+    const errorMessage =
+      data.detail || data.error || data.message || `HTTP error! status: ${response.status}`
+    throw new Error(errorMessage)
   }
 
-  return data;
-};
+  return data
+}
 
 /**
  * Retrieve OHLC data for a specific symbol/provider combination.
@@ -159,7 +160,7 @@ export const getOHLCData = async (provider, symbol, dataType, interval, options 
   const validatedSymbol = validateString(symbol, 'symbol', true)
   const validatedDataType = validateEnum(dataType, 'data_type', ['historical', 'live'], true)
   const validatedInterval = validateString(interval, 'interval', true)
-  
+
   // Validate optional inputs
   const validatedOptions = {}
   if (options.limit !== undefined) {
@@ -181,19 +182,19 @@ export const getOHLCData = async (provider, symbol, dataType, interval, options 
     symbol: validatedSymbol,
     data_type: validatedDataType,
     interval: validatedInterval,
-  });
+  })
 
   if (validatedOptions.limit !== undefined) {
-    params.append('limit', validatedOptions.limit.toString());
+    params.append('limit', validatedOptions.limit.toString())
   }
   if (validatedOptions.from_time !== undefined) {
-    params.append('from', validatedOptions.from_time.toString());
+    params.append('from', validatedOptions.from_time.toString())
   }
   if (validatedOptions.to_time !== undefined) {
-    params.append('to', validatedOptions.to_time.toString());
+    params.append('to', validatedOptions.to_time.toString())
   }
   if (validatedOptions.order) {
-    params.append('order', validatedOptions.order);
+    params.append('order', validatedOptions.order)
   }
 
   const response = await fetch(`${API_BASE}data?${params.toString()}`, {
@@ -201,7 +202,7 @@ export const getOHLCData = async (provider, symbol, dataType, interval, options 
     headers: {
       'Content-Type': 'application/json',
     },
-  });
+  })
 
   let data
   try {
@@ -215,12 +216,13 @@ export const getOHLCData = async (provider, symbol, dataType, interval, options 
   }
 
   if (!response.ok) {
-    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
-    throw new Error(errorMessage);
+    const errorMessage =
+      data.detail || data.error || data.message || `HTTP error! status: ${response.status}`
+    throw new Error(errorMessage)
   }
 
-  return data;
-};
+  return data
+}
 
 /**
  * Get detailed metadata for a specific symbol/provider combination.
@@ -233,27 +235,27 @@ export const getSymbolMetadata = async (provider, symbol, dataType = null) => {
   // Validate required inputs
   const validatedProvider = validateString(provider, 'provider', true)
   const validatedSymbol = validateString(symbol, 'symbol', true)
-  
+
   // Validate optional dataType
   if (dataType !== null && dataType !== undefined) {
     validateEnum(dataType, 'data_type', ['historical', 'live'], false)
   }
 
-  const params = new URLSearchParams();
+  const params = new URLSearchParams()
 
   if (dataType) {
-    params.append('data_type', dataType);
+    params.append('data_type', dataType)
   }
 
-  const queryString = params.toString();
-  const url = `${API_BASE}symbols/${encodeURIComponent(validatedProvider)}/${encodeURIComponent(validatedSymbol)}${queryString ? `?${queryString}` : ''}`;
+  const queryString = params.toString()
+  const url = `${API_BASE}symbols/${encodeURIComponent(validatedProvider)}/${encodeURIComponent(validatedSymbol)}${queryString ? `?${queryString}` : ''}`
 
   const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
-  });
+  })
 
   let data
   try {
@@ -267,10 +269,10 @@ export const getSymbolMetadata = async (provider, symbol, dataType = null) => {
   }
 
   if (!response.ok) {
-    const errorMessage = data.detail || data.error || data.message || `HTTP error! status: ${response.status}`;
-    throw new Error(errorMessage);
+    const errorMessage =
+      data.detail || data.error || data.message || `HTTP error! status: ${response.status}`
+    throw new Error(errorMessage)
   }
 
-  return data;
-};
-
+  return data
+}

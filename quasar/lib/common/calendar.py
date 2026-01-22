@@ -8,8 +8,8 @@ default to 'always open' behavior.
 import logging
 from datetime import datetime, date, time, timezone
 from typing import Optional, Dict
+from zoneinfo import ZoneInfo
 
-import pytz
 import pandas as pd
 import exchange_calendars as xcals
 from exchange_calendars import ExchangeCalendar, register_calendar_type
@@ -37,7 +37,7 @@ class ForexCalendar(ExchangeCalendar):
         Returns:
             datetime.tzinfo: The America/New_York timezone.
         """
-        return pytz.timezone("America/New_York")
+        return ZoneInfo("America/New_York")
 
     @property
     def open_times(self):

@@ -3,12 +3,7 @@ import PropTypes from 'prop-types'
 import { createChart } from 'lightweight-charts'
 import { getOHLCData } from '../services/datahub_api'
 import CIcon from '@coreui/icons-react'
-import {
-  cilReload,
-  cilFullscreen,
-  cilChevronLeft,
-  cilChevronRight,
-} from '@coreui/icons'
+import { cilReload, cilFullscreen, cilChevronLeft, cilChevronRight } from '@coreui/icons'
 
 const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, onDataChange }) => {
   const chartContainerRef = useRef(null)
@@ -70,37 +65,40 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
   }, [])
 
   // Theme-aware color schemes
-  const chartColors = useMemo(() => isDarkMode
-    ? {
-        background: '#000000',
-        text: '#ffffff',
-        grid: '#1a1a1a',
-        border: '#2a2e39',
-        crosshairLine: '#758696',
-        crosshairLabel: '#1e1e1e',
-        buttonBg: 'rgba(42, 46, 57, 0.9)',
-        buttonHover: 'rgba(58, 64, 77, 0.9)',
-        overlayBg: 'rgba(0, 0, 0, 0.8)',
-      }
-    : {
-        background: '#ffffff',
-        text: '#131722',
-        grid: '#e1e3eb',
-        border: '#d1d4dc',
-        crosshairLine: '#758696',
-        crosshairLabel: '#f0f3fa',
-        buttonBg: 'rgba(240, 243, 250, 0.9)',
-        buttonHover: 'rgba(220, 224, 235, 0.9)',
-        overlayBg: 'rgba(255, 255, 255, 0.9)',
-      }
-  , [isDarkMode])
+  const chartColors = useMemo(
+    () =>
+      isDarkMode
+        ? {
+            background: '#000000',
+            text: '#ffffff',
+            grid: '#1a1a1a',
+            border: '#2a2e39',
+            crosshairLine: '#758696',
+            crosshairLabel: '#1e1e1e',
+            buttonBg: 'rgba(42, 46, 57, 0.9)',
+            buttonHover: 'rgba(58, 64, 77, 0.9)',
+            overlayBg: 'rgba(0, 0, 0, 0.8)',
+          }
+        : {
+            background: '#ffffff',
+            text: '#131722',
+            grid: '#e1e3eb',
+            border: '#d1d4dc',
+            crosshairLine: '#758696',
+            crosshairLabel: '#f0f3fa',
+            buttonBg: 'rgba(240, 243, 250, 0.9)',
+            buttonHover: 'rgba(220, 224, 235, 0.9)',
+            overlayBg: 'rgba(255, 255, 255, 0.9)',
+          },
+    [isDarkMode],
+  )
 
   // Calculate chart height based on container width with responsive aspect ratios
   const calculateChartHeight = (containerWidth) => {
     let aspectRatio
     let minHeight
     let maxHeight
-    
+
     if (containerWidth >= 992) {
       // Desktop (lg, xl)
       aspectRatio = 2.5
@@ -117,7 +115,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
       minHeight = 300
       maxHeight = 400
     }
-    
+
     const calculatedHeight = containerWidth / aspectRatio
     return Math.max(minHeight, Math.min(maxHeight, calculatedHeight))
   }
@@ -125,15 +123,15 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
   // Update chart dimensions based on container size
   const updateChartDimensions = () => {
     if (!chartContainerRef.current) return { width: 0, height: 500 }
-    
+
     const containerWidth = chartContainerRef.current.clientWidth
     const calculatedHeight = calculateChartHeight(containerWidth)
-    
+
     const dimensions = {
       width: containerWidth,
       height: calculatedHeight,
     }
-    
+
     setChartDimensions(dimensions)
     return dimensions
   }
@@ -191,13 +189,13 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
             top: 0.1,
             bottom: 0.1,
           },
-          entireRangeOnly: true,  // Prevent scrolling beyond data range (min/max)
+          entireRangeOnly: true, // Prevent scrolling beyond data range (min/max)
         },
         timeScale: {
           borderColor: chartColors.border,
           timeVisible: true,
           secondsVisible: false,
-          fixLeftEdge: true,  // Prevent scrolling past the first (oldest) bar
+          fixLeftEdge: true, // Prevent scrolling past the first (oldest) bar
           fixRightEdge: true, // Prevent scrolling past the last (newest) bar
         },
       })
@@ -247,7 +245,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
         if (resizeTimeoutRef.current) {
           clearTimeout(resizeTimeoutRef.current)
         }
-        
+
         // Debounce resize events (150ms)
         resizeTimeoutRef.current = setTimeout(() => {
           if (chartContainerRef.current && chart) {
@@ -376,7 +374,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
           // Store full data (with volume) for download
           const fullData = [...response.bars]
           setAllData(fullData)
-          
+
           // Notify parent component of data change
           if (onDataChange && !cancelledRef.current) {
             onDataChange(fullData)
@@ -387,7 +385,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
           // Chart expects: { time: number, open, high, low, close }
           // Sort by time ascending (data comes desc from API, chart needs asc)
           const chartData = response.bars
-            .map(bar => ({
+            .map((bar) => ({
               time: bar.time,
               open: bar.open,
               high: bar.high,
@@ -398,7 +396,7 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
 
           // Transform volume data with color coding
           const volumeData = response.bars
-            .map(bar => ({
+            .map((bar) => ({
               time: bar.time,
               value: bar.volume,
               color: bar.close >= bar.open ? '#26a69a' : '#ef5350', // Green for up, red for down
@@ -407,15 +405,15 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
 
           if (candlestickSeriesRef.current && !cancelledRef.current) {
             candlestickSeriesRef.current.setData(chartData)
-            
+
             // Set volume data
             if (volumeSeriesRef.current) {
               volumeSeriesRef.current.setData(volumeData)
             }
-            
+
             // Store chart data for button functions
             setChartData(chartData)
-            
+
             // Set initial visible range to show only the most recent 500 bars (1/10th of total)
             const visibleBarCount = 500
             if (chartData.length > visibleBarCount && chartRef.current) {
@@ -424,14 +422,14 @@ const CandlestickChart = ({ provider, symbol, dataType, interval, limit = 5000, 
               const visibleStartIndex = chartData.length - visibleBarCount
               const visibleStartTime = chartData[visibleStartIndex].time
               const visibleEndTime = chartData[chartData.length - 1].time
-              
+
               // Store initial view range for Reset View button
               const initialRange = {
                 from: visibleStartTime,
                 to: visibleEndTime,
               }
               setInitialViewRange(initialRange)
-              
+
               // Set visible range to show only the most recent bars
               timeScale.setVisibleRange(initialRange)
             } else {
@@ -766,4 +764,3 @@ CandlestickChart.defaultProps = {
 }
 
 export default CandlestickChart
-

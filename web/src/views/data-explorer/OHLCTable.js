@@ -47,10 +47,12 @@ const OHLCTable = ({ provider, symbol, dataType, interval, limit = 5000, onDataC
 
   // Format volume
   const formatVolume = (volume) => {
-    return typeof volume === 'number' ? volume.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }) : volume
+    return typeof volume === 'number'
+      ? volume.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : volume
   }
 
   // Determine if price went up (green) or down (red)
@@ -138,7 +140,7 @@ const OHLCTable = ({ provider, symbol, dataType, interval, limit = 5000, onDataC
 
   // Handle sort toggle
   const handleSortToggle = () => {
-    setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')
+    setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
     setCurrentPage(1) // Reset to first page when sorting changes
   }
 
@@ -179,7 +181,8 @@ const OHLCTable = ({ provider, symbol, dataType, interval, limit = 5000, onDataC
             </CFormSelect>
           </div>
           <div className="small text-muted">
-            Showing {startIndex + 1}-{Math.min(endIndex, sortedData.length)} of {sortedData.length} records
+            Showing {startIndex + 1}-{Math.min(endIndex, sortedData.length)} of {sortedData.length}{' '}
+            records
           </div>
         </div>
       )}
@@ -235,7 +238,12 @@ const OHLCTable = ({ provider, symbol, dataType, interval, limit = 5000, onDataC
             ) : (
               currentPageData.map((bar, index) => {
                 const priceChange = getPriceChange(bar.open, bar.close)
-                const textColor = priceChange === 'up' ? 'text-success' : priceChange === 'down' ? 'text-danger' : 'text-muted'
+                const textColor =
+                  priceChange === 'up'
+                    ? 'text-success'
+                    : priceChange === 'down'
+                      ? 'text-danger'
+                      : 'text-muted'
 
                 return (
                   <CTableRow key={`${bar.time}-${index}`}>
@@ -287,4 +295,3 @@ OHLCTable.defaultProps = {
 }
 
 export default OHLCTable
-

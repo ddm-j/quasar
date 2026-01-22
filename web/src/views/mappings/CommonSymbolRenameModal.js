@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   CModal,
   CModalHeader,
@@ -11,57 +11,57 @@ import {
   CFormInput,
   CSpinner,
   CAlert,
-} from '@coreui/react-pro';
+} from '@coreui/react-pro'
 
-import { renameCommonSymbol } from '../services/registry_api';
+import { renameCommonSymbol } from '../services/registry_api'
 
 const CommonSymbolRenameModal = ({ visible, onClose, onSuccess, commonSymbol }) => {
-  const [newSymbol, setNewSymbol] = useState('');
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [error, setError] = useState(null);
+  const [newSymbol, setNewSymbol] = useState('')
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (visible) {
-      setNewSymbol('');
-      setError(null);
+      setNewSymbol('')
+      setError(null)
     }
-  }, [visible]);
+  }, [visible])
 
   const handleRename = async () => {
-    const trimmedNewSymbol = newSymbol.trim();
+    const trimmedNewSymbol = newSymbol.trim()
 
     if (!trimmedNewSymbol) {
-      setError('New symbol name cannot be empty.');
-      return;
+      setError('New symbol name cannot be empty.')
+      return
     }
 
     if (trimmedNewSymbol === commonSymbol) {
-      setError('New symbol name must be different from the current name.');
-      return;
+      setError('New symbol name must be different from the current name.')
+      return
     }
 
-    setIsRenaming(true);
-    setError(null);
+    setIsRenaming(true)
+    setError(null)
 
     try {
-      const result = await renameCommonSymbol(commonSymbol, trimmedNewSymbol);
+      const result = await renameCommonSymbol(commonSymbol, trimmedNewSymbol)
       if (onSuccess) {
-        onSuccess(result);
+        onSuccess(result)
       }
-      onClose();
+      onClose()
     } catch (err) {
-      setError(err.message || 'Failed to rename symbol. Please try again.');
+      setError(err.message || 'Failed to rename symbol. Please try again.')
     } finally {
-      setIsRenaming(false);
+      setIsRenaming(false)
     }
-  };
+  }
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !isRenaming) {
-      e.preventDefault();
-      handleRename();
+      e.preventDefault()
+      handleRename()
     }
-  };
+  }
 
   return (
     <CModal visible={visible} onClose={onClose} backdrop="static">
@@ -114,7 +114,7 @@ const CommonSymbolRenameModal = ({ visible, onClose, onSuccess, commonSymbol }) 
         </CModalFooter>
       </CForm>
     </CModal>
-  );
-};
+  )
+}
 
-export default CommonSymbolRenameModal;
+export default CommonSymbolRenameModal

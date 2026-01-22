@@ -50,6 +50,7 @@ from quasar.services.registry.schemas import (
     FileUploadResponse, UpdateAssetsResponse, DeleteClassResponse,
     AssetResponse, AssetMappingCreateResponse, AssetMappingPaginatedResponse,
     AssetMappingResponse, SuggestionsResponse,
+    AssetMappingRemapPreview, AssetMappingRemapResponse,
     ProviderPreferencesResponse, AvailableQuoteCurrenciesResponse,
     SecretKeysResponse, SecretsUpdateResponse,
     CommonSymbolResponse, CommonSymbolRenameResponse,
@@ -197,16 +198,24 @@ class Registry(
             status_code=204
         )
         self._api_app.router.add_api_route(
-            '/api/registry/asset-mappings/{common_symbol}',
-            self.handle_get_asset_mappings_for_symbol,
-            methods=['GET'],
-            response_model=List[AssetMappingResponse]
-        )
-        self._api_app.router.add_api_route(
             '/api/registry/asset-mappings/common-symbol/{symbol}/rename',
             self.handle_rename_common_symbol,
             methods=['PUT'],
             response_model=CommonSymbolRenameResponse
+        )
+
+        # Asset Re-mapping Routes (public API)
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/re-map/preview',
+            self.handle_remap_preview,
+            methods=['GET'],
+            response_model=AssetMappingRemapPreview
+        )
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/re-map',
+            self.handle_remap_assets,
+            methods=['POST'],
+            response_model=AssetMappingRemapResponse
         )
 
         # Common Symbols Routes (public API)
@@ -216,6 +225,15 @@ class Registry(
             self.handle_get_common_symbols,
             methods=['GET'],
             response_model=CommonSymbolResponse
+        )
+
+        # Dynamic route MUST come after static routes to avoid capturing static paths
+        # e.g., "common-symbols" would match {common_symbol} if registered first
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/{common_symbol}',
+            self.handle_get_asset_mappings_for_symbol,
+            methods=['GET'],
+            response_model=List[AssetMappingResponse]
         )
 
         # Asset Mapping Suggestions (public API)

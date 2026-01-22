@@ -43,9 +43,7 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
   }
 
   const handleSecretChange = (id, field, value) => {
-    setSecrets(
-      secrets.map((secret) => (secret.id === id ? { ...secret, [field]: value } : secret)),
-    )
+    setSecrets(secrets.map((secret) => (secret.id === id ? { ...secret, [field]: value } : secret)))
   }
 
   const handleSubmit = () => {
@@ -59,19 +57,22 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
     }
     for (const secret of secrets) {
       if (secret.keyValue && !secret.keyName) {
-        setError(`Secret with value "${secret.keyValue.substring(0,20)}..." is missing a key name.`)
+        setError(
+          `Secret with value "${secret.keyValue.substring(0, 20)}..." is missing a key name.`,
+        )
         return
       }
     }
     setError('')
-    
+
     // Transform the secrets array into the desired object format
     const secretsObject = secrets.reduce((acc, secret) => {
-      if (secret.keyName && secret.keyValue) { // Only include secrets that have both key and value
-        acc[secret.keyName] = secret.keyValue;
+      if (secret.keyName && secret.keyValue) {
+        // Only include secrets that have both key and value
+        acc[secret.keyName] = secret.keyValue
       }
-      return acc;
-    }, {});
+      return acc
+    }, {})
 
     onSubmit({ file: selectedFile, secrets: secretsObject, classType }) // Include classType
   }
@@ -105,13 +106,20 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
   }
 
   return (
-    <CModal size="lg" visible={visible} onClose={isSubmitting ? () => {} : handleCloseModal} backdrop="static">
+    <CModal
+      size="lg"
+      visible={visible}
+      onClose={isSubmitting ? () => {} : handleCloseModal}
+      backdrop="static"
+    >
       <CModalHeader>
         <CModalTitle>Upload Provider or Broker Class</CModalTitle>
       </CModalHeader>
       <CModalBody>
         {error && <CAlert color="danger">{error}</CAlert>}
-        <CRow className="mb-3"> {/* Add a row for Class Type selection */}
+        <CRow className="mb-3">
+          {' '}
+          {/* Add a row for Class Type selection */}
           <CCol>
             <CFormLabel htmlFor="classTypeSelect">Class Type</CFormLabel>
             <CFormSelect
@@ -134,7 +142,12 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
             <h6>Python File</h6>
             <div
               className="border p-3 text-center"
-              style={{ minHeight: '160px', cursor: 'pointer', borderStyle: 'dashed', borderWidth: '2px' }} // Adjusted minHeight
+              style={{
+                minHeight: '160px',
+                cursor: 'pointer',
+                borderStyle: 'dashed',
+                borderWidth: '2px',
+              }} // Adjusted minHeight
               onClick={() => !isSubmitting && document.getElementById('fileInput')?.click()}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -153,7 +166,11 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
                   <CIcon icon={cilFile} size="3xl" className="mb-2 text-success" />
                   <p>{fileName}</p>
                   {!isSubmitting && (
-                    <CButton size="sm" color="link" onClick={() => document.getElementById('fileInput')?.click()}>
+                    <CButton
+                      size="sm"
+                      color="link"
+                      onClick={() => document.getElementById('fileInput')?.click()}
+                    >
                       Change file
                     </CButton>
                   )}
@@ -166,9 +183,7 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
                 </>
               )}
             </div>
-            <small className="form-text text-body-secondary mt-1">
-              Upload a Python file (.py)
-            </small>
+            <small className="form-text text-body-secondary mt-1">Upload a Python file (.py)</small>
           </CCol>
 
           {/* Right Side: Secrets Configuration */}
@@ -212,7 +227,13 @@ const CodeUploadModal = ({ visible, onClose, onSubmit, isSubmitting }) => {
               </CRow>
             ))}
             {!isSubmitting && (
-              <CButton color="secondary" variant="outline" size="sm" onClick={handleAddSecret} className="mt-2">
+              <CButton
+                color="secondary"
+                variant="outline"
+                size="sm"
+                onClick={handleAddSecret}
+                className="mt-2"
+              >
                 <CIcon icon={cilPlus} className="me-1" /> Add Secret
               </CButton>
             )}

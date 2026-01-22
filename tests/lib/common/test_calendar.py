@@ -2,7 +2,6 @@
 import pytest
 from datetime import date, datetime, time, timezone
 import pandas as pd
-import pytz
 from quasar.lib.common.calendar import TradingCalendar
 
 def test_is_session_nyse_holiday():

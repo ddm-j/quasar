@@ -1,17 +1,18 @@
 import { React, useState, useEffect, useRef } from 'react'
 import CIcon from '@coreui/icons-react'
-import { 
-  CCard, 
-  CCardBody, 
-  CCardHeader, 
-  CCol, 
-  CRow, 
-  CSpinner, 
-  CButton, 
+import {
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CCol,
+  CRow,
+  CSpinner,
+  CButton,
   CToaster, // For toast notifications
   CToast,
   CToastHeader,
-  CToastBody } from '@coreui/react-pro'
+  CToastBody,
+} from '@coreui/react-pro'
 import { cilPlus, cilSync, cilLoopCircular, cilCheckCircle, cilWarning } from '@coreui/icons'
 import ClassSummaryCard from './ClassSummaryCard'
 import CodeUploadModal from './CodeUploadModal'
@@ -21,7 +22,7 @@ const Registry = () => {
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false) // Specific loading for upload action
-  const [refreshingAll, setRefreshingAll] = useState(false); // New state for "refresh all"
+  const [refreshingAll, setRefreshingAll] = useState(false) // New state for "refresh all"
   const [error, setError] = useState(null)
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false)
   const [toastToShow, setToastToShow] = useState(null) // New state for the toast element
@@ -31,11 +32,10 @@ const Registry = () => {
     try {
       const response = await getRegisteredClasses()
       setClasses(response)
-      console.log('Registered classes:', response)
     } catch (error) {
       setError(null)
       console.error('Error fetching registered classes:', error)
-      setError("Failed to fetch registered classes.")
+      setError('Failed to fetch registered classes.')
       setClasses([])
     } finally {
       setLoading(false)
@@ -47,7 +47,7 @@ const Registry = () => {
     fetchClasses()
   }, [])
 
-    // Helper function to add toasts
+  // Helper function to add toasts
   const displayToast = (toastConfig) => {
     const newToast = (
       <CToast
@@ -67,40 +67,45 @@ const Registry = () => {
   }
 
   const handleRefreshComponents = () => {
-    console.log('Refreshing components (re-fetching classes)...')
     fetchClasses()
   }
 
   const handleRefreshAllAssets = async () => {
-    setRefreshingAll(true);
-    displayToast({ title: 'Refreshing All Assets', body: 'Starting update for all registered classes...', color: 'info' });
+    setRefreshingAll(true)
+    displayToast({
+      title: 'Refreshing All Assets',
+      body: 'Starting update for all registered classes...',
+      color: 'info',
+    })
     try {
-      const results = await updateAllAssets(); // This returns a list of stats or a single message
+      const results = await updateAllAssets() // This returns a list of stats or a single message
       // console.log('Refresh all assets successful:', results); // For debugging
 
       // Process the results to give a summary toast
       // The backend returns a list of stats for each provider, or a single message if no providers.
-      let successCount = 0;
-      let failCount = 0;
-      let totalAdded = 0;
-      let totalUpdated = 0;
-      let messageBody = '';
+      let successCount = 0
+      let failCount = 0
+      let totalAdded = 0
+      let totalUpdated = 0
+      let messageBody = ''
 
       if (Array.isArray(results)) {
-        results.forEach(stat => {
-          if (stat.status === 200 || stat.status === 204) { // 204 for "no symbols" is a success for that provider
-            successCount++;
-            totalAdded += stat.added_symbols || 0;
-            totalUpdated += stat.updated_symbols || 0;
+        results.forEach((stat) => {
+          if (stat.status === 200 || stat.status === 204) {
+            // 204 for "no symbols" is a success for that provider
+            successCount++
+            totalAdded += stat.added_symbols || 0
+            totalUpdated += stat.updated_symbols || 0
           } else {
-            failCount++;
+            failCount++
           }
-        });
-        messageBody = `${successCount} classes processed successfully, ${failCount} failed. Total assets added: ${totalAdded}, updated: ${totalUpdated}.`;
-      } else if (results && results.message) { // Handle cases like "No registered providers found."
-         messageBody = results.message;
+        })
+        messageBody = `${successCount} classes processed successfully, ${failCount} failed. Total assets added: ${totalAdded}, updated: ${totalUpdated}.`
+      } else if (results && results.message) {
+        // Handle cases like "No registered providers found."
+        messageBody = results.message
       } else {
-        messageBody = 'Asset refresh process completed.';
+        messageBody = 'Asset refresh process completed.'
       }
 
       displayToast({
@@ -108,18 +113,18 @@ const Registry = () => {
         body: messageBody,
         color: failCount > 0 ? 'warning' : 'success',
         icon: failCount > 0 ? cilWarning : cilCheckCircle,
-      });
-      fetchClasses(); // Refresh the list to update counts on cards
+      })
+      fetchClasses() // Refresh the list to update counts on cards
     } catch (err) {
-      console.error('Error refreshing all assets:', err);
+      console.error('Error refreshing all assets:', err)
       displayToast({
         title: 'Refresh All Failed',
         body: err.message || 'An error occurred while refreshing all assets.',
         color: 'danger',
         icon: cilWarning,
-      });
+      })
     } finally {
-      setRefreshingAll(false);
+      setRefreshingAll(false)
     }
   }
 
@@ -128,7 +133,8 @@ const Registry = () => {
   }
 
   const handleUploadModalClose = () => {
-    if (!uploading) { // Prevent closing if an upload is in progress
+    if (!uploading) {
+      // Prevent closing if an upload is in progress
       setIsUploadModalVisible(false)
     }
   }
@@ -136,22 +142,30 @@ const Registry = () => {
   // Updated handleUploadSubmit
   const handleUploadSubmit = async ({ file, secrets, classType }) => {
     if (!file) {
-      displayToast({ title: 'Upload Error', body: 'No file selected for upload.', color: 'danger', icon: cilWarning }); // Use displayToast
-      return;
+      displayToast({
+        title: 'Upload Error',
+        body: 'No file selected for upload.',
+        color: 'danger',
+        icon: cilWarning,
+      }) // Use displayToast
+      return
     }
     if (!classType) {
-      displayToast({ title: 'Upload Error', body: 'No class type selected.', color: 'danger', icon: cilWarning }); // Use displayToast
-      return;
+      displayToast({
+        title: 'Upload Error',
+        body: 'No class type selected.',
+        color: 'danger',
+        icon: cilWarning,
+      }) // Use displayToast
+      return
     }
 
     setUploading(true)
-    console.log(`Submitting code upload for ${classType}:`, { fileName: file.name, secretsCount: secrets.length });
-    console.log('Secrets:', secrets)
 
     try {
       const responseData = await uploadCode(classType, file, secrets)
-      console.log('Upload successful:', responseData)
-      displayToast({ // Use displayToast
+      displayToast({
+        // Use displayToast
         title: 'Upload Success',
         body: responseData.message || responseData.status || 'Code uploaded successfully!',
         color: 'success',
@@ -161,7 +175,8 @@ const Registry = () => {
       setIsUploadModalVisible(false)
     } catch (uploadError) {
       console.error('Upload failed:', uploadError)
-      displayToast({ // Use displayToast
+      displayToast({
+        // Use displayToast
         title: 'Upload Failed',
         body: uploadError.message || 'An error occurred during upload.',
         color: 'danger',
@@ -227,14 +242,29 @@ const Registry = () => {
               ) : classes.length === 0 ? (
                 <div className="text-center">No registered code found.</div>
               ) : (
-                <CRow xs={{ cols: 1 }} sm={{ cols: 1 }} md={{ cols: 2 }} lg={{ cols: 3 }} xl={{ cols: 3 }} xxl={{cols: 4}} className="g-4">                {classes.map((class_summary_item) => (
+                <CRow
+                  xs={{ cols: 1 }}
+                  sm={{ cols: 1 }}
+                  md={{ cols: 2 }}
+                  lg={{ cols: 3 }}
+                  xl={{ cols: 3 }}
+                  xxl={{ cols: 4 }}
+                  className="g-4"
+                >
+                  {' '}
+                  {classes.map((class_summary_item) => (
                     // Each ClassSummaryCard is wrapped in its own CCol for grid layout
-                    <CCol key={class_summary_item.class_name || class_summary_item.id /* Ensure unique key */}>
-                      <ClassSummaryCard 
+                    <CCol
+                      key={
+                        class_summary_item.class_name ||
+                        class_summary_item.id /* Ensure unique key */
+                      }
+                    >
+                      <ClassSummaryCard
                         class_summary={class_summary_item}
                         displayToast={displayToast}
                         onAssetsRefreshed={fetchClasses} // Callback to refresh classes
-                       />
+                      />
                     </CCol>
                   ))}
                 </CRow>

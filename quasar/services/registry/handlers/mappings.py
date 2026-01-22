@@ -1,6 +1,6 @@
 """Asset mapping handlers for Registry service."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from urllib.parse import unquote_plus
 import asyncpg
 
@@ -16,8 +16,9 @@ from quasar.services.registry.schemas import (
     AssetMappingResponse, AssetMappingUpdate, AssetMappingQueryParams, AssetMappingPaginatedResponse,
     SuggestionsResponse, SuggestionItem,
     CommonSymbolRenameRequest, CommonSymbolRenameResponse,
+    AssetMappingRemapPreview, AssetMappingRemapRequest, AssetMappingRemapResponse,
 )
-from quasar.services.registry.mapper import MappingCandidate
+from quasar.services.registry.mapper import MappingCandidate, AutomatedMapper
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,12 +29,16 @@ class MappingHandlersMixin(HandlerMixin):
 
     async def _apply_automated_mappings(
         self,
-        candidates: List[MappingCandidate]
+        candidates: List[MappingCandidate],
+        conn: Optional[asyncpg.Connection] = None
     ) -> Dict[str, int]:
         """Bulk insert mapping candidates using prepared statements and savepoints.
 
         Args:
             candidates: List of MappingCandidate objects to insert
+            conn: Optional existing connection to use. If provided, inserts
+                  run within the caller's transaction. If None, a new connection
+                  and transaction are acquired.
 
         Returns:
             Dict with 'created', 'skipped', 'failed' counts
@@ -50,41 +55,206 @@ class MappingHandlersMixin(HandlerMixin):
             RETURNING common_symbol;
         """
 
-        async with self.pool.acquire() as conn:
-            prepared_insert = await conn.prepare(mapping_insert_query)
+        async def _do_inserts(connection: asyncpg.Connection) -> None:
+            """Execute inserts using savepoints for individual error handling."""
+            prepared_insert = await connection.prepare(mapping_insert_query)
             savepoint_counter = 0
-            async with conn.transaction():
-                async def _exec_savepoint(cmd: str) -> None:
-                    """Execute savepoint commands without aborting transaction."""
-                    try:
-                        await conn.execute(cmd)
-                    except Exception as exc:
-                        logger.warning(f"Registry._apply_automated_mappings: Savepoint command '{cmd}' failed: {exc}", exc_info=True)
 
-                for candidate in candidates:
-                    savepoint_name = f"mapping_insert_{savepoint_counter}"
-                    savepoint_counter += 1
-                    await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+            async def _exec_savepoint(cmd: str) -> None:
+                """Execute savepoint commands without aborting transaction."""
+                try:
+                    await connection.execute(cmd)
+                except Exception as exc:
+                    logger.warning(f"Registry._apply_automated_mappings: Savepoint command '{cmd}' failed: {exc}", exc_info=True)
 
-                    try:
-                        result = await prepared_insert.fetchrow(
-                            candidate.common_symbol,
-                            candidate.class_name,
-                            candidate.class_type,
-                            candidate.class_symbol
-                        )
-                        if result:
-                            stats['created'] += 1
-                        else:
-                            # ON CONFLICT DO NOTHING - mapping already exists
-                            stats['skipped'] += 1
-                        await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
-                    except Exception as e:
-                        logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
-                        stats['failed'] += 1
-                        await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+            for candidate in candidates:
+                savepoint_name = f"mapping_insert_{savepoint_counter}"
+                savepoint_counter += 1
+                await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+
+                try:
+                    result = await prepared_insert.fetchrow(
+                        candidate.common_symbol,
+                        candidate.class_name,
+                        candidate.class_type,
+                        candidate.class_symbol
+                    )
+                    if result:
+                        stats['created'] += 1
+                    else:
+                        # ON CONFLICT DO NOTHING - mapping already exists
+                        stats['skipped'] += 1
+                    await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
+                except Exception as e:
+                    logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
+                    stats['failed'] += 1
+                    await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+
+        if conn is not None:
+            # Use provided connection - caller manages transaction
+            await _do_inserts(conn)
+        else:
+            # Acquire connection and manage our own transaction
+            async with self.pool.acquire() as acquired_conn:
+                async with acquired_conn.transaction():
+                    await _do_inserts(acquired_conn)
 
         return stats
+
+    def _build_remap_filter_query(
+        self,
+        class_name: Optional[str] = None,
+        class_type: Optional[str] = None,
+        asset_class: Optional[str] = None,
+        for_delete: bool = False
+    ) -> Tuple[str, List[Any]]:
+        """Build SQL query to select asset_mapping rows with optional filters.
+
+        Constructs a query that can filter mappings by provider (class_name/class_type)
+        and/or asset_class. When asset_class is specified, the query JOINs to the assets
+        table to filter by the asset's asset_class.
+
+        Args:
+            class_name: Provider/broker name to filter by.
+            class_type: Required when class_name is specified ('provider' or 'broker').
+            asset_class: Asset class to filter by (e.g., 'crypto', 'us_equity').
+            for_delete: If True, returns a DELETE query with RETURNING clause.
+                       If False, returns a SELECT query for preview/counting.
+
+        Returns:
+            Tuple of (sql_query, params_list) ready for execution.
+        """
+        params: List[Any] = []
+        param_idx = 1
+        where_clauses: List[str] = []
+
+        # Provider filter
+        if class_name:
+            where_clauses.append(f"am.class_name = ${param_idx}")
+            params.append(class_name)
+            param_idx += 1
+            if class_type:
+                where_clauses.append(f"am.class_type = ${param_idx}")
+                params.append(class_type)
+                param_idx += 1
+
+        # Asset class filter requires JOIN to assets table
+        needs_join = asset_class is not None
+        if asset_class:
+            where_clauses.append(f"a.asset_class = ${param_idx}")
+            params.append(asset_class)
+            param_idx += 1
+
+        # Build WHERE clause (default to TRUE if no filters)
+        where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
+
+        # Build FROM clause with optional JOIN
+        if needs_join:
+            from_sql = """
+                asset_mapping am
+                JOIN assets a ON am.class_name = a.class_name
+                              AND am.class_type = a.class_type
+                              AND am.class_symbol = a.symbol
+            """
+        else:
+            from_sql = "asset_mapping am"
+
+        if for_delete:
+            # DELETE query - need to use subquery since DELETE doesn't support JOIN directly
+            if needs_join:
+                query = f"""
+                    DELETE FROM asset_mapping
+                    WHERE (class_name, class_type, class_symbol) IN (
+                        SELECT am.class_name, am.class_type, am.class_symbol
+                        FROM {from_sql}
+                        WHERE {where_sql}
+                    )
+                    RETURNING common_symbol, class_name, class_type, class_symbol
+                """
+            else:
+                query = f"""
+                    DELETE FROM asset_mapping am
+                    WHERE {where_sql}
+                    RETURNING common_symbol, class_name, class_type, class_symbol
+                """
+        else:
+            # SELECT query for preview/counting
+            query = f"""
+                SELECT am.common_symbol, am.class_name, am.class_type, am.class_symbol
+                FROM {from_sql}
+                WHERE {where_sql}
+            """
+
+        return query, params
+
+    def _get_affected_indices_query(
+        self,
+        class_name: Optional[str] = None,
+        class_type: Optional[str] = None,
+        asset_class: Optional[str] = None
+    ) -> Tuple[str, List[Any]]:
+        """Build SQL query to find user indices affected by a re-map operation.
+
+        A user index is "affected" if it has memberships referencing common_symbols
+        that would lose all their asset_mapping references when the filtered
+        mappings are deleted. This happens when:
+        1. The common_symbol is referenced by mappings matching the filter
+        2. The common_symbol has NO other mappings outside the filter
+        3. When ref_count reaches 0, common_symbol is deleted, CASCADE deletes memberships
+
+        Args:
+            class_name: Provider/broker name to filter by.
+            class_type: Required when class_name is specified ('provider' or 'broker').
+            asset_class: Asset class to filter by (e.g., 'crypto', 'us_equity').
+
+        Returns:
+            Tuple of (sql_query, params_list) that returns DISTINCT index_class_name values.
+        """
+        # First, get the query to identify mappings that match the filter
+        filter_query, params = self._build_remap_filter_query(
+            class_name=class_name,
+            class_type=class_type,
+            asset_class=asset_class,
+            for_delete=False
+        )
+
+        # Find common_symbols that will become orphaned:
+        # - They are used by mappings matching the filter
+        # - They have NO mappings outside the filter (so ref_count will reach 0)
+        #
+        # An index is affected if it has memberships referencing these orphaned symbols.
+        query = f"""
+            WITH filtered_mappings AS (
+                {filter_query}
+            ),
+            -- Common symbols used by filtered mappings
+            filtered_symbols AS (
+                SELECT DISTINCT common_symbol FROM filtered_mappings
+            ),
+            -- Common symbols that will be orphaned (no mappings remain after deletion)
+            orphaned_symbols AS (
+                SELECT fs.common_symbol
+                FROM filtered_symbols fs
+                WHERE NOT EXISTS (
+                    -- Check if any mapping for this symbol is NOT in the filtered set
+                    SELECT 1 FROM asset_mapping am
+                    WHERE am.common_symbol = fs.common_symbol
+                    AND NOT EXISTS (
+                        SELECT 1 FROM filtered_mappings fm
+                        WHERE fm.class_name = am.class_name
+                        AND fm.class_type = am.class_type
+                        AND fm.class_symbol = am.class_symbol
+                    )
+                )
+            )
+            -- Find distinct index names that have current memberships referencing orphaned symbols
+            SELECT DISTINCT im.index_class_name
+            FROM index_memberships im
+            JOIN orphaned_symbols os ON im.common_symbol = os.common_symbol
+            WHERE im.valid_to IS NULL
+        """
+
+        return query, params
 
     async def handle_create_asset_mapping(
         self,
@@ -962,4 +1132,264 @@ class MappingHandlersMixin(HandlerMixin):
             raise HTTPException(
                 status_code=500,
                 detail="An unexpected error occurred while renaming the symbol"
+            )
+
+    async def handle_remap_preview(
+        self,
+        class_name: Optional[str] = Query(None, description="Provider name to filter by"),
+        class_type: Optional[ClassType] = Query(None, description="Class type (required when class_name is specified)"),
+        asset_class: Optional[str] = Query(None, description="Asset class to filter by (e.g., 'crypto')")
+    ) -> AssetMappingRemapPreview:
+        """Preview the impact of a re-map operation without modifying data.
+
+        Returns counts of mappings that would be deleted, providers that would be
+        affected, and user indices that may lose members.
+
+        Args:
+            class_name: Provider name to filter by. If omitted, all providers are included.
+            class_type: Required when class_name is specified ('provider' or 'broker').
+            asset_class: Asset class to filter by. If omitted, all asset classes are included.
+
+        Returns:
+            AssetMappingRemapPreview: Impact summary of the re-map operation.
+
+        Raises:
+            HTTPException: 400 if class_name is provided without class_type.
+            HTTPException: 500 for database errors.
+        """
+        logger.info(
+            "Registry.handle_remap_preview: Previewing re-map with filters "
+            "class_name=%s, class_type=%s, asset_class=%s",
+            class_name, class_type, asset_class
+        )
+
+        # Validate: class_type is required when class_name is specified
+        if class_name and not class_type:
+            raise HTTPException(
+                status_code=400,
+                detail="class_type is required when class_name is specified"
+            )
+
+        try:
+            # Build the filter query for counting mappings
+            filter_query, filter_params = self._build_remap_filter_query(
+                class_name=class_name,
+                class_type=class_type,
+                asset_class=asset_class,
+                for_delete=False
+            )
+
+            # Build the query for finding affected indices
+            indices_query, indices_params = self._get_affected_indices_query(
+                class_name=class_name,
+                class_type=class_type,
+                asset_class=asset_class
+            )
+
+            async with self.pool.acquire() as conn:
+                # Count mappings to delete
+                count_query = f"SELECT COUNT(*) FROM ({filter_query}) AS filtered"
+                mappings_to_delete = await conn.fetchval(count_query, *filter_params)
+
+                # Get distinct providers affected
+                providers_query = f"""
+                    SELECT DISTINCT class_name
+                    FROM ({filter_query}) AS filtered
+                    ORDER BY class_name
+                """
+                provider_records = await conn.fetch(providers_query, *filter_params)
+                providers_affected = [r['class_name'] for r in provider_records]
+
+                # Get affected indices
+                index_records = await conn.fetch(indices_query, *indices_params)
+                affected_indices = [r['index_class_name'] for r in index_records]
+
+            # Build filter echo for response
+            filter_applied = {}
+            if class_name:
+                filter_applied['class_name'] = class_name
+            if class_type:
+                filter_applied['class_type'] = class_type
+            if asset_class:
+                filter_applied['asset_class'] = asset_class
+
+            logger.info(
+                "Registry.handle_remap_preview: Preview complete - %d mappings to delete, "
+                "%d providers affected, %d indices affected",
+                mappings_to_delete or 0, len(providers_affected), len(affected_indices)
+            )
+
+            return AssetMappingRemapPreview(
+                mappings_to_delete=mappings_to_delete or 0,
+                providers_affected=providers_affected,
+                affected_indices=affected_indices,
+                filter_applied=filter_applied
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                "Registry.handle_remap_preview: Error generating preview: %s",
+                e, exc_info=True
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="An unexpected error occurred while generating the re-map preview"
+            )
+
+    async def handle_remap_assets(
+        self,
+        request: AssetMappingRemapRequest = Body(...)
+    ) -> AssetMappingRemapResponse:
+        """Delete and regenerate asset mappings matching the specified filters.
+
+        This operation is atomic: either all changes succeed or the entire
+        operation is rolled back. Uses REPEATABLE READ isolation to ensure
+        a consistent snapshot during the delete-regenerate cycle.
+
+        Note: affected_indices is determined before deletion for reporting
+        purposes and reflects the state at query time.
+
+        Args:
+            request: Filter parameters specifying which mappings to re-map.
+                - class_name: Provider name to filter by (requires class_type)
+                - class_type: Required when class_name is specified
+                - asset_class: Asset class to filter by (e.g., 'crypto')
+
+        Returns:
+            AssetMappingRemapResponse: Statistics about the operation including
+            counts of deleted, created, skipped, and failed mappings.
+
+        Raises:
+            HTTPException: 400 if class_name is provided without class_type.
+            HTTPException: 500 for database errors (operation is rolled back).
+        """
+        logger.info(
+            "Registry.handle_remap_assets: Starting re-map with filters "
+            "class_name=%s, class_type=%s, asset_class=%s",
+            request.class_name, request.class_type, request.asset_class
+        )
+
+        # Validate: class_type is required when class_name is specified
+        if request.class_name and not request.class_type:
+            raise HTTPException(
+                status_code=400,
+                detail="class_type is required when class_name is specified"
+            )
+
+        try:
+            # Build the DELETE query with RETURNING to capture deleted rows
+            delete_query, delete_params = self._build_remap_filter_query(
+                class_name=request.class_name,
+                class_type=request.class_type,
+                asset_class=request.asset_class,
+                for_delete=True
+            )
+
+            # Build the affected indices query (to report after operation)
+            indices_query, indices_params = self._get_affected_indices_query(
+                class_name=request.class_name,
+                class_type=request.class_type,
+                asset_class=request.asset_class
+            )
+
+            async with self.pool.acquire() as conn:
+                # Use REPEATABLE READ isolation to prevent phantom reads
+                async with conn.transaction(isolation='repeatable_read'):
+                    # Get affected indices BEFORE deletion (they will be affected by CASCADE)
+                    index_records = await conn.fetch(indices_query, *indices_params)
+                    affected_indices = [r['index_class_name'] for r in index_records]
+
+                    # Delete matching mappings and capture what was deleted
+                    deleted_rows = await conn.fetch(delete_query, *delete_params)
+                    deleted_count = len(deleted_rows)
+
+                    if deleted_count == 0:
+                        # No mappings matched the filter
+                        logger.info(
+                            "Registry.handle_remap_assets: No mappings matched the filter"
+                        )
+                        return AssetMappingRemapResponse(
+                            status="no_mappings",
+                            deleted_mappings=0,
+                            created_mappings=0,
+                            skipped_mappings=0,
+                            failed_mappings=0,
+                            providers_affected=[],
+                            affected_indices=[]
+                        )
+
+                    # Extract unique providers from deleted rows
+                    providers_set: Dict[Tuple[str, str], None] = {}
+                    for row in deleted_rows:
+                        key = (row['class_name'], row['class_type'])
+                        providers_set[key] = None
+
+                    providers_affected = sorted([p[0] for p in providers_set.keys()])
+
+                    logger.info(
+                        "Registry.handle_remap_assets: Deleted %d mappings for %d providers",
+                        deleted_count, len(providers_set)
+                    )
+
+                    # Regenerate mappings for each affected provider
+                    # Create a mapper instance using the existing connection's pool
+                    mapper = AutomatedMapper(pool=self.pool)
+
+                    total_stats = {
+                        'created': 0,
+                        'skipped': 0,
+                        'failed': 0
+                    }
+
+                    for (class_name, class_type) in providers_set.keys():
+                        # Generate mapping candidates for this provider
+                        candidates = await mapper.generate_mapping_candidates_for_provider(
+                            provider_name=class_name,
+                            provider_type=class_type
+                        )
+
+                        if candidates:
+                            # Apply the generated mappings within the same transaction
+                            stats = await self._apply_automated_mappings(candidates, conn=conn)
+                            total_stats['created'] += stats['created']
+                            total_stats['skipped'] += stats['skipped']
+                            total_stats['failed'] += stats['failed']
+
+                            logger.debug(
+                                "Registry.handle_remap_assets: Provider %s/%s - "
+                                "created=%d, skipped=%d, failed=%d",
+                                class_name, class_type,
+                                stats['created'], stats['skipped'], stats['failed']
+                            )
+
+            logger.info(
+                "Registry.handle_remap_assets: Re-map complete - "
+                "deleted=%d, created=%d, skipped=%d, failed=%d, "
+                "providers=%d, affected_indices=%d",
+                deleted_count, total_stats['created'], total_stats['skipped'],
+                total_stats['failed'], len(providers_affected), len(affected_indices)
+            )
+
+            return AssetMappingRemapResponse(
+                status="success",
+                deleted_mappings=deleted_count,
+                created_mappings=total_stats['created'],
+                skipped_mappings=total_stats['skipped'],
+                failed_mappings=total_stats['failed'],
+                providers_affected=providers_affected,
+                affected_indices=affected_indices
+            )
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                "Registry.handle_remap_assets: Error during re-map operation: %s",
+                e, exc_info=True
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="An unexpected error occurred during the re-map operation. All changes have been rolled back."
             )

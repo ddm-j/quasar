@@ -7,12 +7,7 @@ import {
   CDropdownMenu,
   CDropdownToggle,
 } from '@coreui/react-pro'
-import {
-  cilLockLocked,
-  cilSettings,
-  cilUser,
-  cilAccountLogout,
-} from '@coreui/icons'
+import { cilLockLocked, cilSettings, cilUser, cilAccountLogout } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
 
 const AppHeaderDropdown = () => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from 'react'
 import {
   CModal,
   CModalHeader,
@@ -9,31 +9,20 @@ import {
   CSpinner,
   CAlert,
   CBadge,
-} from '@coreui/react-pro';
-import CIcon from '@coreui/icons-react';
-import { cilCheckCircle, cilWarning, cilPlus, cilMinus, cilPencil } from '@coreui/icons';
-import { formatWeight } from '../../utils/formatting';
+} from '@coreui/react-pro'
+import CIcon from '@coreui/icons-react'
+import { cilCheckCircle, cilWarning, cilPlus, cilMinus, cilPencil } from '@coreui/icons'
+import { formatWeight } from '../../utils/formatting'
 
-const SaveChangesModal = ({
-  visible,
-  onClose,
-  onConfirm,
-  isSaving,
-  changesSummary,
-  indexName,
-}) => {
-  const { added = [], removed = [], weightChanges = [], totalWeight = 0 } = changesSummary || {};
+const SaveChangesModal = ({ visible, onClose, onConfirm, isSaving, changesSummary, indexName }) => {
+  const { added = [], removed = [], weightChanges = [], totalWeight = 0 } = changesSummary || {}
 
-  const hasChanges = added.length > 0 || removed.length > 0 || weightChanges.length > 0;
-  const totalWeightPercent = (totalWeight * 100).toFixed(1);
-  const isWeightValid = Math.abs(totalWeight - 1) < 0.001; // Within 0.1% of 100%
+  const hasChanges = added.length > 0 || removed.length > 0 || weightChanges.length > 0
+  const totalWeightPercent = (totalWeight * 100).toFixed(1)
+  const isWeightValid = Math.abs(totalWeight - 1) < 0.001 // Within 0.1% of 100%
 
   return (
-    <CModal
-      visible={visible}
-      onClose={onClose}
-      backdrop="static"
-    >
+    <CModal visible={visible} onClose={onClose} backdrop="static">
       <CModalHeader onClose={onClose}>
         <CModalTitle>
           <CIcon icon={cilCheckCircle} className="me-2" />
@@ -128,18 +117,10 @@ const SaveChangesModal = ({
       </CModalBody>
 
       <CModalFooter>
-        <CButton
-          color="secondary"
-          onClick={onClose}
-          disabled={isSaving}
-        >
+        <CButton color="secondary" onClick={onClose} disabled={isSaving}>
           Cancel
         </CButton>
-        <CButton
-          color="primary"
-          onClick={onConfirm}
-          disabled={isSaving || !hasChanges}
-        >
+        <CButton color="primary" onClick={onConfirm} disabled={isSaving || !hasChanges}>
           {isSaving ? (
             <>
               <CSpinner size="sm" className="me-1" />
@@ -151,7 +132,7 @@ const SaveChangesModal = ({
         </CButton>
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
-export default SaveChangesModal;
+export default SaveChangesModal
