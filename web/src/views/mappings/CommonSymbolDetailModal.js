@@ -23,6 +23,9 @@ import { getAssetMappingsForSymbol } from '../services/registry_api'
 // Component Imports
 import CommonSymbolRenameModal from './CommonSymbolRenameModal'
 
+// Utils
+import { getClassBadge, getActiveBadge } from '../../utils/badgeHelpers'
+
 const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymbol }) => {
   const [mappings, setMappings] = useState([])
   const [loading, setLoading] = useState(false)
@@ -59,24 +62,6 @@ const CommonSymbolDetailModal = ({ visible, onClose, onRenameSuccess, commonSymb
       fetchMappingsForSymbol()
     }
   }, [visible, commonSymbol])
-
-  const getClassBadge = (class_type) => {
-    switch (class_type) {
-      case 'provider': {
-        return 'primary'
-      }
-      case 'broker': {
-        return 'secondary'
-      }
-      default: {
-        return 'primary'
-      }
-    }
-  }
-
-  const getActiveBadge = (is_active) => {
-    return is_active ? 'success' : 'danger'
-  }
 
   return (
     <CModal

@@ -40,6 +40,9 @@ import {
   getRegisteredClasses,
 } from '../services/registry_api'
 
+// Utils
+import { getClassBadge, getActiveBadge } from '../../utils/badgeHelpers'
+
 // Asset class options for filtering (matches backend enums.py)
 const ASSET_CLASS_OPTIONS = [
   { label: 'All Asset Classes', value: '' },
@@ -250,23 +253,6 @@ const Mappings = () => {
       _props: { className: 'text-center' },
     },
   ]
-
-  const getClassBadge = (class_type) => {
-    switch (class_type) {
-      case 'provider': {
-        return 'primary'
-      }
-      case 'broker': {
-        return 'secondary'
-      }
-      default: {
-        return 'primary'
-      }
-    }
-  }
-  const getActiveBadge = (is_active) => {
-    return is_active ? 'success' : 'danger'
-  }
 
   const handleDelete = async (item) => {
     // Confirm deletion
