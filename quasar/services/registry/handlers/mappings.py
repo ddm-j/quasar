@@ -29,12 +29,16 @@ class MappingHandlersMixin(HandlerMixin):
 
     async def _apply_automated_mappings(
         self,
-        candidates: List[MappingCandidate]
+        candidates: List[MappingCandidate],
+        conn: Optional[asyncpg.Connection] = None
     ) -> Dict[str, int]:
         """Bulk insert mapping candidates using prepared statements and savepoints.
 
         Args:
             candidates: List of MappingCandidate objects to insert
+            conn: Optional existing connection to use. If provided, inserts
+                  run within the caller's transaction. If None, a new connection
+                  and transaction are acquired.
 
         Returns:
             Dict with 'created', 'skipped', 'failed' counts
@@ -51,39 +55,49 @@ class MappingHandlersMixin(HandlerMixin):
             RETURNING common_symbol;
         """
 
-        async with self.pool.acquire() as conn:
-            prepared_insert = await conn.prepare(mapping_insert_query)
+        async def _do_inserts(connection: asyncpg.Connection) -> None:
+            """Execute inserts using savepoints for individual error handling."""
+            prepared_insert = await connection.prepare(mapping_insert_query)
             savepoint_counter = 0
-            async with conn.transaction():
-                async def _exec_savepoint(cmd: str) -> None:
-                    """Execute savepoint commands without aborting transaction."""
-                    try:
-                        await conn.execute(cmd)
-                    except Exception as exc:
-                        logger.warning(f"Registry._apply_automated_mappings: Savepoint command '{cmd}' failed: {exc}", exc_info=True)
 
-                for candidate in candidates:
-                    savepoint_name = f"mapping_insert_{savepoint_counter}"
-                    savepoint_counter += 1
-                    await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+            async def _exec_savepoint(cmd: str) -> None:
+                """Execute savepoint commands without aborting transaction."""
+                try:
+                    await connection.execute(cmd)
+                except Exception as exc:
+                    logger.warning(f"Registry._apply_automated_mappings: Savepoint command '{cmd}' failed: {exc}", exc_info=True)
 
-                    try:
-                        result = await prepared_insert.fetchrow(
-                            candidate.common_symbol,
-                            candidate.class_name,
-                            candidate.class_type,
-                            candidate.class_symbol
-                        )
-                        if result:
-                            stats['created'] += 1
-                        else:
-                            # ON CONFLICT DO NOTHING - mapping already exists
-                            stats['skipped'] += 1
-                        await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
-                    except Exception as e:
-                        logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
-                        stats['failed'] += 1
-                        await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+            for candidate in candidates:
+                savepoint_name = f"mapping_insert_{savepoint_counter}"
+                savepoint_counter += 1
+                await _exec_savepoint(f"SAVEPOINT {savepoint_name}")
+
+                try:
+                    result = await prepared_insert.fetchrow(
+                        candidate.common_symbol,
+                        candidate.class_name,
+                        candidate.class_type,
+                        candidate.class_symbol
+                    )
+                    if result:
+                        stats['created'] += 1
+                    else:
+                        # ON CONFLICT DO NOTHING - mapping already exists
+                        stats['skipped'] += 1
+                    await _exec_savepoint(f"RELEASE SAVEPOINT {savepoint_name}")
+                except Exception as e:
+                    logger.error(f"Registry._apply_automated_mappings: Error inserting mapping for {candidate.class_symbol}: {e}", exc_info=True)
+                    stats['failed'] += 1
+                    await _exec_savepoint(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+
+        if conn is not None:
+            # Use provided connection - caller manages transaction
+            await _do_inserts(conn)
+        else:
+            # Acquire connection and manage our own transaction
+            async with self.pool.acquire() as acquired_conn:
+                async with acquired_conn.transaction():
+                    await _do_inserts(acquired_conn)
 
         return stats
 
@@ -1334,8 +1348,8 @@ class MappingHandlersMixin(HandlerMixin):
                         )
 
                         if candidates:
-                            # Apply the generated mappings
-                            stats = await self._apply_automated_mappings(candidates)
+                            # Apply the generated mappings within the same transaction
+                            stats = await self._apply_automated_mappings(candidates, conn=conn)
                             total_stats['created'] += stats['created']
                             total_stats['skipped'] += stats['skipped']
                             total_stats['failed'] += stats['failed']
