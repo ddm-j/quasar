@@ -238,6 +238,14 @@ const RemapConfirmModal = ({
               </CAlert>
             )}
 
+            {/* Warning when no filters selected */}
+            {preview && !loading && !providerFilter && !assetClassFilter && (
+              <CAlert color="danger" className="mb-3">
+                <strong>Warning:</strong> No filters selected. This will re-map ALL mappings across
+                all providers.
+              </CAlert>
+            )}
+
             {/* Preview data with filter summary and mappings count */}
             {preview && !loading && (
               <div className="mb-3">
