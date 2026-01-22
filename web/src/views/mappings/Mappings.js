@@ -364,45 +364,52 @@ const Mappings = () => {
                     <CButton color="success" onClick={() => setIsSuggestModalVisible(true)}>
                       Suggest Mappings
                     </CButton>
-                    <CButton color="warning" onClick={() => setIsRemapModalVisible(true)}>
-                      Re-map Filtered
-                    </CButton>
                   </CCol>
                 </CRow>
               </CCardHeader>
               <CCardBody>
-                {/* Filter Row */}
-                <CRow className="mb-3 align-items-center">
-                  <CCol xs="auto">
-                    <label htmlFor="assetClassFilter" className="col-form-label">
-                      Asset Class:
-                    </label>
-                  </CCol>
-                  <CCol xs="auto">
-                    <CFormSelect
-                      id="assetClassFilter"
-                      value={assetClassFilter}
-                      onChange={handleAssetClassFilterChange}
-                      options={ASSET_CLASS_OPTIONS}
-                      style={{ minWidth: '180px' }}
-                    />
-                  </CCol>
-                  <CCol xs="auto">
-                    <label htmlFor="providerFilter" className="col-form-label">
-                      Provider:
-                    </label>
-                  </CCol>
-                  <CCol xs="auto">
-                    <CFormSelect
-                      id="providerFilter"
-                      value={providerFilter}
-                      onChange={handleProviderFilterChange}
-                      options={providerOptions}
-                      disabled={isLoadingProviders}
-                      style={{ minWidth: '200px' }}
-                    />
-                  </CCol>
-                </CRow>
+                {/* Filter Box with Re-map Button */}
+                <div
+                  className="mb-3 p-3 rounded border"
+                  style={{ backgroundColor: 'var(--cui-tertiary-bg)' }}
+                >
+                  <CRow className="align-items-center g-2">
+                    <CCol xs="auto">
+                      <label htmlFor="assetClassFilter" className="col-form-label">
+                        Asset Class:
+                      </label>
+                    </CCol>
+                    <CCol xs="auto">
+                      <CFormSelect
+                        id="assetClassFilter"
+                        value={assetClassFilter}
+                        onChange={handleAssetClassFilterChange}
+                        options={ASSET_CLASS_OPTIONS}
+                        style={{ minWidth: '180px' }}
+                      />
+                    </CCol>
+                    <CCol xs="auto">
+                      <label htmlFor="providerFilter" className="col-form-label">
+                        Provider:
+                      </label>
+                    </CCol>
+                    <CCol xs="auto">
+                      <CFormSelect
+                        id="providerFilter"
+                        value={providerFilter}
+                        onChange={handleProviderFilterChange}
+                        options={providerOptions}
+                        disabled={isLoadingProviders}
+                        style={{ minWidth: '200px' }}
+                      />
+                    </CCol>
+                    <CCol xs="auto" className="ms-auto">
+                      <CButton color="warning" onClick={() => setIsRemapModalVisible(true)}>
+                        Re-map Filtered
+                      </CButton>
+                    </CCol>
+                  </CRow>
+                </div>
                 <CSmartTable
                   loading={loading}
                   items={mappings}
