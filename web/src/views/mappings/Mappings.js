@@ -1,4 +1,4 @@
-import { React, useState, useEffect, useRef, useMemo } from 'react'
+import { React, useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   CCard,
   CCardBody,
@@ -109,7 +109,7 @@ const Mappings = () => {
   }
 
   // Fetch Mappings
-  const fetchMappings = async () => {
+  const fetchMappings = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -156,7 +156,15 @@ const Mappings = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [
+    itemsPerPage,
+    activePage,
+    sorter,
+    columnFilter,
+    assetClassFilter,
+    providerFilter,
+    textInputFilterKeys,
+  ])
 
   // useEffect for debouncing live text input filters
   useEffect(() => {
@@ -212,7 +220,7 @@ const Mappings = () => {
       setError(null)
       fetchMappings()
     }
-  }, [activeTab, activePage, itemsPerPage, sorter, columnFilter, assetClassFilter, providerFilter])
+  }, [activeTab, fetchMappings])
 
   // Define columns for CSmartTable
   const columns = [
