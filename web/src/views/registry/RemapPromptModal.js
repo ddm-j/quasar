@@ -66,7 +66,10 @@ const RemapPromptModal = ({
         {error && (
           <div
             className="p-3 rounded mb-3"
-            style={{ backgroundColor: 'var(--cui-danger-bg-subtle)' }}
+            style={{
+              backgroundColor: 'var(--cui-danger-bg-subtle)',
+              color: 'var(--cui-danger-text-emphasis)',
+            }}
           >
             <div className="d-flex align-items-center mb-2">
               <CIcon
@@ -79,8 +82,8 @@ const RemapPromptModal = ({
                 Re-map operation failed
               </span>
             </div>
-            <p className="mb-0 text-body-secondary">{error}</p>
-            <p className="mb-0 mt-2 small text-body-secondary">
+            <p className="mb-0">{error}</p>
+            <p className="mb-0 mt-2 small">
               The operation has been rolled back. No mappings were modified.
             </p>
           </div>

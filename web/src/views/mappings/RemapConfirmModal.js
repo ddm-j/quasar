@@ -132,7 +132,10 @@ const RemapConfirmModal = ({
         {remapError && !remapResult && (
           <div
             className="p-3 rounded mb-3"
-            style={{ backgroundColor: 'var(--cui-danger-bg-subtle)' }}
+            style={{
+              backgroundColor: 'var(--cui-danger-bg-subtle)',
+              color: 'var(--cui-danger-text-emphasis)',
+            }}
           >
             <div className="d-flex align-items-center mb-2">
               <CIcon
@@ -145,8 +148,8 @@ const RemapConfirmModal = ({
                 Re-map operation failed
               </span>
             </div>
-            <p className="mb-0 text-body-secondary">{remapError}</p>
-            <p className="mb-0 mt-2 small text-body-secondary">
+            <p className="mb-0">{remapError}</p>
+            <p className="mb-0 mt-2 small">
               The operation has been rolled back. No mappings were modified.
             </p>
           </div>
@@ -156,7 +159,10 @@ const RemapConfirmModal = ({
         {remapResult && (
           <div
             className="p-3 rounded mb-3"
-            style={{ backgroundColor: 'var(--cui-success-bg-subtle)' }}
+            style={{
+              backgroundColor: 'var(--cui-success-bg-subtle)',
+              color: 'var(--cui-success-text-emphasis)',
+            }}
           >
             <div className="d-flex align-items-center mb-3">
               <CIcon
@@ -171,28 +177,34 @@ const RemapConfirmModal = ({
             </div>
             <div className="row text-center">
               <div className="col-4">
-                <div className="fs-3 fw-bold text-danger">{remapResult.deleted_mappings}</div>
-                <div className="small text-body-secondary">Deleted</div>
+                <div className="fs-3 fw-bold" style={{ color: 'var(--cui-danger)' }}>
+                  {remapResult.deleted_mappings}
+                </div>
+                <div className="small">Deleted</div>
               </div>
               <div className="col-4">
-                <div className="fs-3 fw-bold text-success">{remapResult.created_mappings}</div>
-                <div className="small text-body-secondary">Created</div>
+                <div className="fs-3 fw-bold" style={{ color: 'var(--cui-success)' }}>
+                  {remapResult.created_mappings}
+                </div>
+                <div className="small">Created</div>
               </div>
               <div className="col-4">
-                <div className="fs-3 fw-bold text-warning">{remapResult.skipped_mappings}</div>
-                <div className="small text-body-secondary">Skipped</div>
+                <div className="fs-3 fw-bold" style={{ color: 'var(--cui-warning)' }}>
+                  {remapResult.skipped_mappings}
+                </div>
+                <div className="small">Skipped</div>
               </div>
             </div>
             {remapResult.failed_mappings > 0 && (
               <div className="mt-3 text-center">
-                <span className="text-danger fw-medium">
+                <span className="fw-medium" style={{ color: 'var(--cui-danger)' }}>
                   {remapResult.failed_mappings} mapping
                   {remapResult.failed_mappings !== 1 ? 's' : ''} failed to create
                 </span>
               </div>
             )}
             {remapResult.providers_affected && remapResult.providers_affected.length > 0 && (
-              <div className="mt-3 small text-body-secondary text-center">
+              <div className="mt-3 small text-center">
                 Providers: {remapResult.providers_affected.join(', ')}
               </div>
             )}
