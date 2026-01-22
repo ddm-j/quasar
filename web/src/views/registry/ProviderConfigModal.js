@@ -402,7 +402,7 @@ const ProviderConfigModal = ({
       if (displayToast) {
         displayToast({
           title: 'Crypto Mappings Re-mapped',
-          body: `Successfully re-mapped crypto assets for ${className}. Deleted: ${result.deleted}, Created: ${result.created}, Skipped: ${result.skipped}.`,
+          body: `Successfully re-mapped crypto assets for ${className}. Deleted: ${result.deleted_mappings}, Created: ${result.created_mappings}, Skipped: ${result.skipped_mappings}.`,
           color: 'success',
           icon: cilChartLine,
         })
