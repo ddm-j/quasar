@@ -198,12 +198,6 @@ class Registry(
             status_code=204
         )
         self._api_app.router.add_api_route(
-            '/api/registry/asset-mappings/{common_symbol}',
-            self.handle_get_asset_mappings_for_symbol,
-            methods=['GET'],
-            response_model=List[AssetMappingResponse]
-        )
-        self._api_app.router.add_api_route(
             '/api/registry/asset-mappings/common-symbol/{symbol}/rename',
             self.handle_rename_common_symbol,
             methods=['PUT'],
@@ -231,6 +225,15 @@ class Registry(
             self.handle_get_common_symbols,
             methods=['GET'],
             response_model=CommonSymbolResponse
+        )
+
+        # Dynamic route MUST come after static routes to avoid capturing static paths
+        # e.g., "common-symbols" would match {common_symbol} if registered first
+        self._api_app.router.add_api_route(
+            '/api/registry/asset-mappings/{common_symbol}',
+            self.handle_get_asset_mappings_for_symbol,
+            methods=['GET'],
+            response_model=List[AssetMappingResponse]
         )
 
         # Asset Mapping Suggestions (public API)
