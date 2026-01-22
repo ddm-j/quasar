@@ -1245,8 +1245,11 @@ class MappingHandlersMixin(HandlerMixin):
         """Delete and regenerate asset mappings matching the specified filters.
 
         This operation is atomic: either all changes succeed or the entire
-        operation is rolled back. Uses REPEATABLE READ isolation to prevent
-        phantom reads during the delete-regenerate cycle.
+        operation is rolled back. Uses REPEATABLE READ isolation to ensure
+        a consistent snapshot during the delete-regenerate cycle.
+
+        Note: affected_indices is determined before deletion for reporting
+        purposes and reflects the state at query time.
 
         Args:
             request: Filter parameters specifying which mappings to re-map.
