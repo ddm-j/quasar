@@ -1,8 +1,8 @@
 ---
 name: code-reviewer-tests
-description: Test quality reviewer for Quasar. Reviews pytest tests, async test patterns, fixture design, and mock correctness. Use when PR contains changes to tests/**/*.py or adds functionality that should have tests.
-model: haiku
+description: "Test quality reviewer for Quasar. Reviews pytest tests, async test patterns, fixture design, and mock correctness. Use when PR contains changes to tests/**/*.py or adds functionality that should have tests."
 tools: Read, Grep, Glob, Bash(git diff:*), Bash(git show:*)
+model: sonnet
 color: cyan
 ---
 
